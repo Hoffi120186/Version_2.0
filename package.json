@@ -1,0 +1,10 @@
+{
+  "name": "1rettungsmittel-pwa",
+  "version": "1.0.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@netlify/blobs": "^6.4.0",
+    "web-push": "^3.6.6"
+  }
+}
