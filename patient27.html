@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, 
+
+    <!-- Optional, aber gut für PWA auf Smartphones -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Buttons anzeigen</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <!-- Lizenz-/Install-Logik (freigabe) --> <script src="/freigabe.js?v=2025-09-11-REV2" defer></script>
+</head>
+<body>
+    <style>
+body {
+  margin: 0;
+  padding: 0;
+  height: 60vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: url("fotos/Patient27.png") no-repeat center center fixed;
+  background-size: cover; /* wichtig: füllt immer den ganzen Screen */
+}
+
+        
+        
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color:  rgba(0, 0, 0, 0.5); /* Weißes Overlay mit Transparenz */
+            z-index: -1; /* Setzt das Overlay hinter den Inhalt */
+        }</style>
+
+<!-- Buttons -->
+<div class="button-container">
+    <button id="btn1" class="btn">
+        W 40 Jahre alt.<br>AF 19/min Puls 95/min<br><b>wirkt sehr mitgenommen</b>
+        <br>Sie ist ABC-Stabil<br>Keine Blutungen zu sehen.<br>
+        Sie ist Zeugin des Angriffes
+        
+
+        <span>Weiter durch klicken</span>
+    </button>
+    <button id="btn2" class="btn hidden">
+        Die Pat. wurde nicht selber angegriffen<br>
+        Hat aber gesehen wie Personen angegriffen wurden!  
+        <span>Weiter durch klicken</span>
+    </button>
+    <button id="btnCountdown1" class="btn hidden">
+        Sofortmaßnahme:<br>Patient soll die Einsatzstelle verlassen<br>
+        <span id="countdown1" class="countdown"></span>
+    </button>
+    <button id="btnCountdown2" class="btn hidden">
+        Sofortmaßnahme:<br>Keine <br>
+        <span id="countdown2" class="countdown"></span>
+    </button>
+    <button id="btnCountdown3" class="btn hidden">
+       Keine Sofortmaßnahme <br><span id="countdown3" class="countdown"></span>
+    </button>
+    <button id="btn3" class="btn hidden">
+       <br>Die Pat. rennt in den Strassenverkehr und wird verletzt
+        <span>Weiter durch klicken</span>
+    </button>
+    <button id="btnCustom" class="btn hidden">
+       Der Zustand ist unverändert<br>
+       <span>Weiter durch klicken</span>
+    </button>
+
+<div id="sk-btns" class="hidden">
+     
+    <button class="sk-btn red" data-sichtung="rot">SK1</button>
+    <button class="sk-btn yellow" data-sichtung="gelb">SK2</button>
+    <button class="sk-btn green" data-sichtung="grün">SK3</button>
+    <button class="sk-btn black" data-sichtung="schwarz">SK</button>
+</div>
+<div id="transportToggle" class="hidden toggle-box">
+  <p>Transportpriorität vergeben?</p>
+  <div class="toggle-buttons">
+    <button id="t-yes" class="sk-btn red">Ja</button>
+    <button id="t-no"  class="sk-btn">Nein</button>
+  </div>
+</div>
+
+<div id="affectedToggle" class="hidden toggle-box">
+  <p>„Nur Betroffen“ (B) markieren?</p>
+  <div class="toggle-buttons">
+    <button id="b-yes" class="sk-btn green">Ja</button>
+    <button id="b-no"  class="sk-btn">Nein</button>
+  </div>
+</div>
+<div id="button-container"></div>
+<button id="btn4" class="btn hidden">
+    Sichtungskategorie wählen<br>Patientenumhängekarte anlegen<br>
+    Nächster QR-Scan
+    <br>
+    <span>Durch klicken</span>
+    </button>
+<div class="camera-container">
+        <video id="video" width="640" height="480" autoplay></video>
+    </div>
+
+<!-- Modal für Bildanzeige -->
+<div id="modal">
+    <div id="modalContent">
+        <img src="fotos/Patient27.png" alt="VU Brillenhämatom">
+        <span id="closeModal">Schließen</span>
+    </div>
+</div>
+
+<div id="bottom-buttons">
+  <a href="index.html" id="startseiteButton">Startseite</a>
+  <button id="einsatzendeButton" onclick="endMission()">Vorsichten Ende</button>
+</div>
+
+
+
+<script src="timer.js"></script>
+<script src="button1.js"></script>  
+<script src="/script.js?v=2025-09-28-3" defer></script>
+   
+<script src="sperrung.js"></script>  
+ <script>
+  // PHP-Endpunkt (IONOS)
+  window.METRICS_URL = "https://1rettungsmittel.de/metrics.php";
+</script>
+<script src="/metrics.js" defer></script>
+
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
