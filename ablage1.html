@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Patientenablage – gesichtete Patienten</title>
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="manifest" href="/manifest.json" />
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+
+  <style>
+:root{
+  --w:min(94vw,1120px);
+  --shadow:0 10px 26px rgba(0,0,0,.28);
+  --glass:rgba(255,255,255,.43);
+  --accent:#0B5FFF;
+  --accent2:#e53935;
+  --card-h:200px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:#0b0f1a url("fotos/ablageB.jpg") center/cover no-repeat fixed;color:#fff;
+  display:flex;flex-direction:column;min-height:100vh;
+}
+body::before{content:"";position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:-1;}
+
+/* Header */
+header{
+  position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:10px;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);
+}
+header h1{margin:0;font-size:20px}
+.header-right{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn{background:var(--accent);color:#fff;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600}
+.btn.alt{background:var(--accent2)}
+.search{
+  padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.35);
+  min-width:200px;background:rgba(255,255,255,.12);color:#fff;
+}
+.search::placeholder{color:rgba(255,255,255,.8)}
+
+/* Viewport & Grid */
+.viewport{flex:1;width:var(--w);margin:0 auto;padding:10px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}
+
+/* Karten */
+.card{
+  display:grid;gap:14px;align-items:start;cursor:pointer;
+  grid-template-columns:200px 1fr;
+  grid-template-areas:"thumb body" "actions body";
+  min-height:var(--card-h);
+  background:var(--glass);border:2px solid rgba(255,255,255,.55);border-radius:12px;box-shadow:var(--shadow);
+  padding:12px;break-inside:avoid;page-break-inside:avoid;
+  border-left: 10px solid rgba(255,255,255,.25);
+  position:relative; /* wichtig für saubere Overlays (falls später) */
+}
+
+.k-rot{     border-left-color:#e53935 !important; }
+.k-gelb{    border-left-color:#f3fc02 !important; }
+.k-gruen{   border-left-color:#2e7d32 !important; }
+.k-schwarz{ border-left-color:#111 !important; }
+
+.card:hover{ outline:2px solid rgba(255,255,255,.35); }
+
+.thumb{
+  grid-area:thumb;width:200px;height:140px;border-radius:12px;overflow:hidden;
+  border:1px solid rgba(255,255,255,.28);background:#000;display:flex;align-items:center;justify-content:center
+}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.thumb span{opacity:.7;font-size:13px;padding:6px;text-align:center}
+.actions{grid-area:actions;display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+
+/* Titel + Badges */
+h2{
+  margin:0 0 6px 0;font-size:22px;font-weight:900;letter-spacing:.2px;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+}
+.badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:2px 8px;border-radius:999px;font-size:12px;font-weight:900;
+  border:1px solid rgba(255,255,255,.25); background:#111827; color:#fff;
+  line-height:1;
+}
+.badge .sk{ font-weight:900; }
+.badge .flag{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;border-radius:999px;font-weight:800;font-size:12px;
+  line-height:1;border:1px solid currentColor;
+}
+
+.badge-rot{     background:#e53935; color:#fff; border-color:#e53935; }
+.badge-gelb{    background:#f3fc02; color:#111; border-color:#f3fc02; }
+.badge-gruen{   background:#2e7d32; color:#fff; border-color:#2e7d32; }
+.badge-schwarz{ background:#111;    color:#fff; border-color:#111; }
+
+/* farbige Sub-Badges passend zur Kategorie */
+.badge-rot .flag{     background:#e53935; color:#fff; border-color:#e53935; }
+.badge-gelb .flag{    background:#f3fc02; color:#111; border-color:#f3fc02; }
+.badge-gruen .flag{   background:#2e7d32; color:#fff; border-color:#2e7d32; }
+.badge-schwarz .flag{ background:#111;    color:#fff; border-color:#111; }
+
+.meta{font-size:14px;opacity:.9;margin:6px 0}
+.injury{font-size:15px}
+
+/* Skeletons */
+.skeleton{position:relative;overflow:hidden;background:rgba(255,255,255,.08)}
+.skeleton::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg, transparent, rgba(255,255,255,.12), transparent);animation:shimmer 1.2s infinite}
+@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.title-skel{height:22px;border-radius:6px;width:60%}
+.line-skel{height:14px;border-radius:6px;width:80%;margin-top:8px}
+.injury-skel{height:16px;border-radius:6px;width:90%;margin-top:10px}
+
+/* Lightbox */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:999}
+.lightbox img{max-width:90vw;max-height:90vh;border-radius:12px}
+
+/* Empty */
+.empty{
+  width:var(--w);margin:14vh auto 0; padding:16px;
+  background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.2); border-radius:14px; text-align:center;
+}
+.empty h2{margin:0 0 8px 0}
+.empty p{opacity:.9}
+
+/* Stats */
+.stats{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:8px 12px 0;}
+.stat{
+  display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px;
+  font-weight:900; font-size:13px; box-shadow:0 6px 14px rgba(0,0,0,.18); border:0; color:#fff; user-select:none;
+}
+.stat span.count{ font-variant-numeric: tabular-nums; min-width:2ch; text-align:right; }
+.stat-rot{     background:#e53935; }
+.stat-gelb{    background:#f3fc02; color:#111; }
+.stat-gruen{   background:#2e7d32; }
+.stat-schwarz{ background:#111; }
+.stat-total{   background:#9aa0a6; color:#111; }
+
+/* Mobile tweaks */
+@media (max-width:980px){
+  .grid{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+  .card{grid-template-columns:160px 1fr}
+  .thumb{width:160px;height:120px}
+}
+@media (max-width:640px){
+  header{flex-wrap:wrap; gap:8px; padding:12px 10px 10px;}
+  .search{width:100%; font-size:16px; padding:12px;}
+  .header-right{width:100%; gap:8px}
+  .btn{ padding:12px 14px; font-size:16px; }
+  .card{grid-template-columns:1fr;grid-template-areas:"thumb" "actions" "body";}
+  .thumb{width:100%; height:36vw; max-height:220px;}
+  .actions .btn{flex:1 1 100%;text-align:center}
+  h2{font-size:20px}
+  .meta,.injury{font-size:14px}
+  .viewport{padding:10px 10px 14px;}
+  .ablage-actions { display:flex; flex-wrap:wrap; gap:8px; }
+  .ablage-actions .ablage-id,
+  .ablage-actions select,
+  .ablage-actions .btn { flex:1 1 100%; }
+}
+
+/* === Klinik zuweisen: Primary Action (NUR OPTIK) === */
+.btn-assign-clinic{
+  background: linear-gradient(180deg, #e53935, #b71c1c) !important;
+  color:#fff !important;
+  font-weight:900 !important;
+  letter-spacing:.2px;
+  border:1px solid rgba(255,255,255,.35) !important;
+  box-shadow:
+    0 10px 26px rgba(0,0,0,.45),
+    0 0 0 2px rgba(229,57,53,.35),
+    0 0 18px rgba(229,57,53,.45) !important;
+}
+.btn-assign-clinic:hover{ filter:brightness(1.05); }
+.btn-assign-clinic:active{ transform:scale(.99); }
+
+@media print{ header{display:none !important} .stats{display:none !important} }
+  </style>
+
+  <link rel="stylesheet" href="/app-flow.css">
+</head>
+
+<body>
+  <header>
+    <button class="btn alt" onclick="location.href='index.html'">Startseite</button>
+    <h1>Patientenablage</h1>
+    <button class="btn" onclick="location.href='klinik.html'">Zuweisungen/Auswertung</button>
+    <div class="header-right">
+      <input type="text" id="search" class="search" placeholder="Suche..." />
+      <label style="display:flex;align-items:center;gap:6px;">
+        <input type="checkbox" id="cbHidePhotos"> Fotos im Druck ausblenden
+      </label>
+    </div>
+  </header>
+
+  <div class="stats" id="stats">
+    <div class="stat stat-rot"><span class="count" id="cnt-rot">0</span> ROT</div>
+    <div class="stat stat-gelb"><span class="count" id="cnt-gelb">0</span> GELB</div>
+    <div class="stat stat-gruen"><span class="count" id="cnt-gruen">0</span> GRÜN</div>
+    <div class="stat stat-schwarz"><span class="count" id="cnt-schwarz">0</span> SCHWARZ</div>
+    <div class="stat stat-total"><span class="count" id="cnt-total">0</span> GESAMT</div>
+  </div>
+
+  <div class="viewport">
+    <div class="grid" id="list"></div>
+  </div>
+
+  <div class="lightbox" id="lightbox" aria-hidden="true" title="Zum Schließen klicken">
+    <img id="lightboxImg" src="" alt="Patientenfoto">
+  </div>
+
+<script type="module">
+'use strict';
+
+/* ====== Auto-Start Guard ====== */
+const AUTOSTART = 'ablage.autostart.ok';
+function allowAutostart(){ localStorage.setItem(AUTOSTART, 'true'); }
+function denyAutostart(){  localStorage.setItem(AUTOSTART, 'false'); }
+window.addEventListener('pageshow', allowAutostart);
+window.addEventListener('pagehide', denyAutostart);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') allowAutostart(); else denyAutostart();
+});
+allowAutostart();
+
+/* ===== Setups & Helpers ===== */
+const VERSION = 'v-0901-06';
+function abs(href, base){
+  try{
+    const b = base ? new URL(base, location.href).href : location.href;
+    return new URL(href, b).href;
+  }catch{
+    try{ return new URL(href, location.href).href; }catch{ return href; }
+  }
+}
+const withV = (u)=> u + (u.includes('?') ? '&' : '?') + VERSION;
+
+function normGender(g){
+  if(!g) return null;
+  const x = String(g).trim().toLowerCase();
+  if (x === 'm' || /^m(ännlich|aennlich)$/.test(x) || ['male','mann','herr'].includes(x)) return 'männlich';
+  if (x === 'w' || ['weiblich','female','frau','weibl'].includes(x))                   return 'weiblich';
+  if (x === 'd' || /divers|non[-\s]?binary/.test(x))                                   return 'divers';
+  return null;
+}
+
+/* ===== Datenquellen ===== */
+function getPatMeta(){ try { return JSON.parse(localStorage.getItem('patMeta') || '{}'); } catch { return {}; } }
+function getPatientsData(){ try { return JSON.parse(localStorage.getItem('patientsData') || '[]'); } catch { return []; } }
+
+/* Overlays */
+function overlayFromPatMeta(info){
+  const meta = getPatMeta()[info.id] || {};
+  if(meta.age)    info.age = String(meta.age);
+  if(meta.gender) info.gender = normGender(meta.gender) || meta.gender;
+  if(meta.photo && !info.img) info.img = abs(meta.photo, info.url);
+}
+function overlayFromJson(info){
+  const num = Number(info.id.replace('patient',''));
+  const j = getPatientsData().find(x => Number(x.id) === num);
+  if(!j) return;
+  if(!info.age && j.age) info.age = String(j.age);
+  if(!info.gender && j.gender) info.gender = normGender(j.gender) || j.gender;
+  if(!info.img && j.photo) info.img = abs(j.photo, info.url);
+}
+
+/* ===== Sichtungen & Flags ===== */
+function getSMap(){ try{ return JSON.parse(localStorage.getItem('sichtungMap')||'{}'); }catch{ return {}; } }
+function sichtungFor(id){
+  const k = (getSMap()[id]||'').toString().toLowerCase().replace('grün','gruen');
+  return ['rot','gelb','gruen','schwarz'].includes(k) ? k : null;
+}
+function sightedIds(){
+  return Object.keys(getSMap())
+    .filter(k => /^patient\d+$/i.test(k))
+    .sort((a,b)=> parseInt(a.replace(/\D/g,'')) - parseInt(b.replace(/\D/g,'')));
+}
+function __readTogglePayload(id){
+  let raw=null;
+  try { raw = localStorage.getItem("sicht_" + id); } catch {}
+  if (!raw) {
+    const pathKey = "sicht_" + (location.pathname.split("/").pop() || "unknown");
+    try { raw = localStorage.getItem(pathKey); } catch {}
+  }
+  if (!raw) return {};
+  try { return JSON.parse(raw)||{}; } catch { return {}; }
+}
+function __labelFromCat(cat){
+  const c = String(cat||'').toLowerCase();
+  if (c === 'rot')     return 'SK1';
+  if (c === 'gelb')    return 'SK2';
+  if (c === 'gruen')   return 'SK3';
+  if (c === 'schwarz') return 'SK4';
+  return '';
+}
+function getSichtungDisplay(id, cat){
+  const p = __readTogglePayload(id);
+  if (cat === 'rot')      return 'SK1' + (p.t ? ' · T' : '');
+  if (cat === 'gelb')     return 'SK2';
+  if (cat === 'gruen')    return 'SK3' + (p.b ? ' · B' : '');
+  if (cat === 'schwarz')  return 'SK4';
+  return '—';
+}
+
+/* ===== Priorität (Sortierung) ===== */
+function __prio(cat, flags){
+  const t=!!flags?.t, b=!!flags?.b;
+  if (cat==='rot'   && t) return 0;
+  if (cat==='rot')        return 1;
+  if (cat==='gelb')       return 2;
+  if (cat==='gruen' && b) return 3;
+  if (cat==='gruen')      return 4;
+  if (cat==='schwarz')    return 5;
+  return 6;
+}
+function __numFromId(id){ return parseInt(String(id).replace(/\D/g,''))||99999; }
+
+/* ===== DONE-Set aus Ablage.js ===== */
+function getDoneSet(){
+  try{
+    const list = (window.Ablage && window.Ablage._getDone) ? window.Ablage._getDone() : [];
+    return new Set(Array.isArray(list) ? list : []);
+  }catch{ return new Set(); }
+}
+
+/* ===== Stats ===== */
+function updateStats(){
+  const done = getDoneSet();
+  const ids = sightedIds().filter(id => !done.has(id));
+  let rot=0,gelb=0,gruen=0,schwarz=0;
+  for(const id of ids){
+    const k = sichtungFor(id);
+    if(k==='rot') rot++;
+    else if(k==='gelb') gelb++;
+    else if(k==='gruen') gruen++;
+    else if(k==='schwarz') schwarz++;
+  }
+  const total = ids.length;
+  const set = (sel,val)=>{ const el=document.getElementById(sel); if(el) el.textContent=String(val); };
+  set('cnt-rot',rot); set('cnt-gelb',gelb); set('cnt-gruen',gruen); set('cnt-schwarz',schwarz); set('cnt-total',total);
+}
+
+/* ===== NUR OPTIK: Klinik zuweisen Button stylen ===== */
+function highlightAssignButtons(){
+  document.querySelectorAll('.card button').forEach(btn=>{
+    const t = (btn.textContent || '').trim().toLowerCase();
+    if(t === 'klinik zuweisen'){
+      btn.classList.add('btn-assign-clinic');
+    }
+  });
+}
+
+/* ===== Bildsuche (Fallbacks) ===== */
+const SUFFIXES = ['', 'messer', 'kopf', 'arm', 'bein', 'bauch', 'brust', 'foto', '_1', '_a'];
+async function findPhoto({ html, baseUrl, index }){
+  const im = html.match(/<img[^>]*id=["']patient-photo["'][^>]*src=["']([^"']+)["']/i);
+  if(im) return abs(im[1], baseUrl);
+  const dp = html.match(/data-photo=["']([^"']+\.(?:jpg|jpeg|png|webp))["']/i);
+  if(dp) return abs(dp[1], baseUrl);
+  const og = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i);
+  if(og) return abs(og[1], baseUrl);
+
+  const EXT = ['jpg','jpeg','png','webp','JPG','JPEG','PNG','WEBP'];
+  const rx = new RegExp(`(^|\\/)(pat(?:ient)?${index})[^\\/]*\\.(${EXT.join('|')})$`, 'i');
+  const allImgs = [...html.matchAll(/<img[^>]*src=["']([^"']+)["'][^>]*>/ig)];
+  for(const m of allImgs){ const url = abs(m[1], baseUrl); if(rx.test(url)) return url; }
+
+  for(const suf of SUFFIXES){
+    for(const ex of EXT){
+      const url = `${location.origin}/pat${index}${suf ? suf : ''}.${ex}`;
+      if(await probeImage(url)) return url;
+    }
+  }
+  for(const ex of EXT){
+    const url = `${location.origin}/patient${index}.${ex}`;
+    if(await probeImage(url)) return url;
+  }
+  return null;
+}
+function probeImage(url){
+  return new Promise(res => {
+    const i=new Image();
+    i.onload=()=>res(true);
+    i.onerror=()=>res(false);
+    i.src = withV(url);
+  });
+}
+
+/* ===== Cache + Fetch der Patientenseiten ===== */
+const listEl = document.getElementById('list');
+const CACHE_KEY = `pat-cache-${VERSION}`;
+function readCache(){ try{ return JSON.parse(sessionStorage.getItem(CACHE_KEY)||'{}'); }catch{return{};} }
+function writeCache(map){ try{ sessionStorage.setItem(CACHE_KEY, JSON.stringify(map)); }catch{} }
+
+async function fetchPatientData(entry){
+  const cache = readCache();
+  if(cache[entry.id]) return cache[entry.id];
+
+  const idx = +entry.id.replace('patient','');
+  const info = { id:entry.id, label:entry.label, url:entry.url, age:null, gender:null, injury:'—', vitals:null, img:null, code:null, error:null };
+
+  try{
+    const res = await fetch(withV(entry.url), { cache:'no-store' });
+    if(!res.ok){
+      info.error = 'HTTP '+res.status;
+      const c=readCache(); c[entry.id]=info; writeCache(c);
+      return info;
+    }
+    const html = await res.text();
+
+    const s = html.match(/<script[^>]*id=["']patient-data["'][^>]*type=["']application\/json["'][^>]*>([\s\S]*?)<\/script>/i);
+    if(s){
+      try{
+        const j = JSON.parse(s[1]);
+        if(j.age)    info.age    = String(j.age);
+        if(j.gender) info.gender = String(j.gender);
+        if(j.code)   info.code   = String(j.code);
+        if(j.injury) info.injury = String(j.injury);
+        if(j.photo)  info.img    = abs(j.photo, entry.url);
+        if(j.vitals) info.vitals = String(j.vitals);
+      }catch{}
+    }
+
+    const dataTag = html.match(/<[^>]+id=["']patient["'][^>]*>/i);
+    if(dataTag){
+      const tag = dataTag[0];
+      const pick = (name)=>{ const m = tag.match(new RegExp(`data-${name}=["']([^"']+)["']`,'i')); return m ? m[1] : null; };
+      if(!info.age){ const v = pick('age'); if(v) info.age = String(v); }
+      if(!info.gender){ const v = pick('gender'); if(v) info.gender = String(v); }
+      if(!info.code){ const v = pick('code'); if(v) info.code = String(v); }
+      if(!info.img){ const v = pick('photo'); if(v) info.img = abs(v, entry.url); }
+      if(info.injury==='—'){ const v = pick('injury'); if(v) info.injury = String(v); }
+      if(!info.vitals){ const v = pick('vitals'); if(v) info.vitals = String(v); }
+    }
+
+    const btn1 = html.match(/<button[^>]*id=["']btn1["'][^>]*>([\s\S]*?)<\/button>/i);
+    if(btn1){
+      const raw = btn1[1];
+      const text = cleanText(raw);
+      if(info.injury==='—') info.injury = extractMainInjuryFromButtonHTML(raw);
+      if(!info.vitals){
+        const vit = extractVitalsFromText(text);
+        if(vit) info.vitals = vit;
+      }
+    }
+    const btn2 = html.match(/<button[^>]*id=["']btn2["'][^>]*>([\s\S]*?)<\/button>/i);
+    if(btn2){
+      const raw2 = btn2[1];
+      const inj2 = extractMainInjuryFromButtonHTML(raw2);
+      if((!info.injury || info.injury==='—') && inj2 && inj2 !== '—') info.injury = inj2;
+      if(!info.vitals){
+        const vit2 = extractVitalsFromText(cleanText(raw2));
+        if(vit2) info.vitals = vit2;
+      }
+    }
+
+    if(!info.img){
+      info.img = await findPhoto({ html, baseUrl: entry.url, index: idx });
+    }
+
+  }catch(e){
+    info.error = e?.message || String(e);
+  }
+
+  overlayFromPatMeta(info);
+  overlayFromJson(info);
+
+  const c2 = readCache(); c2[entry.id]=info; writeCache(c2);
+  return info;
+}
+
+function cleanText(html){
+  return html.replace(/<br\s*\/?\s*>/gi,' ')
+    .replace(/<[^>]+>/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+function extractMainInjuryFromButtonHTML(rawHtml){
+  const bold = rawHtml.match(/<(?:b|strong)>([^<]+)<\/(?:b|strong)>/i);
+  if (bold) return bold[1].trim();
+  let t = cleanText(rawHtml);
+  const hv = t.match(/Hauptverletzung\s*:?\s*(.+)$/i);
+  let base = hv ? hv[1] : t;
+  base = base.replace(/^[\s\-\|•·–—]+/, '').split(/[\|—–\-•·]/)[0].trim();
+  const p = base.indexOf('.');
+  if (p>0 && p<80) base = base.slice(0,p).trim();
+  return base || '—';
+}
+function extractVitalsFromText(t){
+  if(!t) return null;
+  const s=t.replace(/\s+/g,' ');
+  let af=null, hr=null;
+  const afm=s.match(/\b(?:AF|Atemfrequenz)\s*[:=]?\s*(\d{1,3})\s*\/?\s*min\b/i); if(afm) af=afm[1];
+  const hrm=s.match(/\b(?:Puls|HF|Herzfrequenz)\s*[:=]?\s*(\d{1,3})\s*\/?\s*min\b/i); if(hrm) hr=hrm[1];
+  if(!af && !hr) return null;
+  if(af && hr) return `AF ${af}/min, Puls ${hr}/min`;
+  if(af) return `AF ${af}/min`;
+  return `Puls ${hr}/min`;
+}
+
+/* ===== UI ===== */
+function renderSkeletons(ids){
+  listEl.innerHTML='';
+  for(const id of ids){
+    const skel=document.createElement('div');
+    skel.className='card';
+    skel.dataset.id=id;
+    skel.innerHTML=`
+      <div class="thumb skeleton"></div>
+      <div>
+        <div class="title-skel skeleton"></div>
+        <div class="line-skel skeleton" style="width:50%"></div>
+        <div class="injury-skel skeleton"></div>
+      </div>
+      <div class="actions">
+        <button class="btn" disabled>Als PDF</button>
+      </div>`;
+    listEl.appendChild(skel);
+  }
+}
+
+function upsertCard(p){
+  const kat = sichtungFor(p.id);
+  const flags = __readTogglePayload(p.id) || {};
+  const label = kat ? __labelFromCat(kat) : '—';
+  const flagChar = (kat==='rot'   && flags.t) ? 'T'
+                 : (kat==='gruen' && flags.b) ? 'B'
+                 : '';
+  const katBadgeClass = kat ? `badge-${kat}` : '';
+
+  let injText = p.injury ?? '—';
+  if(p.vitals && !/af\s*\d+|puls\s*\d+/i.test((injText||'').toLowerCase())){
+    injText += ` — ${p.vitals}`;
+  }
+
+  const badge = `<span class="badge ${katBadgeClass}">
+                   <span class="sk">${label}</span>
+                   ${flagChar ? `<span class="flag">${flagChar}</span>` : ''}
+                 </span>`;
+
+  const imgBlock = p.img
+    ? `<img data-src="${withV(abs(p.img))}" alt="${p.label}" loading="lazy">`
+    : `<span>${p.label}<br>Kein Foto</span>`;
+
+  const html = `
+    <div class="thumb" ${p.img ? `data-view="${withV(abs(p.img))}"` : ''} title="${p.img ? 'Foto ansehen' : ''}">
+      ${imgBlock}
+    </div>
+    <div>
+      <h2>${p.label} ${badge}</h2>
+      <div class="meta">Alter: ${p.age ?? '—'} | Geschlecht: ${p.gender ?? '—'}</div>
+      <div class="injury"><b>Hauptverletzung:</b> ${injText}</div>
+      ${p.error ? `<div style="color:#ffd2d2;margin-top:6px;font-size:12px;">⚠ ${p.error}</div>` : ''}
+    </div>
+    <div class="actions">
+      <button class="btn" data-id="${p.id}">Als PDF</button>
+    </div>`;
+
+  let card = listEl.querySelector(`.card[data-id="${p.id}"]`);
+  const cls = kat ? ('k-'+kat) : '';
+
+  if(card){
+    card.classList.remove('k-rot','k-gelb','k-gruen','k-schwarz');
+    if(cls) card.classList.add(cls);
+    card.setAttribute('data-patient-id', p.id);
+    card.setAttribute('data-name', p.label || p.id);
+    card.setAttribute('data-prio', kat || '');
+    card.innerHTML = html;
+  }else{
+    card=document.createElement('div');
+    card.className='card '+cls;
+    card.dataset.id=p.id;
+    card.setAttribute('data-patient-id', p.id);
+    card.setAttribute('data-name', p.label || p.id);
+    card.setAttribute('data-prio', kat || '');
+    card.dataset.open=withV(p.url);
+    card.innerHTML=html;
+    listEl.appendChild(card);
+  }
+
+  const img=card.querySelector('img[data-src]');
+  if(img) observeImage(img);
+}
+
+/* Entfernen */
+function removeCard(id){
+  const el = listEl.querySelector(`.card[data-id="${id}"]`);
+  if(el) el.remove();
+}
+
+/* Suche */
+document.addEventListener('input', e=>{
+  if(e.target.id!=='search') return;
+  const q=e.target.value.toLowerCase();
+  const all=(window.__PAT_DATA__||[]);
+  listEl.innerHTML='';
+
+  (q ? all.filter(p =>
+    `${p.id} ${p.label} ${p.age||''} ${p.gender||''} ${p.injury||''} ${p.vitals||''}`.toLowerCase().includes(q)
+  ) : all).forEach(upsertCard);
+
+  if (window.Ablage) {
+    window.Ablage.hydrateCards({
+      containerSelector: '#list',
+      cardSelector: '.card',
+      placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
+      placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
+    });
+    highlightAssignButtons();
+  }
+});
+
+/* Clicks (Lightbox & PDF) */
+document.addEventListener('click', async e=>{
+  const target=e.target;
+
+  const viewBtn=target.closest('[data-view]');
+  if(viewBtn){
+    const url=viewBtn.getAttribute('data-view');
+    document.getElementById('lightboxImg').src=url;
+    const lb=document.getElementById('lightbox');
+    lb.style.display='flex';
+    lb.setAttribute('aria-hidden','false');
+    e.stopPropagation();
+    return;
+  }
+
+  const idBtn = target.closest('button[data-id]');
+  if(idBtn){
+    const id=idBtn.getAttribute('data-id');
+    const p=(window.__PAT_DATA__||[]).find(x=>x.id===id);
+    if(p) await pdfSingle(p);
+    e.stopPropagation();
+    return;
+  }
+
+  if(target.id==='lightbox'){
+    target.style.display='none';
+    target.setAttribute('aria-hidden','true');
+    return;
+  }
+});
+
+/* Lazy Images */
+const rootEl=document.querySelector('.viewport')||null;
+const io='IntersectionObserver' in window ? new IntersectionObserver((entries,obs)=>{
+  for(const ent of entries){
+    if(ent.isIntersecting){
+      const img=ent.target;
+      img.src=img.dataset.src;
+      img.removeAttribute('data-src');
+      obs.unobserve(img);
+    }
+  }
+},{ root:rootEl, rootMargin:'200px 0px' }) : null;
+
+function observeImage(img){
+  if(io) io.observe(img);
+  else img.src=img.dataset.src;
+}
+
+/* ===== Laden & Sortiertes Rendern ===== */
+async function load(){
+  const done = getDoneSet();
+  const ids = sightedIds().filter(id => !done.has(id));
+
+  if(ids.length===0){
+    listEl.innerHTML = `
+      <div class="empty">
+        <h2>Keine offenen Patienten in der Ablage</h2>
+        <p>Gesichtete und noch nicht zugewiesene Patienten erscheinen hier automatisch.</p>
+      </div>`;
+    updateStats();
+    allowAutostart();
+    return;
+  }
+
+  renderSkeletons(ids);
+
+  const data=[];
+  for(const id of ids){
+    const num = id.replace('patient','');
+    const entry = { id, label: `Patient ${num}`, url: `patient${num}.html` };
+    const p = await fetchPatientData(entry);
+    data.push(p);
+  }
+
+  data.sort((a,b)=>{
+    const aCat = sichtungFor(a.id) || '';
+    const bCat = sichtungFor(b.id) || '';
+    const pa = __readTogglePayload(a.id) || {};
+    const pb = __readTogglePayload(b.id) || {};
+    const d  = __prio(aCat, pa) - __prio(bCat, pb);
+    return d !== 0 ? d : (__numFromId(a.id) - __numFromId(b.id));
+  });
+
+  listEl.innerHTML = '';
+  data.forEach(upsertCard);
+  window.__PAT_DATA__ = data;
+  updateStats();
+
+  allowAutostart();
+
+  if (window.Ablage && typeof window.Ablage.startAllOnEnter === 'function') {
+    window.Ablage.startAllOnEnter();
+  }
+
+  if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
+    window.Ablage.hydrateCards({
+      containerSelector: '#list',
+      cardSelector: '.card',
+      placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
+      placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
+    });
+    highlightAssignButtons();
+  }
+}
+load();
+
+/* Live-Updates (Sichtung/T/B/DONE) */
+window.addEventListener('storage', (e)=>{
+  if(!e || !e.key) return;
+  if(e.key==='sichtungMap' || e.key==='ablage.done.v1' || e.key.startsWith('sicht_')){
+    updateStats();
+
+    const done = getDoneSet();
+    const want = new Set(sightedIds().filter(id => !done.has(id)));
+    const have = new Set([...document.querySelectorAll('.card[data-id]')].map(el=>el.dataset.id)); // FIX!
+
+    for(const id of have){
+      if(!want.has(id)) removeCard(id);
+    }
+
+    for(const id of want){
+      if(!have.has(id)){
+        const num=id.replace('patient','');
+        const entry={ id, label: `Patient ${num}`, url: `patient${num}.html` };
+
+        fetchPatientData(entry).then(p=>{
+          (window.__PAT_DATA__ = (window.__PAT_DATA__||[])).push(p);
+          upsertCard(p);
+          allowAutostart();
+
+          if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
+            window.Ablage.hydrateCards({
+              containerSelector: '#list',
+              cardSelector: '.card',
+              placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
+              placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
+            });
+            highlightAssignButtons();
+          }
+        });
+      }
+    }
+  }
+});
+
+/* === PDF: Einzelkarte (inkl. SKx · T/B) === */
+function ensureJsPDF(){ return window.jspdf && window.jspdf.jsPDF; }
+
+async function pdfSingle(p){
+  const jsPDF=ensureJsPDF(); if(!jsPDF) return;
+  const doc=new jsPDF({unit:'mm', format:'a4', orientation:'portrait'});
+  const W=doc.internal.pageSize.getWidth();
+  let y=20;
+
+  const kat = sichtungFor(p.id);
+  const display = kat ? getSichtungDisplay(p.id, kat) : '—';
+
+  doc.setFontSize(16);
+  doc.text(p.label + (p.code ? ` [${p.code}]` : ''), W/2, y, { align:'center' });
+  y+=10;
+
+  doc.setFontSize(12);
+  doc.text(`Sichtung: ${display}`, 20, y); y+=7;
+  doc.text(`Alter: ${p.age ?? '—'}`, 20, y); y+=7;
+  doc.text(`Geschlecht: ${p.gender ?? '—'}`, 20, y); y+=10;
+
+  let inj=p.injury ?? '—';
+  const haveVitals=/af\s*\d+|puls\s*\d+/i.test((inj||'').toLowerCase());
+  if(p.vitals && !haveVitals) inj += ` — ${p.vitals}`;
+
+  doc.text('Hauptverletzung:', 20, y); y+=6;
+  const txt=doc.splitTextToSize(inj, W-40);
+  doc.text(txt, 20, y);
+  y+=txt.length*6+10;
+
+  const hidePhotos=document.getElementById('cbHidePhotos').checked;
+  if(p.img && !hidePhotos){
+    try{
+      const dataUrl=await imageToDataURL(p.img);
+      doc.addImage(dataUrl,'JPEG',20,y,80,60);
+    }catch{}
+  }
+  doc.save(`${p.id}.pdf`);
+}
+
+function imageToDataURL(src){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.crossOrigin='anonymous';
+    img.onload=()=>{
+      try{
+        const c=document.createElement('canvas');
+        c.width=img.naturalWidth;
+        c.height=img.naturalHeight;
+        c.getContext('2d').drawImage(img,0,0);
+        resolve(c.toDataURL('image/jpeg',0.9));
+      }catch(e){ reject(e); }
+    };
+    img.onerror=reject;
+    img.src=withV(abs(src));
+  });
+}
+
+/* Beim Verlassen Autostart verbieten */
+window.addEventListener('beforeunload', () => { denyAutostart(); });
+</script>
+
+<script src="/metrics.js" defer></script>
+<script src="/ablage.js?v=8"></script>
+</body>
+</html>

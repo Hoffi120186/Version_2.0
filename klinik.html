@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Klinik – Zuweisungen & Auswertung</title>
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="manifest" href="/manifest.json" />
+
+  <style>
+    :root{
+      --w:min(94vw,1120px);
+      --shadow:0 10px 26px rgba(0,0,0,.28);
+      --pane:rgba(0,0,0,.50);
+      --border:rgba(255,255,255,.18);
+      --accent:#0B5FFF; --danger:#e53935; --dark:#111827;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;color:#fff;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:#0b0f1a url("/fotos/RTW1.png") center 20% / cover no-repeat fixed;
+      position: relative;
+    }
+    body::before{ content:""; position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 0; }
+    header, main{ position: relative; z-index: 1; }
+
+    header{ position:sticky; top:0; z-index:20; padding:12px 10px;
+      background:rgba(0,0,0,.65); backdrop-filter:blur(6px); }
+    .wrap{ width:var(--w); margin:0 auto; }
+    h1{ margin:0 0 10px; font-size:22px; font-weight:900; letter-spacing:.2px; }
+
+    .btn-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:12px; border-radius:12px; border:1px solid var(--border);
+      background:var(--dark); color:#fff; font-weight:800; cursor:pointer; box-shadow:var(--shadow);
+    }
+    .btn--red{ background:var(--danger); }
+    .btn--blue{ background:var(--accent); }
+    .btn:active{ transform:translateY(1px) }
+
+    .search-row{ margin:10px 0 0; }
+    .search{
+      width:100%; padding:10px 12px; border-radius:10px;
+      border:1px solid rgba(255,255,255,.35); background:rgba(255,255,255,.12); color:#fff;
+      font-size:15px;
+    }
+
+    .stats{ margin:14px auto; background:var(--pane); border:1px solid var(--border);
+      border-radius:12px; padding:12px; box-shadow:var(--shadow);
+      display:flex; gap:10px; flex-wrap:wrap; }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px; padding:8px 12px;
+      border-radius:999px; background:rgba(255,255,255,.10); border:1px solid var(--border);
+      font-weight:900; font-size:14px; user-select:none;
+    }
+
+    .list{ display:flex; flex-direction:column; gap:10px; margin:14px auto; }
+    .pcard{
+      background:rgba(0,0,0,.50); border:1px solid var(--border); border-radius:14px;
+      box-shadow:var(--shadow); padding:12px 14px; display:grid; gap:8px;
+    }
+    .row1{ display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+    .row1-left{ display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; }
+    .pid, .pname{ font-weight:900; }
+
+    .sk-badge{
+      display:inline-flex; align-items:center; justify-content:center;
+      min-width:46px; height:46px; padding:0 10px; border-radius:999px;
+      font-size:13px; font-weight:900; border:2px solid #fff; color:#fff;
+      text-align:center; white-space:nowrap;
+    }
+
+    .row2,.row3{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .label{ opacity:.85; }
+    .value{ font-weight:800; }
+
+    @media (max-width:720px){ .btn-row{ grid-template-columns:1fr 1fr; } }
+  </style>
+<link rel="stylesheet" href="/app-flow.css">
+  <!-- Ablage-Logik & jsPDF -->
+  <script src="/ablage.js?v=6" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Klinik – Zuweisungen & Auswertung</h1>
+
+      <div class="btn-row">
+        <button class="btn btn--red" onclick="location.href='ablage1.html'">← Zur Ablage</button>
+        <button class="btn" id="endBtn">Übungsende</button>
+        <button class="btn btn--blue" id="pdfBtn">PDF export</button>
+        <button class="btn btn--red" id="resetBtn">Zurücksetzen</button>
+      </div>
+
+      <div class="search-row">
+        <input type="search" id="q" class="search" placeholder="Suche (Pat.-ID, Name, Ziel, Prio, T)..." />
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="stats" id="overall"></div>
+    <div class="list" id="list"></div>
+  </main>
+
+<script>
+(function(){
+  'use strict';
+  const $ = (s,r=document)=>r.querySelector(s);
+  const esc = s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const fmt = (ms)=>{ if(ms<0) ms=0; const s=Math.floor(ms/1000), mm=Math.floor((s%3600)/60), ss=s%60;
+                      const pad=n=>String(n).padStart(2,'0'); return `${pad(mm)}:${pad(ss)}`; };
+
+  const getHist      = ()=> (window.Ablage ? (Ablage._getHistory()||[]) : []);
+  const LAST_RUN_KEY = '1rm_last_run_v1';
+
+  function saveLastClinicRun(){
+    const rawHist = getHist() || [];
+
+    const enriched = rawHist.map(h => {
+      const idKey   = h.id || h.name || '';
+      const prio    = h.prio || getSkForPatient(idKey) || null;
+      const skLabel = displaySK(prio, idKey);   // SK1 / SK1 · T / …
+
+      return {
+        ...h,
+        prio,
+        skLabel
+      };
+    });
+
+    const snap = {
+      savedAt: new Date().toISOString(),
+      hist: enriched
+    };
+
+    try {
+      localStorage.setItem(LAST_RUN_KEY, JSON.stringify(snap));
+    } catch(e){
+      console.warn('Letzte Übung (Klinik) konnte nicht gespeichert werden', e);
+    }
+  }
+
+  /* ===== SK & Toggle (T) – Helper ===== */
+  function canonPatientId(idLike){
+    if (!idLike) return null;
+    let s = String(idLike).toLowerCase();
+    if (/^\d+$/.test(s)) s = 'patient' + s;
+    if (!/^patient\d+$/.test(s)) {
+      const m = s.match(/patient\s*(\d+)/i);
+      if (m) s = 'patient' + m[1];
+    }
+    return /^patient\d+$/.test(s) ? s : null;
+  }
+  function readTogglePayload(idLike){
+    const id = canonPatientId(idLike);
+    if(!id) return null;
+    let raw = null;
+    try { raw = localStorage.getItem('sicht_' + id); } catch(_){}
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch(_) { return null; }
+  }
+  function getSkForPatient(idLike){
+    const id = canonPatientId(idLike);
+    if (!id) return null;
+    try {
+      const map = JSON.parse(localStorage.getItem('sichtungMap') || '{}');
+      return (map[id] || '').toString().toLowerCase().replace('grün','gruen') || null;
+    } catch { return null; }
+  }
+  function skToLabel(cat){
+    const c = String(cat||'').toLowerCase();
+    if (c === 'rot')     return 'SK1';
+    if (c === 'gelb')    return 'SK2';
+    if (c === 'gruen')   return 'SK3';
+    if (c === 'schwarz') return 'SK';
+    return '–';
+  }
+  function skMeta(cat){
+    const c = String(cat||'').toLowerCase().replace('grün','gruen');
+    const map = {
+      rot:     { label:'SK1', color:'#e53935', text:'#ffffff' },
+      gelb:    { label:'SK2', color:'#ffd400', text:'#000000' },
+      gruen:   { label:'SK3', color:'#2aa84a', text:'#ffffff' },
+      schwarz: { label:'SK',  color:'#000000', text:'#ffffff' }
+    };
+    return map[c] || { label:'–', color:'#888888', text:'#ffffff' };
+  }
+  function displaySK(cat, idLike){
+    const payload = readTogglePayload(idLike) || {};
+    let c = (cat || payload.cat || '').toString().toLowerCase().replace('grün','gruen');
+    const base = skToLabel(c);
+    if (!base || base === '–') return base;
+    const hasT = !!payload.t;
+    const hasB = !!payload.b;
+    if (c === 'rot'   && hasT) return base + ' · T';
+    if (c === 'gruen' && hasB) return base + ' · B';
+    return base;
+  }
+
+  /* ===== Render ===== */
+  function render(){
+    const q = ($('#q').value||'').toLowerCase().trim();
+    const hist = getHist();
+
+    const list = (q ? hist.filter(h => (
+      `${h.name||''} ${h.id||''} ${h.prio||''} ${h.ziel||''} ${displaySK(h.prio || getSkForPatient(h.id||h.name||''), h.id||h.name||'')}`
+      .toLowerCase().includes(q)
+    )) : hist.slice())
+    .sort((a,b)=> (b.startedAt||0)-(a.startedAt||0));
+
+    const total = list.reduce((s,h)=>s+(h.dauerMs||0),0);
+    const avg   = list.length ? Math.round(total/list.length) : 0;
+    $('#overall').innerHTML = `
+      <span class="pill"><b>Patienten:</b> ${list.length}</span>
+      <span class="pill"><b>Ø Ablagezeit:</b> ${fmt(avg)}</span>
+      <span class="pill"><b>Gesamtzeit:</b> ${fmt(total)}</span>
+    `;
+
+    const root = $('#list');
+    if(!list.length){ root.innerHTML = `<div class="pill">Keine Daten.</div>`; return; }
+
+    root.innerHTML = list.map(h=>{
+      const patIdLabel = esc(h.name ?? '–');
+      const sysName    = esc(h.id   ?? '–');
+      const ziel       = esc(h.ziel ?? '');
+      const dur        = fmt(h.dauerMs||0);
+
+      const prio  = (h.prio || getSkForPatient(h.id || h.name || ''));
+      const meta  = skMeta(prio);
+      const disp  = displaySK(prio, h.id || h.name || '');
+
+      return `
+        <article class="pcard">
+          <div class="row1">
+            <div class="row1-left">
+              <span class="pid">Pat.-ID: ${patIdLabel}</span>
+              <span class="pname">Name: ${esc(sysName)}</span>
+            </div>
+            <div class="sk-badge" style="background:${meta.color}; color:${meta.text}; border-color:#fff">${esc(disp)}</div>
+          </div>
+          <div class="row2">
+            <span class="label">Zeit in der Patientenablage:</span>
+            <span class="value">${dur}</span>
+          </div>
+          <div class="row3">
+            <span class="label">Zielklinik:</span>
+            <span class="value">${ziel || '–'}</span>
+          </div>
+        </article>`;
+    }).join('');
+  }
+
+  /* ===== PDF EXPORT ===== */
+  function hexToRgb(hex) {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '#888888');
+    return m ? [parseInt(m[1],16), parseInt(m[2],16), parseInt(m[3],16)] : [136,136,136];
+  }
+  function drawSkPill(doc, x, y, w, h, meta, label){
+    const [r,g,b]    = hexToRgb(meta.color || '#888');
+    const [tr,tg,tb] = hexToRgb(meta.text  || '#ffffff');
+    doc.setDrawColor(255,255,255);
+    doc.setFillColor(r,g,b);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(x, y - (h-3), w, h, 2, 2, 'FD');
+    doc.setTextColor(tr,tg,tb);
+    doc.setFont('helvetica','bold'); doc.setFontSize(9.5);
+    doc.text(String(label||'–'), x + w/2, y + 0.3, { align:'center', baseline:'middle' });
+    doc.setTextColor(0,0,0);
+  }
+  function exportPDF(){
+    const JSPDF = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : null;
+    if (!JSPDF) { alert('PDF-Generator (jsPDF) nicht geladen.'); return; }
+
+    const hist = (window.Ablage ? (Ablage._getHistory()||[]) : [])
+                  .slice().sort((a,b)=> (b.startedAt||0)-(a.startedAt||0));
+
+    const doc = new JSPDF({ unit:'mm', format:'a4', orientation:'portrait' });
+    const W = doc.internal.pageSize.getWidth();
+    const M = 14; let y = M;
+
+    const pad  = n => String(n).padStart(2,'0');
+    const tstr = ts => (ts ? new Date(ts).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) : '–');
+    const fmtMs = (ms)=>{ ms=Math.max(0,+ms||0); const s=Math.floor(ms/1000),mm=Math.floor((s%3600)/60),ss=s%60; return `${pad(mm)}:${pad(ss)}`; };
+
+    const total = hist.reduce((s,h)=> s + (+h.dauerMs||0), 0);
+    const avg   = hist.length ? Math.round(total / hist.length) : 0;
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(16);
+    doc.text('Klinik – Zuweisungen & Auswertung', W/2, y, { align:'center' }); y += 9;
+
+    doc.setFont('helvetica','normal'); doc.setFontSize(11);
+    doc.text(`Patienten: ${hist.length}`, M, y); y += 6;
+    doc.text(`Ø Ablagezeit: ${fmtMs(avg)}`, M, y); y += 6;
+    doc.text(`Gesamtzeit: ${fmtMs(total)}`, M, y); y += 8;
+
+    const cols   = ['Pat.-ID','Name','SK','Ziel','Start','Ende','Dauer'];
+    const widths = [  22,      32,   24,   40,    22,    22,    20   ];
+    let x = M;
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(11);
+    cols.forEach((c,i)=>{ doc.text(c, x, y); x += widths[i]; });
+    y += 5; doc.setLineWidth(0.2); doc.line(M, y, W - M, y); y += 4;
+
+    const lineH = 7, maxY = 285;
+    doc.setFont('helvetica','normal'); doc.setFontSize(10);
+
+    hist.forEach(h=>{
+      const patId = String(h.name ?? '–');
+      const name  = String(h.id   ?? '–');
+      const ziel  = String(h.ziel ?? '–');
+      const start = tstr(h.startedAt);
+      const ende  = tstr(h.endedAt);
+      const dur   = fmtMs(h.dauerMs);
+
+      const prio = (h.prio || getSkForPatient(h.id || h.name || ''));
+      const meta = skMeta(prio);
+      const disp = displaySK(prio, h.id || h.name || '');
+
+      if (y + lineH > maxY) {
+        doc.addPage(); y = M; x = M;
+        doc.setFont('helvetica','bold'); doc.setFontSize(11);
+        cols.forEach((c,i)=>{ doc.text(c, x, y); x += widths[i]; });
+        y += 9; doc.setFont('helvetica','normal'); doc.setFontSize(10);
+      }
+
+      x = M;
+      doc.text(doc.splitTextToSize(patId, widths[0]-1.5), x, y); x += widths[0];
+      doc.text(doc.splitTextToSize(name,  widths[1]-1.5), x, y); x += widths[1];
+      drawSkPill(doc, x, y, widths[2]-2, 6, meta, disp);
+      x += widths[2];
+      doc.text(doc.splitTextToSize(ziel, widths[3]-1.5), x, y); x += widths[3];
+      doc.text(start, x, y); x += widths[4];
+      doc.text(ende,  x, y); x += widths[5];
+      doc.text(dur,   x, y);
+      y += lineH;
+    });
+
+    doc.save('Klinik_Auswertung.pdf');
+  }
+
+  /* ===== Reset („Übungsende“) – FINAL SAFE ===== */
+  function resetClinicAndAssignments() {
+
+    // 🔒 Lizenz / Freigabe niemals löschen!
+    const DO_NOT_TOUCH = new Set([
+      'license_token','freigabeBis','appGesperrt','device_id',
+      'LICENSE_OK','LICENSE_META',
+      'ALLOW_BROWSER','DEV_BYPASS'
+    ]);
+
+    try {
+      if (window.Ablage?.resetAll) {
+        Ablage.resetAll();
+      } else {
+        ['ablage.active.v1','ablage.history.v1','ablage.sessionStart.v1','ablage.done.v1']
+          .forEach(k => localStorage.removeItem(k));
+      }
+
+      localStorage.setItem('sichtungMap', '{}');
+
+      const exact = new Set([
+        'zuweisungMap','clinic.assignments','clinic.queue','clinic.done','meldebild',
+        'blockedPages'
+      ]);
+
+      const prefixes = [
+        'zuweisung_','clinic.',
+        'time_','timer_','patient.','patient_','ablage.',
+        'sichtung_','sicht_',
+        'sperrung.','sperrung_','sperre.','sperre_',
+        'pageLock.','pageLock_','lock.','lock_',
+        'blocked.','blocked_','block.','block_',
+        'gesperrt.','gesperrt_'
+      ];
+
+      try { window.Sperrung?.resetAll?.(); } catch (_) {}
+
+      const toRemove = [];
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (!k) continue;
+        if (DO_NOT_TOUCH.has(k)) continue;
+        if (k === 'sichtungMap') continue;
+
+        if (exact.has(k) || prefixes.some(p => k.startsWith(p))) {
+          toRemove.push(k);
+        } else if (/(^|[.:_])(sperr|lock|block|gesperrt)([.:_]|$)/i.test(k)) {
+          toRemove.push(k);
+        }
+      }
+      toRemove.forEach(k => localStorage.removeItem(k));
+
+      localStorage.setItem('blockedPages', '[]');
+      localStorage.setItem('resetFlag', String(Date.now()));
+      localStorage.setItem('sperrungResetAt', String(Date.now()));
+    } catch (e) {
+      console.warn('Reset-Fehler bei Übungsende:', e);
+    }
+  }
+
+  /* ===== Events ===== */
+  document.addEventListener('DOMContentLoaded', render);
+  document.addEventListener('input', e=>{ if(e.target.id==='q') render(); });
+
+  document.getElementById('resetBtn').addEventListener('click', ()=>{
+    if (window.Ablage?.resetAll) window.Ablage.resetAll();
+    render();
+  });
+
+  document.getElementById('pdfBtn').addEventListener('click', () => {
+    if (window.jspdf?.jsPDF) exportPDF();
+    else setTimeout(() => {
+      if (window.jspdf?.jsPDF) exportPDF();
+      else alert('PDF-Generator (jsPDF) ist noch nicht geladen. Bitte erneut versuchen.');
+    }, 200);
+  });
+
+  document.getElementById('endBtn').addEventListener('click', ()=>{
+    saveLastClinicRun();
+    resetClinicAndAssignments();
+    setTimeout(()=>{ location.href = 'index.html'; }, 500);
+  });
+
+  window.addEventListener('storage', e=>{
+    if (
+      ['ablage.history.v1','sichtungMap','resetFlag','sperrungResetAt'].includes(e.key)
+      || (e.key && e.key.startsWith('sicht_'))
+    ) {
+      render();
+    }
+  });
+})();
+</script>
+<script src="/metrics.js" defer></script>
+</body>
+</html>
+

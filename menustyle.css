@@ -1,0 +1,131 @@
+/* Menü-Button Styling */
+#menuButton {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    background-color: #f00c1f; /* Blaue Hintergrundfarbe */
+    color: white;
+    font-size: 1.5em;
+    font-weight: bold;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.3);
+    transition: background-color 0.3s ease;
+}
+
+#menuButton:hover {
+    background-color: #357ABD;
+}
+
+/* Menü-Overlay */
+#menuModal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    justify-content: center;
+    align-items: center;
+}
+
+/* Menü-Inhalt */
+.modal-content {
+    background-color: #ffffff;
+    padding: 25px;
+    width: 400px !important; /* Breiteres Menü */
+    max-width: 400px !important; /* Maximale Breite */
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h2 {
+    margin-top: 0;
+    font-size: 1.5em;
+    color: #333;
+}
+
+.modal-content ul {
+    list-style: none;
+    padding: 0;
+}
+
+.modal-content ul li {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.modal-content ul li:last-child {
+    border-bottom: none;
+}
+
+.modal-content a {
+    text-decoration: none;
+    color: #007BFF;
+    font-weight: bold;
+    transition: color 0.3s;
+}
+
+.modal-content a:hover {
+    color: #0056b3;
+}
+
+/* Schließen-Button */
+.close {
+    font-size: 24px;
+    font-weight: bold;
+    color: #666;
+    position: absolute;
+    right: 15px;
+    top: 10px;
+    cursor: pointer;
+}
+
+.close:hover {
+    color: #000;
+}
+
+/* Menü-Animation */
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.modal-content {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Container für die Patientenseiten */
+.patient-container {
+    display: flex;
+    flex-wrap: wrap; /* Zeilenumbruch erlauben */
+    justify-content: space-between; /* Platz zwischen den Elementen */
+    gap: 20px; /* Abstand zwischen den Elementen */
+}
+
+/* Stil für jede Patientenseite */
+.patient {
+    width: calc(33.33% - 20px); /* Drei Elemente pro Reihe, mit Abstand */
+    box-sizing: border-box; /* Verhindert, dass der Abstand in die Breite der Elemente einfließt */
+    border: 2px solid #ddd; /* Umrandung für die Patientenseite */
+    border-radius: 8px; /* Abgerundete Ecken */
+    padding: 15px; /* Innenabstand für bessere Darstellung */
+    background-color: #f9f9f9; /* Hintergrundfarbe */
+}
+
+/* Optional: Sicherstellen, dass die Elemente auf kleineren Bildschirmen gut aussehen */
+@media (max-width: 768px) {
+    .patient {
+        width: calc(50% - 20px); /* Zwei Elemente pro Reihe auf kleineren Bildschirmen */
+    }
+}
+
+@media (max-width: 480px) {
+    .patient {
+        width: 100%; /* Ein Element pro Reihe auf sehr kleinen Bildschirmen */
+    }
+}

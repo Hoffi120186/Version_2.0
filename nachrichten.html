@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>Nachrichten · 1Rettungsmittel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+  <!-- PWA -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="/manifest.json" />
+
+  <style>
+    :root {
+      --radius: 14px;
+      --shadow: 0 6px 14px rgba(0,0,0,0.20);
+      --space: clamp(12px, 3vw, 28px);
+      --glass-bg: rgba(255,255,255,0.10);
+      --glass-brd: rgba(255,255,255,0.25);
+      --glass-bg-hover: rgba(255,255,255,0.22);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: #0b0f1a url("/fotos/Patientenkarte.jpg") center/cover no-repeat fixed;
+      color: #fff;
+      display: flex; flex-direction: column; align-items: center;
+      padding: calc(env(safe-area-inset-top) + 16px) var(--space) calc(env(safe-area-inset-bottom) + 84px);
+    }
+    body::before { content: ""; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: -1; }
+
+    .header {
+      width: 100%;
+      max-width: 760px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: var(--space);
+      flex-wrap: wrap;
+    }
+    .title {
+      font-size: clamp(22px, 5vw, 34px);
+      font-weight: 800;
+      text-shadow: 0 6px 16px rgba(0,0,0,0.35);
+    }
+
+    .btn, .card {
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius);
+      border: 1px solid var(--glass-brd);
+      box-shadow: var(--shadow);
+    }
+    .btn {
+      background: var(--glass-bg);
+      color: #fff;
+      font-weight: 700;
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: .2s;
+      font-size: clamp(14px, 2.2vw, 18px);
+    }
+    .btn:hover { background: var(--glass-bg-hover); transform: translateY(-1px); }
+
+    .header-actions { display:flex; gap:10px; flex-wrap: wrap; }
+
+    .list { width: 100%; max-width: 760px; display: grid; gap: 12px; }
+
+    .card { background: rgba(255,255,255,0.08); padding: 14px; border:1px solid var(--glass-brd); }
+    .card.unread { border-color: #34d399; box-shadow: 0 8px 20px rgba(16,185,129,0.20); }
+    .card .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .card h3 { margin: 0; font-size: clamp(16px, 3.2vw, 22px); }
+    .card .body { margin: 8px 0 10px; white-space: pre-wrap; color: #e5e7eb; }
+
+    .chip {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid var(--glass-brd);
+      font-size: 12px;
+      padding: 4px 10px;
+      font-weight: 700;
+      border-radius: 10px;
+    }
+    .chip.new { background: #10b981; color: #062b1f; border-color: #2dd4bf; }
+    .chip.read { background: rgba(255,255,255,0.12); color: #cbd5e1; }
+
+    .actions { display: flex; gap: 8px; align-items: center; }
+    .iconbtn {
+      background: rgba(255,255,255,0.10);
+      border: 1px solid var(--glass-brd);
+      border-radius: 10px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-weight: 700;
+      color: #fff;
+    }
+    .iconbtn:hover { background: rgba(255,255,255,0.20); }
+
+    .link { color: #93c5fd; font-weight: 800; text-decoration: none; }
+    .link:hover { text-decoration: underline; }
+
+    .muted { opacity: .85; font-size: 13px; }
+
+    .btn-start {
+      position: fixed;
+      bottom: calc(18px + env(safe-area-inset-bottom));
+      left: 50%;
+      transform: translateX(-50%);
+      background: #e53935;
+      color: #fff;
+      padding: 14px 26px;
+      border-radius: var(--radius);
+      font-size: clamp(14px, 2.2vw, 18px);
+      font-weight: 800;
+      box-shadow: var(--shadow);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="title">Nachrichten</div>
+    <div class="header-actions">
+      <button id="markAllBtn" class="btn" type="button">Alle als gelesen</button>
+      <button id="deleteAllBtn" class="btn" type="button">Alle löschen</button>
+      <button id="restoreBtn" class="btn" type="button">Gelöschte wiederherstellen</button>
+    </div>
+  </div>
+
+  <div class="list" id="list">Lade …</div>
+
+  <a href="/Instruktor.html" class="btn-start" onclick="event.preventDefault(); safeGo('/Instruktor.html')">
+    Zurück zum Menü
+  </a>
+
+  <script>
+    // ------- Navigation safe -------
+    async function safeGo(path){
+      const target = new URL(path, location.origin).pathname;
+      try {
+        const names = await caches.keys();
+        const name = names.find(n => n.startsWith('mein-pwa-cache-')) || names[0];
+        if (name) {
+          const c = await caches.open(name);
+          const hit = await c.match(target);
+          if (hit) { location.assign(target); return; }
+        }
+      } catch {}
+      location.assign(target);
+    }
+
+    // ------- LocalStorage Keys -------
+    const SEEN_KEY='inbox_seen_v1', HIDE_KEY='inbox_hidden_v1';
+
+    const getSeen   = () => (JSON.parse(localStorage.getItem(SEEN_KEY) || '[]') || []).map(String);
+    const setSeen   = (a) => localStorage.setItem(SEEN_KEY, JSON.stringify((a||[]).map(String)));
+
+    const getHidden = () => (JSON.parse(localStorage.getItem(HIDE_KEY) || '[]') || []).map(String);
+    const setHidden = (a) => localStorage.setItem(HIDE_KEY, JSON.stringify((a||[]).map(String)));
+
+    const listEl = document.getElementById('list');
+
+    // ------- Badge-Signal für Instruktor-Menü -------
+    function updateBadgeSignal(){
+      localStorage.setItem('inbox_badge_ping', String(Date.now()));
+    }
+
+    // ------- Utilities -------
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+    function escapeAttr(s){
+      return String(s).replace(/["']/g, m => ({'"':'&quot;',"'":'&#39;'}[m]));
+    }
+
+    // ------- Daten laden & rendern -------
+    async function loadMessages(){
+      listEl.textContent='Lade …';
+      try{
+        const res = await fetch('/.netlify/functions/messages-list?ts=' + Date.now(), { cache:'no-store' });
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        const j = await res.json();
+
+        const hidden = new Set(getHidden());
+        const seen   = new Set(getSeen());
+
+        // robust: items/list/messages unterstützen
+        const raw = j.items || j.list || j.messages || [];
+        let items = (Array.isArray(raw) ? raw : []).filter(m => !hidden.has(String(m.id)));
+
+        // neueste zuerst
+        items.sort((a,b) => (b.ts||0) - (a.ts||0));
+
+        if(!items.length){
+          listEl.innerHTML = '<div class="card"><div class="body">Keine Nachrichten vorhanden.</div></div>';
+        } else {
+          listEl.innerHTML = items.map(m => {
+            const id = String(m.id);
+            const isUnread = !seen.has(id);
+
+            const time   = m.ts ? new Date(m.ts).toLocaleString() : '';
+            const title  = escapeHtml(m.title || 'Mitteilung');
+            const body   = escapeHtml(m.body  || '');
+            const sender = escapeHtml(m.sender|| '1Rettungsmittel');
+
+            const url = m.url ? escapeAttr(m.url) : '';
+
+            return `
+              <div class="card ${isUnread ? 'unread' : ''}" id="msg-${id}">
+                <div class="row">
+                  <h3>${title}</h3>
+                  <div class="actions">
+                    <button class="iconbtn" onclick="deleteOne('${id}')">löschen</button>
+                    <span class="chip ${isUnread ? 'new' : 'read'}">${isUnread ? 'neu' : 'gelesen'}</span>
+                  </div>
+                </div>
+                <div class="body">${body}</div>
+                <div class="row">
+                  <span class="muted">${sender}${time ? ' · ' + time : ''}</span>
+                  ${m.url ? `<a class="link" href="${url}" onclick="event.preventDefault(); openMsg('${id}','${url}')">öffnen ›</a>` : ''}
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+
+        updateBadgeSignal(); // nach Render immer Badge refreshen
+      } catch (e) {
+        console.error('[messages] load error', e);
+        listEl.innerHTML = '<div class="card"><div class="body">Fehler beim Laden.</div></div>';
+        updateBadgeSignal();
+      }
+    }
+
+    // ------- Interaktionen -------
+    function markSeen(id){
+      id = String(id);
+      const seen = new Set(getSeen());
+      seen.add(id);
+      setSeen([...seen]);
+
+      const c = document.getElementById('msg-' + id);
+      if (c) c.classList.remove('unread');
+
+      // Chip umschalten (optional)
+      const chip = c ? c.querySelector('.chip') : null;
+      if (chip) { chip.classList.remove('new'); chip.classList.add('read'); chip.textContent='gelesen'; }
+
+      updateBadgeSignal();
+    }
+
+    function openMsg(id, url){
+      markSeen(id);
+      if (url) safeGo(url);
+    }
+
+    function deleteOne(id){
+      id = String(id);
+      const h = new Set(getHidden());
+      h.add(id);
+
+      // ✅ FIX: korrektes Array speichern
+      setHidden([...h]);
+
+      const c = document.getElementById('msg-' + id);
+      if (c) c.remove();
+
+      updateBadgeSignal();
+    }
+
+    async function deleteAll(){
+      if(!confirm('Alle Nachrichten lokal löschen?')) return;
+
+      try{
+        const res = await fetch('/.netlify/functions/messages-list?ts=' + Date.now(), { cache:'no-store' });
+        const j = await res.json();
+        const raw = j.items || j.list || j.messages || [];
+        const ids = (Array.isArray(raw) ? raw : []).map(m => String(m.id));
+        setHidden(ids);
+      } catch {}
+
+      listEl.innerHTML = '<div class="card"><div class="body">Keine Nachrichten vorhanden.</div></div>';
+      updateBadgeSignal();
+    }
+
+    function restoreDeleted(){
+      setHidden([]);
+      loadMessages();
+      updateBadgeSignal();
+    }
+
+    // ------- Buttons -------
+    document.getElementById('markAllBtn').onclick = () => {
+      const seen = new Set(getSeen());
+      listEl.querySelectorAll('.card[id^="msg-"]').forEach(c => {
+        const id = String(c.id.replace('msg-',''));
+        seen.add(id);
+        c.classList.remove('unread');
+        const chip = c.querySelector('.chip');
+        if (chip) { chip.classList.remove('new'); chip.classList.add('read'); chip.textContent='gelesen'; }
+      });
+      setSeen([...seen]);
+      updateBadgeSignal();
+    };
+
+    document.getElementById('deleteAllBtn').onclick = deleteAll;
+    document.getElementById('restoreBtn').onclick = restoreDeleted;
+
+    // ------- Start & Sichtbarkeits-Refresh -------
+    loadMessages();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') loadMessages();
+    });
+
+    // ------- Push / SW Ping: neue Nachricht -> reload -------
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener('message', (ev) => {
+        if (ev.data && ev.data.type === 'INBOX_PING') {
+          loadMessages();
+          setTimeout(loadMessages, 500);
+          setTimeout(loadMessages, 1500);
+        }
+      });
+    }
+  </script>
+
+  <script src="/metrics.js" defer></script>
+</body>
+</html>

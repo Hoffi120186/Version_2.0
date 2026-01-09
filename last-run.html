@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Letzte Übung – Zuweisungen</title>
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="manifest" href="/manifest.json" />
+
+  <style>
+    :root{
+      --w:min(94vw,1120px);
+      --shadow:0 10px 26px rgba(0,0,0,.28);
+      --pane:rgba(0,0,0,.50);
+      --border:rgba(255,255,255,.18);
+      --accent:#0B5FFF; --danger:#e53935; --dark:#111827;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;color:#fff;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:#0b0f1a url("/fotos/RTW1.png") center 20% / cover no-repeat fixed;
+      position: relative;
+    }
+    body::before{ content:""; position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 0; }
+    header, main{ position: relative; z-index: 1; }
+
+    header{ position:sticky; top:0; z-index:20; padding:12px 10px;
+      background:rgba(0,0,0,.65); backdrop-filter:blur(6px); }
+    .wrap{ width:var(--w); margin:0 auto; }
+    h1{ margin:0 0 10px; font-size:22px; font-weight:900; letter-spacing:.2px; }
+
+    .btn-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:12px; border-radius:12px; border:1px solid var(--border);
+      background:var(--dark); color:#fff; font-weight:800; cursor:pointer; box-shadow:var(--shadow);
+    }
+    .btn--red{ background:var(--danger); }
+    .btn--blue{ background:var(--accent); }
+    .btn:active{ transform:translateY(1px) }
+
+    .stats{ margin:14px auto; background:var(--pane); border:1px solid var(--border);
+      border-radius:12px; padding:12px; box-shadow:var(--shadow);
+      display:flex; gap:10px; flex-wrap:wrap; }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px; padding:8px 12px;
+      border-radius:999px; background:rgba(255,255,255,.10); border:1px solid var(--border);
+      font-weight:900; font-size:14px; user-select:none;
+    }
+
+    .list{ display:flex; flex-direction:column; gap:10px; margin:14px auto; }
+    .pcard{
+      background:rgba(0,0,0,.50); border:1px solid var(--border); border-radius:14px;
+      box-shadow:var(--shadow); padding:12px 14px; display:grid; gap:8px;
+    }
+    .row1{ display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+    .row1-left{ display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; }
+    .pid, .pname{ font-weight:900; }
+
+    .sk-badge{
+      display:inline-flex; align-items:center; justify-content:center;
+      min-width:46px; height:46px; padding:0 10px; border-radius:999px;
+      font-size:13px; font-weight:900; border:2px solid #fff; color:#fff;
+      text-align:center; white-space:nowrap;
+    }
+
+    .row2,.row3{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .label{ opacity:.85; }
+    .value{ font-weight:800; }
+
+    @media (max-width:720px){ .btn-row{ grid-template-columns:1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Letzte Übung – Zuweisungen</h1>
+
+      <div class="btn-row">
+        <button class="btn btn--red" type="button" onclick="history.back()">← Zurück</button>
+        <button class="btn btn--blue" type="button" onclick="location.href='instruktor.html'">
+          Instruktor-Menü
+        </button>
+        <button class="btn" type="button" onclick="onClearLastRun()">Letzte Übung löschen</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="stats" id="overall"></div>
+    <div id="info"></div>
+    <div class="list" id="list"></div>
+  </main>
+
+<script>
+(function(){
+  'use strict';
+
+  const LAST_RUN_KEY = '1rm_last_run_v1';
+
+  const $  = (s,r=document)=>r.querySelector(s);
+  const esc = s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const fmt = (ms)=>{ if(ms<0) ms=0; const s=Math.floor(ms/1000),mm=Math.floor((s%3600)/60),ss=s%60;
+                      const pad=n=>String(n).padStart(2,'0'); return `${pad(mm)}:${pad(ss)}`; };
+
+  function loadLastRun(){
+    try{
+      const raw = localStorage.getItem(LAST_RUN_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }catch(e){
+      console.error('Letzte Übung laden fehlgeschlagen', e);
+      return null;
+    }
+  }
+
+  function saveLastRun(snapshot){
+    try{
+      localStorage.setItem(LAST_RUN_KEY, JSON.stringify(snapshot));
+    }catch(e){
+      console.error('Letzte Übung speichern fehlgeschlagen', e);
+    }
+  }
+
+  window.onClearLastRun = function(){
+    if (!confirm('Letzte Übung wirklich löschen?')) return;
+    localStorage.removeItem(LAST_RUN_KEY);
+    render();
+  };
+
+  /* ===== SK & Toggle (gleich wie Klinik-Seite) ===== */
+  function canonPatientId(idLike){
+    if (!idLike) return null;
+    let s = String(idLike).toLowerCase();
+    if (/^\d+$/.test(s)) s = 'patient' + s;
+    if (!/^patient\d+$/.test(s)) {
+      const m = s.match(/patient\s*(\d+)/i);
+      if (m) s = 'patient' + m[1];
+    }
+    return /^patient\d+$/.test(s) ? s : null;
+  }
+  function readTogglePayload(idLike){
+    const id = canonPatientId(idLike);
+    if(!id) return null;
+    let raw = null;
+    try { raw = localStorage.getItem('sicht_' + id); } catch(_){}
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch(_) { return null; }
+  }
+  function getSkForPatient(idLike){
+    const id = canonPatientId(idLike);
+    if (!id) return null;
+    try {
+      const map = JSON.parse(localStorage.getItem('sichtungMap') || '{}');
+      return (map[id] || '').toString().toLowerCase().replace('grün','gruen') || null;
+    } catch { return null; }
+  }
+  function skMeta(cat){
+    const c = String(cat||'').toLowerCase().replace('grün','gruen');
+    const map = {
+      rot:     { label:'SK1', color:'#e53935', text:'#ffffff' },
+      gelb:    { label:'SK2', color:'#ffd400', text:'#000000' },
+      gruen:   { label:'SK3', color:'#2aa84a', text:'#ffffff' },
+      schwarz: { label:'SK',  color:'#000000', text:'#ffffff' }
+    };
+    return map[c] || { label:'–', color:'#888888', text:'#ffffff' };
+  }
+  function displaySK(cat, idLike){
+    const payload = readTogglePayload(idLike) || {};
+    let c = (cat || payload.cat || '').toString().toLowerCase().replace('grün','gruen');
+    const base = (function(c){
+      const cc = String(c||'').toLowerCase();
+      if (cc === 'rot')     return 'SK1';
+      if (cc === 'gelb')    return 'SK2';
+      if (cc === 'gruen')   return 'SK3';
+      if (cc === 'schwarz') return 'SK';
+      return '–';
+    })(c);
+    if (!base || base === '–') return base;
+    const hasT = !!payload.t;
+    const hasB = !!payload.b;
+    if (c === 'rot'   && hasT) return base + ' · T';
+    if (c === 'gruen' && hasB) return base + ' · B';
+    return base;
+  }
+
+  function render(){
+    const container = $('#list');
+    const overall   = $('#overall');
+    const info      = $('#info');
+
+    const snap = loadLastRun();
+    if (!snap || !Array.isArray(snap.hist) || !snap.hist.length){
+      overall.innerHTML = `<span class="pill">Keine letzte Übung gespeichert.</span>`;
+      container.innerHTML = '';
+      info.textContent = '';
+      return;
+    }
+
+    const hist = snap.hist.slice().sort((a,b)=> (b.startedAt||0)-(a.startedAt||0));
+
+    const total = hist.reduce((s,h)=>s+(h.dauerMs||0),0);
+    const avg   = hist.length ? Math.round(total/hist.length) : 0;
+
+    const d = snap.savedAt ? new Date(snap.savedAt) : null;
+    const when = d ? d.toLocaleString('de-DE',{
+      year:'numeric', month:'2-digit', day:'2-digit',
+      hour:'2-digit', minute:'2-digit'
+    }) : 'unbekannt';
+
+    info.innerHTML = `<span class="pill">Gespeichert am: ${when}</span>`;
+
+    overall.innerHTML = `
+      <span class="pill"><b>Patienten:</b> ${hist.length}</span>
+      <span class="pill"><b>Ø Ablagezeit:</b> ${fmt(avg)}</span>
+      <span class="pill"><b>Gesamtzeit:</b> ${fmt(total)}</span>
+    `;
+
+    container.innerHTML = hist.map(h=>{
+      const patIdLabel = esc(h.name ?? '–');
+      const sysName    = esc(h.id   ?? '–');
+      const ziel       = esc(h.ziel ?? '');
+      const dur        = fmt(h.dauerMs||0);
+
+      const prio  = h.prio || getSkForPatient(h.id || h.name || '');
+const meta  = skMeta(prio);
+const disp  = h.skLabel || displaySK(prio, h.id || h.name || '');
+
+      return `
+        <article class="pcard">
+          <div class="row1">
+            <div class="row1-left">
+              <span class="pid">Pat.-ID: ${patIdLabel}</span>
+              <span class="pname">Name: ${sysName}</span>
+            </div>
+            <div class="sk-badge" style="background:${meta.color}; color:${meta.text}; border-color:#fff">${esc(disp)}</div>
+          </div>
+          <div class="row2">
+            <span class="label">Zeit in der Patientenablage:</span>
+            <span class="value">${dur}</span>
+          </div>
+          <div class="row3">
+            <span class="label">Zielklinik:</span>
+            <span class="value">${ziel || '–'}</span>
+          </div>
+        </article>`;
+    }).join('');
+  }
+
+  document.addEventListener('DOMContentLoaded', render);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>1Rettungsmittel – Start</title>
+
+  <!-- Viewport -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="application-name" content="1Rettungsmittel – MANV Training" />
+  <meta name="theme-color" content="#0B5FFF" />
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="icon" type="image/png" href="/icon-192.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+  <!-- Optional: eigene Scripte -->
+  <script src="/freigabe.js?v=2025-11-22-FINALSAFE" defer></script>
+  <script src="/vendor/jsqr.min.js"></script>
+
+  <style>
+    :root{
+      --radius: 28px;
+      --shadow: 0 12px 28px rgba(0,0,0,.25);
+      --space: clamp(12px, 3vw, 28px);
+      --fs-btn: clamp(16px, 3.6vw, 22px);
+    }
+    *{ box-sizing:border-box; margin:0; padding:0; }
+    html, body{ height:100%; }
+    body{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Verdana, sans-serif;
+      background:#0b0f1a url('fotos/Patientenkarte.jpg') center/cover no-repeat;
+      color:#fff;
+      min-height:100dvh;
+      display:flex; align-items:center; justify-content:center;
+      padding: calc(env(safe-area-inset-top) + 12px) var(--space) calc(env(safe-area-inset-bottom) + 12px);
+    }
+    body::before{
+      content:""; position:fixed; inset:0; z-index:-1; background: rgba(0,0,0,.55);
+    }
+    .container{ width:min(90vw, 560px); }
+
+    /* Logo-Panel */
+    .hero{
+      position: relative;
+      width:100%;
+      aspect-ratio: 1 / 1;
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      background: transparent;
+    }
+    .hero img{
+      position:absolute; inset:0;
+      width:100%; height:100%;
+      object-fit: contain;
+      background: transparent;
+    }
+
+    /* 2×2 Overlay-Buttons */
+    .hero-grid{
+      position:absolute; inset:0;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 0;
+      pointer-events: none;
+    }
+    .tile{
+      pointer-events: auto;
+      border: none;
+      background: transparent;
+      color:#fff;
+      font-size: var(--fs-btn);
+      font-weight: 800;
+      text-shadow: 0 2px 6px rgba(0,0,0,.7);
+      display:flex; align-items:flex-start; justify-content:center; text-align:center;
+      padding-top: 35%;
+      cursor:pointer;
+      transition: background .15s ease, transform .08s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tile span{ pointer-events:none; }
+    .tile:hover{ background: rgba(255,255,255,.08); }
+    .tile:active{ transform: translateY(1px); background: rgba(255,255,255,.15); }
+    .tile:focus-visible{ outline: 3px solid rgba(255,255,255,.9); outline-offset: -4px; }
+    .tile--gelb span, .tile--blau span{ transform: translateY(-4%); display:inline-block; }
+
+    /* Admin-Badge (optional, falls gesetzt) */
+    body[data-admin="1"]::after{
+      content: "Admin aktiv";
+      position: fixed; top: 10px; right: 10px;
+      background: #ff4747; color: #fff;
+      font-size: 14px; font-weight: bold;
+      padding: 6px 12px; border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.3);
+      z-index: 999999; pointer-events: none;
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      *{ transition:none !important; animation:none !important; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="hero">
+      <img src="logoneu.png" alt="1Rettungsmittel Logo" />
+
+      <div class="hero-grid" role="group" aria-label="Triage-Menü">
+        <!-- Patientenablage -->
+        <button class="tile tile--rot" type="button" onclick="location.href='ablage1.html'">
+          <span>Patientenablage</span>
+        </button>
+
+        <!-- Instruktor-Menü (JETZT mit Flag-Setter) -->
+        <button class="tile tile--gelb" type="button" onclick="goInstruktor()">
+          <span>Instruktor-<br>Menü</span>
+        </button>
+
+        <!-- Übung / Starten -->
+        <button class="tile tile--gruen" type="button" onclick="startExercise()">
+          <span>Übung /<br>Starten</span>
+        </button>
+
+        <!-- Kontakt / Hilfe -->
+        <button class="tile tile--blau" type="button" onclick="location.href='kontakt.html'">
+          <span>Kontakt /<br>Hilfe</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ===== Service Worker ===== */
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/service-worker.js')
+        .then(reg => console.log('SW registriert', reg))
+        .catch(err => console.error('SW Fehler', err));
+    }
+
+    /* ===== Übung starten → Ablage zurücksetzen ===== */
+    function resetAblageStorage(){
+      try {
+        localStorage.removeItem('sichtungMap');
+        localStorage.removeItem('patMeta');
+        localStorage.removeItem('scannedPatients');
+        localStorage.removeItem('ablage.active.v1');
+        localStorage.removeItem('ablage.history.v1');
+        localStorage.removeItem('ablage.done.v1');
+        localStorage.removeItem('ablage.sessionStart.v1');
+        localStorage.removeItem('startTime');
+        localStorage.removeItem('gesamtEinsatzzeit');
+        localStorage.removeItem('appGesperrt');
+
+        // Alte Keys (Kompatibilität)
+        const toRemove = [];
+        for (let i = 0; i < localStorage.length; i++){
+          const k = localStorage.key(i);
+          if (k && (k.startsWith('category_') || /^\/patient/i.test(k))) toRemove.push(k);
+        }
+        toRemove.forEach(k => localStorage.removeItem(k));
+
+        // Session-Caches der Ablage
+        const srm = [];
+        for (let i = 0; i < sessionStorage.length; i++){
+          const k = sessionStorage.key(i);
+          if (k && (k.startsWith('pat-cache-') || k === 'currentPatient' || k.startsWith('ts_'))) srm.push(k);
+        }
+        srm.forEach(k => sessionStorage.removeItem(k));
+      } catch(e){
+        console.warn('Reset-Fehler (ignoriert):', e);
+      }
+    }
+
+    function startExercise(){
+      resetAblageStorage();
+      try { sessionStorage.setItem('startNewExercise', '1'); } catch(e){}
+      location.href = 'Index1.html';
+    }
+
+    /* ===== Instruktor-Flag setzen & navigieren ===== */
+    function goInstruktor(){
+      try {
+        sessionStorage.setItem('nav_from','/index.html');
+        sessionStorage.setItem('needInstrPIN','1');
+      } catch(e){}
+      if (typeof safeGo === 'function') safeGo('/instruktor.html');
+      else location.assign('/instruktor.html');
+    }
+  </script>
+
+  <!-- (Lizenzprüfung, Jugendschutz usw. bleibt unverändert) -->
+  <script defer src="/warmup-banner.js?v=2025-08-23-1"></script>
+  <script defer src="/warmup.js?v=2025-08-23-2"></script>
+  <script src="/metrics.js" defer></script>
+
+
+  <!-- Jugendschutz-Hinweis (konfliktfrei) -->
+  <div id="jugendHinweis" class="jr-overlay" hidden aria-hidden="true">
+    <div class="jr-card" role="dialog" aria-modal="true" aria-labelledby="jr-title">
+      <h2 id="jr-title">⚠️ Hinweis zu Darstellungen</h2>
+      <p>
+        Diese Anwendung enthält realistische Darstellungen von Verletzungen und medizinischen
+        Notfallsituationen. Sie dienen ausschließlich der Aus- und Fortbildung im Rettungsdienst.
+      </p>
+      <p>
+        Die Inhalte können für sensible Personen oder Minderjährige verstörend wirken.
+      </p>
+      <button id="jr-ok" type="button">Verstanden</button>
+    </div>
+  </div>
+
+  <style>
+    /* ===== Jugendschutz (scoped) ===== */
+    #jugendHinweis.jr-overlay{
+      position: fixed; inset: 0;
+      display: grid; place-items: center;
+      background: rgba(11,17,32,0.85);
+      backdrop-filter: blur(8px);
+      z-index: 99999;
+      overscroll-behavior: contain;
+    }
+    #jugendHinweis[hidden]{ display: none !important; }
+
+    #jugendHinweis .jr-card{
+      box-sizing: border-box;
+      width: min(440px, 88vw);
+      background: rgba(17,25,40,0.92);
+      color: #e5e7eb;
+      border: 1px solid rgba(99,102,241,0.35);
+      border-radius: 16px;
+      padding: clamp(20px, 4vw, 28px);
+      box-shadow: 0 8px 28px rgba(0,0,0,.45);
+      font-family: 'Poppins', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      text-align: left;
+      animation: jr-fade .35s ease-out;
+    }
+    #jr-title{
+      margin: 0 0 10px;
+      color: #fff;
+      font-weight: 700;
+      font-size: clamp(1.1rem, 3.2vw, 1.35rem);
+    }
+    #jugendHinweis p{
+      margin: 0 0 12px;
+      font-size: clamp(0.95rem, 2.9vw, 1rem);
+      line-height: 1.45;
+      color: #d1d5db;
+      display: block;
+      white-space: normal;
+      word-wrap: break-word;
+    }
+    #jugendHinweis button{
+      display: block;
+      margin: 18px auto 0;
+      padding: 10px 24px;
+      min-width: 140px;
+      border: 0; border-radius: 12px;
+      background: #0B5FFF; color: #fff;
+      font-weight: 600; font-size: clamp(1rem, 3vw, 1.05rem);
+      cursor: pointer; transition: background .2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #jugendHinweis button:hover{ background: #2563eb; }
+
+    @keyframes jr-fade{
+      from{ opacity:0; transform: translateY(4px) scale(.98); }
+      to  { opacity:1; transform: none; }
+    }
+  </style>
+
+  <script>
+    (function(){
+      const KEY = 'hinweisBestätigt';
+      const overlay = document.getElementById('jugendHinweis');
+      const okBtn = document.getElementById('jr-ok');
+
+      // Optional: ?resetHinweis=1 zum Testen
+      try{
+        const p = new URLSearchParams(location.search);
+        if (p.get('resetHinweis') === '1') {
+          localStorage.removeItem(KEY);
+          history.replaceState(null,'',location.pathname);
+        }
+      }catch(_){}
+
+      function show(){
+        overlay.hidden = false;
+        overlay.setAttribute('aria-hidden','false');
+        setTimeout(()=> okBtn && okBtn.focus(), 0);
+        document.documentElement.style.overflow = 'hidden';
+      }
+      function hide(){
+        overlay.hidden = true;
+        overlay.setAttribute('aria-hidden','true');
+        document.documentElement.style.overflow = '';
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        if (!localStorage.getItem(KEY)) show();
+        okBtn?.addEventListener('click', () => {
+          try{ localStorage.setItem(KEY, 'true'); }catch(_){}
+          hide();
+        });
+        overlay.addEventListener('click', (e) => {
+          if (e.target === overlay) e.stopPropagation();
+        });
+        window.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') e.preventDefault();
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
+
+
+
+
+

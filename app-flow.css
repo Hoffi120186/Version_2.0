@@ -1,0 +1,129 @@
+/* =========================================================
+   1Rettungsmittel – app-flow.css
+   Zweck: Gemeinsamer UI-Flow für Seiten OHNE style.css
+   (Szenario / Instruktor / Ablage etc.)
+   - Premium Glass Buttons wie auf Patientenseiten
+   - Text im Button mittig
+   - kleine Helper-Klassen (hidden)
+   ========================================================= */
+
+/* ---- Tokens (nur falls Seite selbst keine hat) ---- */
+:root{
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+
+  --accent: #ef4444;
+  --accent-deep: #b91c1c;
+
+  --ok: #22c55e;
+  --warn: #eab308;
+  --info: #60a5fa;
+
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 18px;
+
+  --shadow: 0 12px 32px rgba(0,0,0,.55);
+  --shadow-soft: 0 8px 18px rgba(0,0,0,.35);
+}
+
+/* ---- Basic Helpers ---- */
+.hidden{ display:none !important; }
+
+/* =========================================================
+   Premium Glass Buttons (wie style.css)
+   - Funktioniert für <button class="btn"> und <a class="btn">
+   ========================================================= */
+.btn{
+  display:inline-block;
+  width:auto;
+
+  /* Falls Seiten eigene Button-Padding haben: bleibt ok */
+  padding: 14px 16px;
+
+  /* GLASS */
+  background: rgba(255,255,255,0.10);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+
+  color: var(--text);
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(255,255,255,0.22);
+
+  box-shadow:
+    0 12px 32px rgba(0,0,0,.55),
+    inset 0 1px 0 rgba(255,255,255,.25);
+
+  font-weight: 750;
+  letter-spacing: .2px;
+  line-height: 1.25;
+
+  cursor:pointer;
+  text-decoration:none;
+
+  transition:
+    transform .15s ease,
+    box-shadow .15s ease,
+    background .2s ease,
+    border-color .2s ease,
+    filter .2s ease;
+
+  /* WICHTIG: Text wieder mittig wie früher */
+  text-align:center;
+
+  /* lange Texte sauber umbrechen */
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* Hover/Active (auf Touch egal, auf Desktop nice) */
+.btn:hover{
+  background: rgba(255,255,255,0.18);
+  border-color: rgba(255,255,255,0.35);
+  transform: translateY(-2px);
+  box-shadow:
+    0 20px 46px rgba(0,0,0,.65),
+    inset 0 1px 0 rgba(255,255,255,.35);
+}
+.btn:active{
+  transform: translateY(1px) scale(.985);
+  box-shadow:
+    0 10px 22px rgba(0,0,0,.45),
+    inset 0 1px 0 rgba(255,255,255,.2);
+}
+
+/* Unterzeile in Buttons (falls du <span> nutzt) */
+.btn span{
+  display:block;
+  margin-top:10px;
+  font-size:.85em;
+  color: rgba(239,68,68,.90);
+  font-weight:700;
+  letter-spacing:.15px;
+  text-align:center;
+}
+
+/* Optional Klassen (falls du sie irgendwo nutzt) */
+.btn.critical{
+  border-left: 4px solid var(--accent);
+  padding-left: 14px;
+  background:
+    linear-gradient(90deg, rgba(239,68,68,.12), transparent 45%),
+    rgba(255,255,255,0.10);
+}
+.btn.ok{
+  border-left: 4px solid var(--ok);
+  padding-left: 14px;
+}
+.btn.warn{
+  border-left: 4px solid var(--warn);
+  padding-left: 14px;
+}
+
+/* Mobile: Buttons etwas größer/touchiger */
+@media (max-width:600px){
+  .btn{
+    padding: 12px 14px;
+    font-size: 16px; /* iOS: verhindert Mini-Text */
+  }
+}

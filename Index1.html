@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="icon" type="image/png" href="/icon-192.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <title>1 Rettungsmittel V.1.0</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="/LogoApp.jpg" type="image/jpeg" />
+
+  <!-- jsQR lokal & nicht render-blockierend -->
+  <script src="/vendor/jsqr.min.js" defer></script>
+  <script>
+    window.addEventListener('load', () => {
+      console.log('[probe] typeof jsQR =', typeof window.jsQR);
+      if (!window.jsQR) {
+        console.error('[probe] jsQR NICHT geladen – Pfad/Cache prüfen (/vendor/jsqr.min.js).');
+      } else {
+        console.log('[probe] jsQR bereit');
+      }
+    });
+  </script>
+
+  <!-- Lizenz-/Install-Logik (freigabe) -->
+  <script src="/freigabe.js?v=2025-11-22-RETRY" defer></script>
+
+  <style>
+    /* ===== Hardening gegen iPad/Tablet Offsets ===== */
+    html, body{
+      width:100%;
+      max-width:100%;
+      overflow-x:hidden;
+      margin:0;
+      padding:0;
+    }
+
+    /* ✅ Hintergrund immer sofort sichtbar: auf html legen */
+    html{
+      min-height:100%;
+      background-image:url(fotos/Leit1.jpg);
+      background-size:cover;
+      background-position:center;
+      background-repeat:no-repeat;
+      background-color:#000; /* Fallback */
+    }
+
+    /* ✅ Overlay ebenfalls auf html (Safari/iPad Fix) */
+    html::before{
+      content:"";
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.52);
+      z-index:-1;
+      pointer-events:none;
+    }
+
+    /* ===== Base Layout ===== */
+    body{
+      font-family: Arial, sans-serif;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      min-height:100vh;
+      position:relative;
+    }
+
+    /* ===== Top-Buttons ===== */
+    .top-button-container{
+      position:fixed;
+      top:10px; left:10px; right:10px;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      z-index:1001;
+      box-sizing:border-box;
+    }
+
+    /* iOS Safe-Area */
+    @supports (padding: max(0px)) {
+      .top-button-container{
+        top: max(10px, env(safe-area-inset-top));
+        left: max(10px, env(safe-area-inset-left));
+        right: max(10px, env(safe-area-inset-right));
+      }
+    }
+
+    /* Top Buttons im Glass-Design */
+    .btn{
+      padding:14px 20px;
+      font-size:1.05em;
+      font-weight:800;
+      color:#fff;
+      text-decoration:none;
+      border-radius:14px;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.22);
+      box-shadow:
+        0 14px 30px rgba(0,0,0,.45),
+        inset 0 1px 0 rgba(255,255,255,.25),
+        inset 0 -1px 0 rgba(0,0,0,.25);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: transform .15s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .btn:hover{
+      transform:translateY(-2px);
+      background: rgba(255,255,255,.16);
+      border-color: rgba(255,255,255,.30);
+      box-shadow:
+        0 20px 44px rgba(0,0,0,.55),
+        inset 0 1px 0 rgba(255,255,255,.28),
+        inset 0 -1px 0 rgba(0,0,0,.28);
+    }
+    .btn:active{
+      transform:translateY(0);
+      background: rgba(255,255,255,.14);
+      box-shadow:
+        0 14px 30px rgba(0,0,0,.45),
+        inset 0 2px 10px rgba(0,0,0,.22);
+    }
+
+    /* ===== Inhalt ===== */
+    main{
+      width:100%;
+      max-width:100%;
+      margin:0 auto;
+      padding-top:90px; /* Platz für Top-Bar */
+      box-sizing:border-box;
+    }
+
+    /* Container mittig */
+    .image-container, .camera-container{
+      width:100%;
+      max-width:100%;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      box-sizing:border-box;
+    }
+
+    /* ===== Status-Buttons (Glass) ===== */
+    .status-btn{
+      display:block;
+      width:clamp(280px, 92vw, 520px);
+      padding:32px 44px;
+      margin:18px auto;
+      font-size:clamp(1.35rem, 4.6vw, 1.85rem);
+      font-weight:900;
+      line-height:1.12;
+      letter-spacing:.2px;
+      color:#fff;
+      text-shadow: 0 2px 10px rgba(0,0,0,.55);
+      border:none;
+      border-radius:22px;
+      cursor:pointer;
+      user-select:none;
+      position:relative;
+      overflow:hidden;
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.22);
+      box-shadow:
+        0 18px 44px rgba(0,0,0,.55),
+        inset 0 1px 0 rgba(255,255,255,.16);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: transform .15s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease;
+    }
+
+    .status-btn::before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      background:
+        radial-gradient(circle at 30% 20%, rgba(255,0,40,.28), transparent 55%),
+        radial-gradient(circle at 70% 80%, rgba(255,0,40,.14), transparent 60%);
+      pointer-events:none;
+      opacity:.55;
+    }
+
+    .status-btn--primary{
+      background: rgba(0,0,0,.22);
+      border-color: rgba(255,255,255,.28);
+    }
+    .status-btn--primary::before{ opacity:.75; }
+
+    .status-btn:hover{
+      transform:translateY(-3px);
+      background: rgba(0,0,0,.24);
+      border-color: rgba(255,255,255,.30);
+      box-shadow:
+        0 28px 60px rgba(0,0,0,.60),
+        inset 0 1px 0 rgba(255,255,255,.18);
+    }
+    .status-btn:active{
+      transform:translateY(0);
+      background: rgba(0,0,0,.22);
+      box-shadow:
+        0 18px 44px rgba(0,0,0,.55),
+        inset 0 2px 12px rgba(0,0,0,.30);
+    }
+
+    /* Ripple */
+    .status-btn .ripple{
+      position:absolute;
+      border-radius:50%;
+      background:rgba(255,255,255,.40);
+      transform:scale(0);
+      animation:ripple .6s linear;
+      pointer-events:none;
+    }
+    @keyframes ripple{ to{ transform:scale(4); opacity:0; } }
+
+    /* Alarmbild immer mittig */
+    .image-container img{
+      display:none;
+      width:clamp(280px, 90vw, 520px);
+      height:auto;
+      margin:18px auto 0;
+      position:relative;
+      left:0;
+      transform:none;
+      border-radius:16px;
+      box-shadow:0 18px 40px rgba(0,0,0,.45);
+    }
+
+    /* ===== Scanner-Overlay ===== */
+    .scan-overlay{
+      position:fixed; inset:0; z-index:9999;
+      display:none; align-items:center; justify-content:center;
+      background: rgba(0,0,0,.85);
+    }
+    .scan-overlay.open{ display:flex; }
+    .scan-ui{ position:relative; width:min(100vw,800px); height:min(100vh,1000px); padding:12px; box-sizing:border-box; }
+    #scanVideo{ width:100%; height:100%; object-fit:cover; background:#000; border-radius:10px; }
+    .scan-topbar{
+      position:absolute; top:10px; right:10px; left:10px;
+      display:flex; justify-content:flex-end; gap:8px; pointer-events:none;
+    }
+    .scan-close{
+      pointer-events:auto; font-size:32px; line-height:1; padding:8px 12px;
+      border:none; border-radius:12px; color:#fff;
+      background:rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.22);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      cursor:pointer;
+    }
+    .scan-close:hover{ background:rgba(255,255,255,.20); border-color: rgba(255,255,255,.30); }
+    .scan-frame{
+      position:absolute; inset:15% 10%;
+      border:3px solid rgba(255,255,255,.7); border-radius:12px; pointer-events:none;
+    }
+  </style>
+
+  <link rel="stylesheet" href="/app-flow.css">
+</head>
+
+<body>
+
+  <div class="top-button-container">
+    <a href="/instruktor.html" class="btn">Instruktor</a>
+    <a href="/index.html" class="btn">Startseite</a>
+  </div>
+
+  <main>
+    <div class="image-container">
+      <button id="startButton" class="status-btn">
+        Status 1<br>Fahrzeug einsatzbereit
+      </button>
+      <img id="alarmImage" src="fotos/Melder1rett.png" alt="Alarmbild">
+    </div>
+
+    <div class="camera-container">
+      <button id="cameraButton" class="status-btn status-btn--primary">
+        Status 4<br>Fahrzeug Einsatzstelle<br>erreicht
+      </button>
+    </div>
+  </main>
+
+  <!-- Scanner-Overlay -->
+  <div id="scannerOverlay" class="scan-overlay" aria-hidden="true">
+    <div class="scan-ui">
+      <video id="scanVideo" playsinline></video>
+      <canvas id="scanCanvas" hidden></canvas>
+      <div class="scan-frame"></div>
+      <div class="scan-topbar">
+        <button id="scanCloseBtn" class="scan-close" aria-label="Scanner schließen">×</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status 1 + Ripple -->
+  <script>
+    const audio = new Audio('/Alarmton2.mp3');
+    const startButton = document.getElementById("startButton");
+    const alarmImage  = document.getElementById("alarmImage");
+
+    function resetAuswertungOnly() {
+      try {
+        const toRemove = [];
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i);
+          if (!k) continue;
+          if (k.startsWith('time_') || k.startsWith('sichtung_') || k === 'resetFlag') {
+            toRemove.push(k);
+          }
+        }
+        toRemove.forEach(k => localStorage.removeItem(k));
+      } catch (e) {
+        console.warn('resetAuswertungOnly() Fehler:', e);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const saved = localStorage.getItem('meldebild');
+      if (saved) alarmImage.src = saved;
+    });
+
+    startButton.addEventListener("click", function () {
+      resetAuswertungOnly();
+      startButton.style.display = "none";
+      alarmImage.style.display = "block";
+      audio.play().catch(console.error);
+    });
+
+    alarmImage.addEventListener("click", function () {
+      audio.pause();
+      audio.currentTime = 0;
+    });
+
+    document.addEventListener('click', function(e){
+      const btn = e.target.closest('.status-btn');
+      if(!btn) return;
+      const circle = document.createElement('span');
+      circle.className = 'ripple';
+      const rect = btn.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      circle.style.width = circle.style.height = size + 'px';
+      circle.style.left = (e.clientX - rect.left - size/2) + 'px';
+      circle.style.top  = (e.clientY - rect.top  - size/2) + 'px';
+      btn.appendChild(circle);
+      setTimeout(() => circle.remove(), 600);
+    }, { passive: true });
+  </script>
+
+  <!-- Reset für Status 4 -->
+  <script>
+    function resetClinicAndAssignmentsLikeEnd() {
+      try {
+        if (window.Ablage?.resetAll) {
+          Ablage.resetAll();
+        } else {
+          ['ablage.active.v1','ablage.history.v1','ablage.sessionStart.v1','ablage.done.v1']
+            .forEach(k => localStorage.removeItem(k));
+        }
+        localStorage.setItem('sichtungMap', '{}');
+
+        const exact = new Set([
+          'zuweisungMap','clinic.assignments','clinic.queue','clinic.done','meldebild',
+          'blockedPages'
+        ]);
+
+        const prefixes = [
+          'zuweisung_','clinic.',
+          'time_','timer_','patient.','patient_','ablage.',
+          'sichtung_','sicht_',
+          'sperrung.','sperrung_','sperre.','sperre_',
+          'pageLock.','pageLock_','lock.','lock_',
+          'blocked.','blocked_','block.','block_',
+          'gesperrt.','gesperrt_'
+        ];
+
+        try { window.Sperrung?.resetAll?.(); } catch(_) {}
+
+        const toRemove = [];
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i); if (!k) continue;
+          if (k === 'sichtungMap') continue;
+          if (exact.has(k) || prefixes.some(p => k.startsWith(p))) toRemove.push(k);
+          else if (/(^|[.:_])(sperr|lock|block|gesperrt)([.:_]|$)/i.test(k)) toRemove.push(k);
+        }
+        toRemove.forEach(k => localStorage.removeItem(k));
+
+        localStorage.setItem('blockedPages', '[]');
+        localStorage.setItem('resetFlag', String(Date.now()));
+        localStorage.setItem('sperrungResetAt', String(Date.now()));
+      } catch (e) {
+        console.warn('Reset-Fehler (Status 4):', e);
+      }
+    }
+  </script>
+
+  <!-- Scanner -->
+  <script>
+  (function wrapGetUserMediaOnce(){
+    if (!navigator.mediaDevices?.getUserMedia) return;
+    if (window.__gk_wrapped) return;
+    const orig = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+    let allowOnce = false;
+    window.__allowCameraOnce = () => { allowOnce = true; setTimeout(()=>allowOnce=false, 3000); };
+    navigator.mediaDevices.getUserMedia = (c) => {
+      if (!allowOnce) return Promise.reject(new DOMException('Needs user gesture','NotAllowedError'));
+      allowOnce = false; return orig(c);
+    };
+    window.__gk_wrapped = true;
+  })();
+
+  function whenServiceWorkerReady(timeoutMs = 3000){
+    return new Promise(async (resolve) => {
+      let done = false;
+      const fin = () => { if (!done){ done = true; resolve(true); } };
+      if (navigator.serviceWorker?.controller) setTimeout(fin, 150);
+      navigator.serviceWorker?.addEventListener?.('message', (ev) => {
+        if (ev.data?.type === 'PRECACHE_DONE') fin();
+      });
+      try { await navigator.serviceWorker.ready; setTimeout(fin, 150); } catch {}
+      setTimeout(()=>resolve(false), timeoutMs);
+    });
+  }
+
+  function redirectFromQr(decoded){
+    try {
+      const u = new URL(decoded, location.origin);
+      const own = new Set([location.hostname,'1rettungsmittel.de','www.1rettungsmittel.de','app.1rettungsmittel.de']);
+      if (own.has(u.hostname)) {
+        location.assign((u.pathname || '/').toLowerCase());
+        return;
+      }
+      if (!navigator.onLine) { alert('Offline: Externer Link kann nicht geöffnet werden.'); return; }
+      location.assign(u.href);
+    } catch {
+      const n = String(decoded).match(/\d+/)?.[0];
+      if (n) { location.assign(('/patient'+n+'.html').toLowerCase()); return; }
+      if (navigator.onLine) location.assign(String(decoded));
+      else alert('Unbekanntes QR-Ziel und offline.');
+    }
+  }
+
+  (()=> {
+    const startBtn = document.getElementById('cameraButton');
+    const overlay  = document.getElementById('scannerOverlay');
+    const video    = document.getElementById('scanVideo');
+    const canvas   = document.getElementById('scanCanvas');
+    const closeBtn = document.getElementById('scanCloseBtn');
+    const ctx = canvas.getContext('2d');
+
+    let stream = null, rAFid = 0, scanning = false, handled = false;
+
+    async function openScanner(){
+      overlay.classList.add('open');
+      overlay.setAttribute('aria-hidden','false');
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+      handled = false;
+
+      try {
+        if (typeof window.__allowCameraOnce === 'function') window.__allowCameraOnce();
+        stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
+        video.srcObject = stream;
+        await video.play().catch(()=>{});
+        await new Promise(r => (video.readyState >= 2 ? r() : (video.onloadedmetadata = r)));
+
+        canvas.width  = video.videoWidth  || 640;
+        canvas.height = video.videoHeight || 480;
+
+        startLoop();
+        try { history.pushState({scan:true}, ''); } catch {}
+      } catch (e){
+        console.error('[Scanner] getUserMedia failed:', e);
+        alert('Kamera konnte nicht gestartet werden. HTTPS & Berechtigungen prüfen.');
+        closeScanner();
+      }
+    }
+
+    function startLoop(){
+      if (scanning) return;
+      scanning = true;
+      const tick = () => {
+        if (!scanning || !stream) return;
+        try{
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const img  = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = (window.jsQR)
+            ? jsQR(img.data, canvas.width, canvas.height, { inversionAttempts:'dontInvert' })
+            : null;
+
+          if (code && code.data && !handled){
+            handled = true;
+            stopLoop(); stopTracks();
+            video.pause(); video.srcObject = null;
+            overlay.classList.remove('open');
+            overlay.setAttribute('aria-hidden','true');
+            document.documentElement.style.overflow = '';
+            document.body.style.overflow = '';
+            redirectFromQr(code.data);
+            return;
+          }
+        } catch {}
+        rAFid = requestAnimationFrame(tick);
+      };
+      rAFid = requestAnimationFrame(tick);
+    }
+
+    function stopLoop(){ scanning = false; if (rAFid) cancelAnimationFrame(rAFid); rAFid = 0; }
+    function stopTracks(){ if (stream){ try{ stream.getTracks().forEach(t=>t.stop()); }catch{} stream=null; } }
+
+    function closeScanner(){
+      handled = false;
+      stopLoop(); stopTracks();
+      try { video.pause(); } catch {}
+      video.srcObject = null;
+      overlay.classList.remove('open');
+      overlay.setAttribute('aria-hidden','true');
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+      try { const st = history.state; if (st && st.scan) history.back(); } catch {}
+    }
+
+    startBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      resetClinicAndAssignmentsLikeEnd();
+      await whenServiceWorkerReady();
+      await new Promise(r => setTimeout(r, 300));
+      openScanner();
+    }, { passive: false });
+
+    closeBtn.addEventListener('click', closeScanner, { passive: true });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay.classList.contains('open')) closeScanner(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden && overlay.classList.contains('open')) closeScanner(); });
+    window.addEventListener('pagehide', () => { if (overlay.classList.contains('open')) closeScanner(); });
+    window.addEventListener('popstate', () => { if (overlay.classList.contains('open')) closeScanner(); });
+  })();
+  </script>
+
+  <!-- Warmup (optional) -->
+  <script defer src="/warmup.js?v=2025-08-23-2"></script>
+
+  <!-- SW-Registrierung (falls nicht global vorhanden) -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/service-worker.js')
+        .then(r => console.log('SW registriert', r))
+        .catch(console.error);
+    }
+  </script>
+
+  <!-- Metrics -->
+  <script src="/metrics.js" defer></script>
+</body>
+</html>

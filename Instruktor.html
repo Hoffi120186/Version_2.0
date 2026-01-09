@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- PWA -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/manifest.json">
+
+  <title>Instruktor Übersicht</title>
+
+
+  <style>
+    :root {
+      --radius: 14px;
+      --shadow: 0 6px 14px rgba(0,0,0,.2);
+      --space: clamp(12px, 3vw, 28px);
+      --fs-btn: clamp(16px, 2.6vw, 22px);
+    }
+    *{ box-sizing: border-box; }
+    html, body { height:100%; margin:0; }
+    body{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:#0b0f1a url("fotos/Patientenkarte.jpg") center/cover no-repeat;
+      display:flex; flex-direction:column; align-items:center;
+      padding: calc(env(safe-area-inset-top) + 16px) var(--space) calc(env(safe-area-inset-bottom) + 16px);
+      color:#fff;
+    }
+    body::before{ content:""; position:absolute; inset:0; background:rgba(0,0,0,.55); z-index:-1; }
+
+    .header{ font-size:clamp(22px,5vw,34px); font-weight:700; margin-bottom:var(--space); text-align:center; }
+    .button-container{ display:flex; flex-direction:column; gap:var(--space); width:100%; max-width:420px; }
+    .btn{
+      width:100%; padding:clamp(14px,3vw,22px);
+      background:rgba(255,255,255,.12); color:#f5f7ff; backdrop-filter:blur(10px);
+      border:1px solid rgba(255,255,255,.25); border-radius:var(--radius);
+      font-size:var(--fs-btn); font-weight:700; text-align:center; cursor:pointer;
+      transition:.2s; box-shadow:var(--shadow);
+      position:relative;
+    }
+    .btn:hover{ background:rgba(255,255,255,.28); border-color:rgba(255,255,255,.45); transform:translateY(-1px); }
+    .btn:active{ transform:translateY(1px); background:rgba(255,255,255,.18); }
+    .btn[disabled]{ opacity:.55; filter:grayscale(40%); cursor:not-allowed; transform:none !important; }
+
+    /* Startseite-Button */
+    .btn-start{
+      position:fixed; bottom:calc(18px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
+      background:#a54524; color:#fff; padding:14px 26px; border-radius:var(--radius);
+      font-size:clamp(14px,2.2vw,18px); font-weight:700; box-shadow:var(--shadow); text-decoration:none;
+    }
+    .btn-start:hover{ filter:brightness(1.1); }
+
+    /* ===== Schutz UI ===== */
+    .lock-indicator{
+      display:inline-flex; gap:10px; align-items:center; justify-content:center;
+      margin:6px 0 14px; width:min(100%,420px);
+    }
+    .chip{
+      padding:8px 12px; border-radius:12px; background:rgba(255,255,255,.12);
+      border:1px solid rgba(255,255,255,.25); backdrop-filter:blur(8px);
+      cursor:pointer; font-weight:700; box-shadow:var(--shadow);
+      color:#f4f5f2 !important;
+      -webkit-text-fill-color:#fff;
+      -webkit-appearance:none; appearance:none;
+    }
+    .chip:hover{ background:rgba(255,255,255,.22); }
+
+    .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; z-index:1000; }
+    .modal{
+      width:min(92vw,420px); background:#0f172a; color:#fff;
+      border:1px solid rgba(255,255,255,.18); border-radius:14px; box-shadow:var(--shadow); padding:18px;
+    }
+    .modal h3{ margin:0 0 10px; font-size:20px; }
+    .row{ display:flex; gap:10px; margin:10px 0; }
+    .modal input[type="password"]{
+      flex:1; padding:10px 12px; border-radius:10px; border:1px solid #334155; background:#111827; color:#fff;
+    }
+    .actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:12px; }
+    .bad{ color:#f87171; font-size:14px; }
+    .ok{ color:#34d399; font-size:14px; }
+    .small{ font-size:13px; opacity:.9; }
+    .muted{ opacity:.8; }
+
+    /* Nachrichten-Badge (rechts im Button) */
+    #msgBadge{
+      display:none; position:absolute; top:8px; right:14px;
+      background:#ef4444; color:#fff; font-weight:800; font-size:.9em; line-height:1;
+      padding:.2rem .55rem; border-radius:999px; box-shadow:0 0 6px rgba(0,0,0,.3);
+    }
+  </style>
+  <link rel="stylesheet" href="/app-flow.css">
+</head>
+<body>
+  <div class="header">Instruktor Übersicht</div>
+
+  <!-- Status + Verwaltung -->
+  <div class="lock-indicator">
+    <div id="lockState" class="small">🔓 Menü aktuell ohne Schutz</div>
+    <button id="lockManage" class="chip" type="button">🔒 Schutz verwalten</button>
+  </div>
+
+  <div class="button-container">
+    <button class="btn" type="button" onclick="safeGo('/szenario.html')">Szenario auswählen</button>
+    <button class="btn" type="button" onclick="safeGo('/patienten.html')">Patientenübersicht</button>
+    <button class="btn" type="button" onclick="safeGo('/qr.html')">QR-Codes Patienten/Szenarien</button>
+    <button class="btn" type="button" onclick="safeGo('/feedback.html')">Feedback und Bewertung der App</button>
+    <button class="btn" type="button" onclick="safeGo('/last-run.html')">Letzte Übung anzeigen
+      </button>
+    <!-- Push -->
+    <button id="pushBtn" class="btn" type="button">Benachrichtigungen aktivieren</button>
+
+    <!-- Nachrichten -->
+    <button id="msgBtn" class="btn" type="button" onclick="safeGo('/nachrichten.html')">
+      Nachrichten <span id="msgBadge"></span>
+    </button>
+  </div>
+
+  <!-- Start -->
+  <a href="/index.html" class="btn-start" onclick="event.preventDefault(); safeGo('/index.html')">Startseite</a>
+
+  <!-- Modal für Instruktor-Schutz -->
+  <div id="pinModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h3 id="modalTitle">Instruktor-Schutz</h3>
+      <p class="small muted" id="modalHint"></p>
+
+      <div id="viewLogin">
+        <div class="row">
+          <input id="pinLogin" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" type="password" placeholder="PIN (4–8 Ziffern)" />
+          <button id="btnLogin" class="btn" type="button" style="min-width:120px">Entsperren</button>
+        </div>
+        <div id="msgLogin" class="bad" aria-live="polite"></div>
+        <div class="actions">
+          <button id="btnLoginCancel" class="btn" type="button">Abbrechen</button>
+        </div>
+      </div>
+
+      <div id="viewVerify" style="display:none">
+        <div class="row">
+          <input id="pinVerify" inputmode="numeric" pattern="[0-9]*" type="password" placeholder="Aktuelle PIN" />
+          <button id="btnVerify" class="btn" type="button" style="min-width:120px">Weiter</button>
+        </div>
+        <div id="msgVerify" class="bad" aria-live="polite"></div>
+        <div class="actions">
+          <button id="btnVerifyCancel" class="btn" type="button">Abbrechen</button>
+        </div>
+      </div>
+
+      <div id="viewSetup" style="display:none">
+        <div class="row">
+          <input id="pinNew1" inputmode="numeric" type="password" placeholder="Neue PIN (optional, 4–8 Ziffern)" />
+        </div>
+        <div class="row">
+          <input id="pinNew2" inputmode="numeric" type="password" placeholder="PIN wiederholen" />
+        </div>
+        <div class="row small">
+          <label><input type="checkbox" id="chkEnabled" /> Schutz aktivieren</label>
+        </div>
+        <div id="msgSetup" class="bad" aria-live="polite"></div>
+        <div class="actions">
+          <button id="btnSave" class="btn" type="button">Speichern</button>
+          <button id="btnBack" class="btn" type="button">Zurück</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Skripte -->
+  <script type="module" src="/freigabe.js?cache=9"></script>
+  <script defer src="/warmup.js?v=2025-08-22-1"></script>
+
+  <!-- SW-Gate + Offline Navigation -->
+  <script>
+    window.__NAV_READY__ = false;
+    (async function(){
+      if (!('serviceWorker' in navigator)) { window.__NAV_READY__ = true; return; }
+      if (!navigator.serviceWorker.controller) {
+        navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
+        setTimeout(()=>window.__NAV_READY__=true, 1500);
+        return;
+      }
+      try{ await navigator.serviceWorker.ready; }catch{}
+      const markReady = () => (window.__NAV_READY__ = true);
+      if (document.readyState === 'complete') {
+        let t=setTimeout(markReady, 1000);
+        addEventListener('warmup:done', ()=>{ clearTimeout(t); markReady(); }, { once:true });
+      } else addEventListener('load', markReady, { once:true });
+    })();
+
+    async function safeGo(path){
+      const go = async () => {
+        const target = new URL(path, location.origin).pathname;
+
+        // 🔹 Herkunft & Ziel merken (Session)
+        try {
+          sessionStorage.setItem('nav_from', location.pathname);
+          sessionStorage.setItem('nav_to',   target);
+          if (location.pathname === '/index.html' && target === '/instruktor.html') {
+            sessionStorage.setItem('needInstrPIN', '1');
+          }
+        } catch {}
+
+        try{
+          const names = await caches.keys();
+          const name = names.find(n=>n.startsWith('mein-pwa-cache-')) || names[0];
+          if (name){
+            const c = await caches.open(name);
+            const hit = await c.match(target);
+            if (hit){ location.assign(target); return; }
+          }
+        }catch{}
+        location.assign(target);
+      };
+      if (window.__NAV_READY__) return go();
+      addEventListener('controllerchange', go, { once:true });
+    }
+  </script>
+
+  <!-- Push + Nachrichten Badge + Lizenz-Gate -->
+  <script>
+    const VAPID_PUBLIC='BGfo_fq3L9NVou1-0HAWd2s1_Crd6BMLLGswUQHulrs1NUINsoBh5ak1pwosrOr8NF55ITsVn6ZCpZd_CDXjRCQ';
+
+    // ---- Lizenz prüfen (Backend optional, sonst Fallback auf localStorage) ----
+    async function getLicenseState(){
+      try{
+        const r = await fetch('/.netlify/functions/license-status?ts='+Date.now(), { cache:'no-store' });
+        if (r.ok){
+          const j = await r.json();
+          if (typeof j.active === 'boolean') return { active:j.active, status:j.status|| (j.active?'active':'blocked') };
+        }
+      }catch{}
+      const ls = (k) => localStorage.getItem(k);
+      const status = (ls('license_status') || ls('lizenz_status') || '').toLowerCase();
+      const until  = parseInt(ls('license_valid_until') || '0', 10);
+      const now = Date.now();
+
+      if (status === 'blocked' || status === 'gesperrt') return { active:false, status:'blocked' };
+      if (until && now > until) return { active:false, status:'expired' };
+      if (status === 'expired' || status === 'abgelaufen') return { active:false, status:'expired' };
+
+      return { active:true, status: status || 'unknown' };
+    }
+
+    // ---- Nachrichten-Badge (NUR pro Gerät lokal zählen – KEIN unreadCount) ----
+    async function loadMsgBadge(){
+      const el = document.getElementById('msgBadge');
+      const hide = () => { el.textContent=''; el.style.display='none'; };
+
+      try{
+        const license = await getLicenseState();
+        if (!license.active) return hide();
+
+        const r = await fetch('/.netlify/functions/messages-list?ts='+Date.now(), { cache:'no-store' });
+        if (!r.ok) return hide();
+        const j = await r.json();
+
+        const itemsRaw = j.items || j.list || j.messages || [];
+        const items = Array.isArray(itemsRaw) ? itemsRaw : [];
+        if (items.length === 0) return hide();
+
+        const seen   = new Set((JSON.parse(localStorage.getItem('inbox_seen_v1')   || '[]')||[]).map(String));
+        const hidden = new Set((JSON.parse(localStorage.getItem('inbox_hidden_v1') || '[]')||[]).map(String));
+
+        const filtered = items.filter(m => !hidden.has(String(m.id)));
+        const unread   = filtered.filter(m => !seen.has(String(m.id))).length;
+
+        if (unread > 0){
+          el.textContent = String(unread);
+          el.style.display = 'inline-flex';
+        } else {
+          hide();
+        }
+      }catch{
+        hide();
+      }
+    }
+
+    // ✅ EINMALIG außerhalb von Funktionen:
+    if (navigator.serviceWorker) {
+      let pingTimer;
+      navigator.serviceWorker.addEventListener('message', (ev) => {
+        if (ev.data && ev.data.type === 'INBOX_PING') {
+          clearTimeout(pingTimer);
+          pingTimer = setTimeout(loadMsgBadge, 100);
+        }
+      });
+    }
+
+    // ---- Push (nur wenn Lizenz aktiv) ----
+    const toKey=b=>{
+      const p='='.repeat((4-b.length%4)%4);
+      const s=(b+p).replace(/-/g,'+').replace(/_/g,'/');
+      const r=atob(s); const a=new Uint8Array(r.length);
+      for(let i=0;i<r.length;i++) a[i]=r.charCodeAt(i);
+      return a;
+    };
+
+    // NEW: stabile Geräte-ID (einmalig pro Gerät)
+    function getDeviceId() {
+      const KEY = 'push_device_id_v1';
+      let id = localStorage.getItem(KEY);
+      if (!id) {
+        id = (crypto?.randomUUID?.() || (Math.random().toString(36).slice(2) + Date.now()));
+        localStorage.setItem(KEY, id);
+      }
+      return id;
+    }
+
+    async function reflectPushState(){
+      const btn=document.getElementById('pushBtn');
+      const license = await getLicenseState();
+      // Lizenz inaktiv -> Button deaktivieren + Label anpassen
+      if (!license.active){
+        btn.textContent = 'Lizenz abgelaufen – Benachrichtigungen deaktiviert';
+        btn.disabled = true;
+        return;
+      }
+      try{
+        if(!('serviceWorker'in navigator)||!('PushManager'in window)){
+          btn.textContent='Benachrichtigungen nicht verfügbar';
+          btn.disabled=true; return;
+        }
+        const reg=await navigator.serviceWorker.ready;
+        const sub=await reg.pushManager.getSubscription();
+        if(sub){ btn.textContent='Benachrichtigungen deaktivieren'; btn.onclick=disablePush; }
+        else   { btn.textContent='Benachrichtigungen aktivieren';   btn.onclick=enablePush;  }
+      }catch(e){
+        btn.textContent='Benachrichtigungen (Fehler)';
+        btn.disabled=true;
+      }
+    }
+
+    async function enablePush(){
+      const btn=document.getElementById('pushBtn');
+      const license = await getLicenseState();
+      if (!license.active){ return; } // Safety
+      try{
+        const perm=await Notification.requestPermission();
+        if(perm!=='granted') return;
+
+        const reg=await navigator.serviceWorker.ready;
+        const existing=await reg.pushManager.getSubscription();
+
+        // Werte für den Server
+        const deviceId = getDeviceId();                      // NEW
+        const licenseType = license?.type || license?.plan || '';
+        const appId = 'prod';
+
+        if (existing) {
+          // NEW: auch bei bestehendem Abo einmal Upsert senden
+          await fetch('/.netlify/functions/save-sub',{
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+              deviceId,
+              appId,
+              subscription: existing,
+              profile: { licenseType, deviceId } // deviceId auch im profile zur Rückwärtskompat.
+            })
+          });
+          await reflectPushState();
+          return;
+        }
+
+        const sub=await reg.pushManager.subscribe({
+          userVisibleOnly:true,
+          applicationServerKey:toKey(VAPID_PUBLIC)
+        });
+
+        // NEW: deterministisch speichern (Server upsertet pro deviceId)
+        await fetch('/.netlify/functions/save-sub',{
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            deviceId,
+            appId,
+            subscription: sub,
+            profile: { licenseType, deviceId }
+          })
+        });
+
+        await reflectPushState();
+      }catch(e){
+        console.error(e);
+        alert('Konnte Benachrichtigungen nicht aktivieren.');
+      }
+    }
+
+    async function disablePush(){
+      try{
+        const reg=await navigator.serviceWorker.ready;
+        const sub=await reg.pushManager.getSubscription(); if(!sub){ await reflectPushState(); return; }
+        await fetch('/.netlify/functions/delete-sub',{
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({ endpoint:sub.endpoint })
+        }).catch(()=>{});
+        await sub.unsubscribe().catch(()=>{});
+        await reflectPushState();
+      }catch(e){
+        console.error(e);
+        alert('Konnte Benachrichtigungen nicht deaktivieren.');
+      }
+    }
+
+    // ---- Initialisierung + Live-Updates ----
+    addEventListener('load', () => {
+      reflectPushState();
+      loadMsgBadge();
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible'){
+        reflectPushState();
+        loadMsgBadge();
+      }
+    });
+
+    // reagiert auf updateBadgeSignal() aus nachrichten.html
+    window.addEventListener('storage', (ev) => {
+      if (ev.key === 'inbox_badge_ping' || ev.key === 'inbox_hidden_v1' || ev.key === 'inbox_seen_v1') {
+        loadMsgBadge();
+      }
+    });
+  </script>
+
+ <!-- Schutz-Logik -->
+<script>
+  const LS = localStorage;
+
+  // ==== SCOPE-Erkennung: pro Lizenz/Device eigene Keys ====
+  function getScopeId(){
+    const cand =
+      LS.getItem('license_id')     || LS.getItem('lizenz_id')     ||
+      LS.getItem('license_token')  || LS.getItem('lizenz_token')  ||
+      LS.getItem('device_id')      || LS.getItem('geraet_id')     ||
+      LS.getItem('license_key')    || LS.getItem('lizenz_key');
+
+    if (cand && String(cand).trim()) return String(cand).trim();
+
+    // Fallback: einmalige Installations-ID (gerätelokal)
+    let iid = LS.getItem('install_id');
+    if (!iid){
+      iid = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+      );
+      LS.setItem('install_id', iid);
+    }
+    return `install-${iid}`;
+  }
+  const SCOPE = getScopeId();
+
+  // Migration alter globaler Keys -> scoped Keys
+  (function migrateOldKeys(){
+    const OLD_ENABLED = 'instr.lock.enabled';
+    const OLD_HASH    = 'instr.lock.pinHash';
+    const NEW_ENABLED = `instr.lock.enabled.${SCOPE}`;
+    const NEW_HASH    = `instr.lock.pinHash.${SCOPE}`;
+
+    if (LS.getItem(OLD_ENABLED) !== null && LS.getItem(NEW_ENABLED) === null) {
+      LS.setItem(NEW_ENABLED, LS.getItem(OLD_ENABLED));
+    }
+    if (LS.getItem(OLD_HASH) !== null && LS.getItem(NEW_HASH) === null) {
+      LS.setItem(NEW_HASH, LS.getItem(OLD_HASH));
+    }
+    // Optional: alte Keys aufräumen, wenn sicher:
+    // LS.removeItem(OLD_ENABLED);
+    // LS.removeItem(OLD_HASH);
+  })();
+
+  // === Scoped Keys (pro Lizenz/Device) ===
+  const KEY_ENABLED = `instr.lock.enabled.${SCOPE}`;
+  const KEY_HASH    = `instr.lock.pinHash.${SCOPE}`;
+
+  // ==== UI-Elemente ====
+  const lockState   = document.querySelector('#lockState');
+  const btnManage   = document.querySelector('#lockManage');
+
+  const modal       = document.querySelector('#pinModal');
+  const modalTitle  = document.querySelector('#modalTitle');
+  const modalHint   = document.querySelector('#modalHint');
+
+  const viewLogin   = document.querySelector('#viewLogin');
+  const viewVerify  = document.querySelector('#viewVerify');
+  const viewSetup   = document.querySelector('#viewSetup');
+
+  const pinLogin    = document.querySelector('#pinLogin');
+  const pinVerify   = document.querySelector('#pinVerify');
+  const pinNew1     = document.querySelector('#pinNew1');
+  const pinNew2     = document.querySelector('#pinNew2');
+
+  const btnLogin        = document.querySelector('#btnLogin');
+  const btnLoginCancel  = document.querySelector('#btnLoginCancel');
+  const btnVerify       = document.querySelector('#btnVerify');
+  const btnVerifyCancel = document.querySelector('#btnVerifyCancel');
+  const btnSave         = document.querySelector('#btnSave');
+  const btnBack         = document.querySelector('#btnBack');
+
+  const chkEnabled  = document.querySelector('#chkEnabled');
+
+  const msgLogin = document.querySelector('#msgLogin');
+  const msgVerify = document.querySelector('#msgVerify');
+  const msgSetup = document.querySelector('#msgSetup');
+
+  // ==== Helpers (scoped) ====
+  function isEnabled(){ return LS.getItem(KEY_ENABLED) === 'true'; }
+  function setEnabled(v){ LS.setItem(KEY_ENABLED, v ? 'true' : 'false'); }
+  function getHash(){ return LS.getItem(KEY_HASH) || ''; }
+  function setHash(h){ if (h) LS.setItem(KEY_HASH, h); else LS.removeItem(KEY_HASH); }
+
+  function updateIndicator(){
+    const on = isEnabled();
+    lockState.textContent = on ? '🔐 Menü ist geschützt' : '🔓 Menü aktuell ohne Schutz';
+    btnManage.textContent = on ? '⚙️ Schutz verwalten'   : '🔒 Schutz verwalten';
+  }
+
+  async function sha256Hex(text){
+    const enc = new TextEncoder().encode(text);
+    const buf = await crypto.subtle.digest('SHA-256', enc);
+    return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  function showModal(which){
+    msgLogin.textContent = '';
+    msgVerify.textContent = '';
+    msgSetup.textContent = '';
+    viewLogin.style.display = 'none';
+    viewVerify.style.display = 'none';
+    viewSetup.style.display = 'none';
+
+    if (which === 'login'){
+      modalTitle.textContent = 'Instruktor-Schutz';
+      modalHint.textContent  = 'Gib die PIN ein, um dieses Menü zu öffnen.';
+      viewLogin.style.display = '';
+      modal.style.display = 'flex';
+      setTimeout(()=>pinLogin.focus(), 0);
+    } else if (which === 'verify'){
+      modalTitle.textContent = 'Schutz verwalten';
+      modalHint.textContent  = 'Zur Sicherheit bitte zuerst die aktuelle PIN eingeben.';
+      viewVerify.style.display = '';
+      modal.style.display = 'flex';
+      setTimeout(()=>pinVerify.focus(), 0);
+    } else if (which === 'setup'){
+      modalTitle.textContent = 'Schutz verwalten';
+      modalHint.textContent  = 'PIN ändern (optional) und Schutz ein-/ausschalten.';
+      chkEnabled.checked = isEnabled();
+      pinNew1.value = ''; pinNew2.value = '';
+      viewSetup.style.display = '';
+      modal.style.display = 'flex';
+    }
+  }
+  function closeModal(){ modal.style.display='none'; }
+
+  // ==== Initialisierung ====
+  document.addEventListener('DOMContentLoaded', ()=>{
+    updateIndicator();
+
+    const hasPIN  = !!getHash();
+    const enabled = isEnabled();
+
+    // Herkunft robust erkennen: Session-Flag ODER Nav-Trace ODER Referrer
+    const fromSession  = sessionStorage.getItem('needInstrPIN') === '1';
+    const fromNav      = (sessionStorage.getItem('nav_from') || '') === '/index.html';
+    const fromReferrer = (() => {
+      try { return new URL(document.referrer).pathname === '/index.html'; }
+      catch { return /\/index\.html(?:$|\?)/.test(document.referrer || ''); }
+    })();
+
+    const cameFromIndex = fromSession || fromNav || fromReferrer;
+
+    // Flag nur für diesen Aufruf leeren
+    sessionStorage.removeItem('needInstrPIN');
+
+    // Gate nur bei aktivem Schutz, vorhandener PIN und Sprung von /index.html
+    if (enabled && hasPIN && cameFromIndex) {
+      showModal('login');
+    }
+
+    // Safety: Schutz ohne PIN deaktivieren
+    if (enabled && !hasPIN) {
+      setEnabled(false);
+      updateIndicator();
+    }
+  });
+
+  // ==== Verwaltung öffnen ====
+  btnManage.addEventListener('click', ()=>{
+    if (isEnabled() && getHash()) showModal('verify');
+    else showModal('setup');
+  });
+
+  // ==== Login ====
+  btnLogin.addEventListener('click', async ()=>{
+    msgLogin.textContent = '';
+    const pin = (pinLogin.value || '').trim();
+    if (!/^\d{4,8}$/.test(pin)){ msgLogin.textContent='Ungültige PIN (4–8 Ziffern).'; return; }
+    const ok = await sha256Hex(pin) === getHash();
+    if (!ok){ msgLogin.textContent='Falsche PIN.'; return; }
+    closeModal();
+  });
+  pinLogin.addEventListener('keydown', e=>{ if(e.key==='Enter') btnLogin.click(); });
+  btnLoginCancel.addEventListener('click', ()=>{ closeModal(); safeGo('/index.html'); });
+
+  // ==== Verify (vor Setup) ====
+  btnVerify.addEventListener('click', async ()=>{
+    msgVerify.textContent = '';
+    const pin = (pinVerify.value || '').trim();
+    if (!/^\d{4,8}$/.test(pin)){ msgVerify.textContent='Ungültige PIN.'; return; }
+    const ok = await sha256Hex(pin) === getHash();
+    if (!ok){ msgVerify.textContent='Falsche PIN.'; return; }
+    showModal('setup');
+  });
+  pinVerify.addEventListener('keydown', e=>{ if(e.key==='Enter') btnVerify.click(); });
+  btnVerifyCancel.addEventListener('click', closeModal);
+
+  // ==== Setup speichern ====
+  btnSave.addEventListener('click', async ()=>{
+    msgSetup.textContent = '';
+    const wantEnabled = chkEnabled.checked;
+    const new1 = (pinNew1.value || '').trim();
+    const new2 = (pinNew2.value || '').trim();
+
+    // Schutz AUS -> Hash löschen
+    if (!wantEnabled){
+      setEnabled(false);
+      setHash('');
+      updateIndicator();
+      closeModal();
+      return;
+    }
+
+    // Schutz AN ohne vorhandene PIN -> neue setzen erforderlich
+    if (wantEnabled && !getHash() && !(new1 && new2)) {
+      msgSetup.textContent = 'Zum Aktivieren bitte eine neue PIN (4–8 Ziffern) setzen und wiederholen.';
+      return;
+    }
+
+    // Optional neue PIN prüfen/setzen
+    if (new1 || new2){
+      if (!/^\d{4,8}$/.test(new1) || new1 !== new2){
+        msgSetup.textContent = 'PIN muss 4–8 Ziffern lang sein und übereinstimmen.';
+        return;
+      }
+      const h = await sha256Hex(new1);
+      setHash(h);
+    }
+
+    setEnabled(true);
+    updateIndicator();
+    closeModal();
+  });
+
+  btnBack.addEventListener('click', ()=>{
+    if (getHash()) showModal('verify'); else closeModal();
+  });
+</script>
+
+
+ <script src="/metrics.js" defer></script>
+</body>
+</html>

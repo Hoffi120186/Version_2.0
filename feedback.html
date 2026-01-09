@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Feedback · 1Rettungsmittel</title>
+<meta name="description" content="Schnelles, anonymes Feedback zu 1Rettungsmittel." />
+<link rel="manifest" href="/manifest.json" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+<style>
+  :root{
+    --bg:#0b0f1a; --card:#111827; --ink:#fff; --muted:#b6c2d1; --line:#223;
+    --accent:#0B5FFF; --danger:#e53935; --ok:#10b981;
+    --radius:16px; --shadow:0 12px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%; overflow-x:hidden;}
+  body{
+    margin:0; color:var(--ink);
+    background:var(--bg) url("/fotos/RTW1.png") center/cover fixed no-repeat;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  }
+  .wrap{min-height:100%; backdrop-filter:saturate(1.05) blur(6px);
+        background:linear-gradient(180deg,rgba(11,15,26,.88),rgba(11,15,26,.94))}
+  header{max-width:min(96vw,1200px); margin:0 auto; padding:10px 8px}
+  .nav{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+  .brand{font-weight:700; letter-spacing:.3px; margin-right:auto}
+  .btn{
+    display:inline-flex; align-items:center; gap:13px;
+    background:#f8020e; color:#fff; border:1px solid var(--line);
+    padding:8px 12px; border-radius:12px; text-decoration:none; cursor:pointer;
+  }
+  .btn.primary{ background:var(--accent); border-color:transparent; }
+  .btn:hover{ filter:brightness(1.05) }
+
+  main{max-width:min(96vw,1000px); margin:14px auto 80px; padding:0 8px}
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+         box-shadow:var(--shadow); padding:18px; margin:12px 0; }
+  h1{margin:6px 0 8px; font-size:26px}
+  h3{margin:6px 0 10px; font-size:18px}
+  p.lead{margin:0; color:var(--muted)}
+  .grid{display:grid; grid-template-columns:1fr; gap:12px}
+  @media(min-width:820px){ .grid{ grid-template-columns:1fr 1fr } }
+
+  /* Sterne (Button-Variante) */
+  .stars{
+    display:flex; gap:6px; flex-wrap:nowrap;
+    overflow:hidden; /* kein Überlauf rechts */
+    justify-content:flex-start;
+  }
+  .starbtn{
+    background:transparent; border:0; line-height:1; padding:0 3px;
+    cursor:pointer; color:#fff;
+    font-size:clamp(20px, 5.5vw, 32px); /* skaliert auf kleinen Screens */
+    -webkit-tap-highlight-color: transparent;
+  }
+  .starbtn:focus-visible{ outline:2px solid var(--accent); border-radius:8px }
+
+  .hint{font-size:13px; color:var(--muted)}
+
+  /* Jede Bewertungsreihe: Label OBEN, Sterne UNTEN – immer */
+  .row{
+    display:grid; grid-template-columns:1fr; row-gap:6px;
+    margin:12px 0;
+  }
+  .row .label{
+    min-width:0;
+    overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  /* Chips (bleiben hell wie bei dir gewünscht) */
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{
+    display:inline-flex; align-items:center; padding:10px 14px; border-radius:999px;
+    border:1px solid var(--line); background:#f9fafa; color:#081018;
+    cursor:pointer; user-select:none;
+  }
+  .chip[aria-pressed="true"]{
+    outline:2px solid var(--accent);
+    background:rgba(247,247,248,0.14); color:#fff;
+  }
+
+  textarea{
+    width:100%; min-height:110px; resize:vertical; border-radius:12px; padding:12px;
+    background:#0b0f1a; border:1px solid var(--line); color:#fff;
+  }
+  .actions{display:flex; justify-content:flex-end; gap:10px; margin-top:10px}
+
+  .toast{
+    position:fixed; left:50%; bottom:18px; transform:translateX(-50%);
+    background:#0e1526; border:1px solid var(--line); color:#fff; padding:10px 14px;
+    border-radius:10px; display:none;
+  }
+  .small{font-size:12px; color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <nav class="nav">
+      <span class="brand">1Rettungsmittel</span>
+      <a class="btn" href="/index.html">Startseite</a>
+      <a class="btn primary" href="/instruktor.html">← Zurück zum Instruktor-Menü</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="card">
+      <h1>Kurzes Feedback</h1>
+      <p class="lead">Wie hilfreich war 1Rettungsmittel bei eurer heutigen Übung? <span class="small">(anonym)</span></p>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h3>Gesamtbewertung</h3>
+        <div id="starsOverall" class="stars" aria-label="Gesamtbewertung" role="radiogroup"></div>
+        <div class="hint" id="hintOverall">Tippe/Klicke 1–5 Sterne.</div>
+      </div>
+
+      <div class="card">
+        <h3>Was trifft zu?</h3>
+        <div id="chips" class="chips"></div>
+        <div class="hint">Tippe, um Punkte ein-/auszuschalten.</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Detailbewertungen</h3>
+      <div id="multiStars"></div>
+      <div class="hint">Tippe je Reihe 1–5 Sterne.</div>
+    </section>
+
+    <section class="card">
+      <h3>Optionaler Kommentar</h3>
+      <textarea id="fbText" placeholder="Was war gut? Was sollen wir verbessern?"></textarea>
+      <div class="actions">
+        <a class="btn" href="javascript:history.back()">Später</a>
+        <button class="btn primary" id="sendBtn">Senden</button>
+      </div>
+      <p class="small" style="margin-top:8px">
+        Es werden keine personenbezogenen Daten gespeichert. Übertragen werden nur Bewertung, anonyme Nutzungsinfos (App-Version, Szenario, Gerätetyp, Zeitstempel) und optional dein Kommentar.
+      </p>
+    </section>
+
+    <section class="card" id="thanksCard" style="display:none">
+      <h3>Danke!</h3>
+      <p>Dein Feedback hilft uns, die Ausbildung besser zu machen. ✅</p>
+      <div class="actions">
+        <a class="btn primary" href="/index.html">Zur Startseite</a>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  // === Konfiguration ===
+  const FEEDBACK_ENDPOINT = 'https://1rettungsmittel.de/api/feedback.php';
+  const APP_VERSION = window.APP_VERSION || 'v2025-10-06';
+  const getScenario = () => window.CURRENT_SCENARIO || localStorage.getItem('current.scenario') || null;
+  const getLicenseHash = () => localStorage.getItem('license.id.hash') || null;
+
+  // Kategorien & Chips (deine Texte)
+  const CATEGORIES = [
+    { id:'didaktik', label:'Ablauf der Sichtung' },
+    { id:'ui',       label:'Patientendarstellung ' },
+    { id:'timer',    label:'Handling' },
+    { id:'offline',  label:'Patientenablage' },
+    { id:'content',  label:'Design und aussehen' }
+  ];
+  const CHIP_ITEMS = [
+    {id:'ui_ok',      label:'App sehr verständlich'},
+    {id:'perf_ok',    label:'Guter Umfang'},
+    {id:'offline_ok', label:'Offline hat funktioniert'},
+    {id:'timer_ok',   label:'Timer machen so Sinn'},
+    {id:'license_ok', label:'Bringt mir was für den RD Alltag'},
+    {id:'content_ok', label:'Zu wenig Funktionen'},
+    {id:'bug',        label:'Fehler aufgetreten'},
+    {id:'wish',       label:'Das braucht keiner'}
+  ];
+
+  // --- Toast helpers ---
+  const $toast = document.getElementById('toast');
+  function toast(msg){ $toast.textContent = msg; $toast.style.display = 'block'; setTimeout(()=> $toast.style.display='none', 2200); }
+  function showErrorToast(msg){ $toast.textContent = 'Fehler: ' + msg; $toast.style.display='block'; setTimeout(()=> $toast.style.display='none', 3500); }
+
+  // ---------- Sterne (generischer Renderer) ----------
+  function renderStars(target, value, onSelect){
+    target.innerHTML = '';
+    for(let i=1;i<=5;i++){
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'starbtn';
+      b.setAttribute('role','radio');
+      b.setAttribute('aria-checked', String(i===value));
+      b.setAttribute('aria-label', `${i} Sterne`);
+      b.textContent = i <= value ? '★' : '☆';
+      b.addEventListener('click', ()=> onSelect(i));
+      b.addEventListener('touchstart', (e)=>{ e.preventDefault(); b.click(); }, {passive:false});
+      target.appendChild(b);
+    }
+  }
+
+  // Gesamtbewertung
+  let overall = 0;
+  const $overall = document.getElementById('starsOverall');
+  const $hintOverall = document.getElementById('hintOverall');
+  function setOverall(v){
+    overall = v;
+    renderStars($overall, overall, setOverall);
+    $hintOverall.textContent = `${overall} / 5 Sterne`;
+  }
+  renderStars($overall, overall, setOverall); // init
+
+  // ---------- Chips ----------
+  const chipState = new Set();
+  const $chips = document.getElementById('chips');
+  CHIP_ITEMS.forEach(item=>{
+    const el = document.createElement('button');
+    el.type = 'button';
+    el.className = 'chip';
+    el.textContent = item.label;
+    el.setAttribute('role','button');
+    el.setAttribute('aria-pressed','false');
+    el.addEventListener('click', ()=>{
+      const on = el.getAttribute('aria-pressed') === 'true';
+      el.setAttribute('aria-pressed', on ? 'false' : 'true');
+      if(on){ chipState.delete(item.id); } else { chipState.add(item.id); }
+    });
+    $chips.appendChild(el);
+  });
+
+  // ---------- Detail-Sterne: immer Label oben, Sterne unten ----------
+  const multiRatings = {}; // {id: 1..5}
+  const $multiHost = document.getElementById('multiStars');
+  function renderMultiRows(){
+    $multiHost.innerHTML = '';
+    CATEGORIES.forEach(cat=>{
+      const row = document.createElement('div'); row.className = 'row';
+      const label = document.createElement('div'); label.className = 'label'; label.textContent = cat.label;
+      const starBox = document.createElement('div'); starBox.className = 'stars'; starBox.setAttribute('aria-label', cat.label);
+      function onSel(v){ multiRatings[cat.id] = v; renderStars(starBox, v, onSel); }
+      renderStars(starBox, multiRatings[cat.id] || 0, onSel);
+      row.appendChild(label); row.appendChild(starBox);
+      $multiHost.appendChild(row);
+    });
+  }
+  renderMultiRows();
+
+  // ---------- Offline-Queue ----------
+  const QKEY = 'feedback.queue.v1';
+  function loadQ(){ try{ return JSON.parse(localStorage.getItem(QKEY) || '[]'); }catch(_){ return []; } }
+  function saveQ(q){ try{ localStorage.setItem(QKEY, JSON.stringify(q)); }catch(_){ } }
+  function enqueue(payload){ const q = loadQ(); q.push({id: crypto.randomUUID(), payload}); saveQ(q); }
+  async function trySend(payload){
+    try{
+      const body = JSON.stringify(payload);
+      if (navigator.sendBeacon && Blob) {
+        const ok = navigator.sendBeacon(FEEDBACK_ENDPOINT, new Blob([body], {type:'application/json'}));
+        if(ok) return true;
+      }
+      const r = await fetch(FEEDBACK_ENDPOINT, { method:'POST', headers:{'Content-Type':'application/json'}, body });
+      if(!r.ok){
+        const t = await r.text().catch(()=> '');
+        throw new Error(`HTTP ${r.status} ${t?.slice(0,140)}`);
+      }
+      const js = await r.json().catch(()=> ({}));
+      return !!(js && js.ok);
+    }catch(e){
+      console.error('Feedback send error:', e);
+      return false;
+    }
+  }
+  async function flushQ(){
+    const q = loadQ(); if(!q.length) return;
+    const keep = [];
+    for(const item of q){
+      const ok = await trySend(item.payload);
+      if(!ok) keep.push(item);
+    }
+    saveQ(keep);
+    if(q.length && !keep.length) toast('Feedback gesendet. Danke!');
+  }
+  window.addEventListener('online', flushQ);
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') flushQ(); });
+
+  // ---------- Senden ----------
+  async function handleSend(){
+    const payload = {
+      ts: new Date().toISOString(),
+      rating: overall || 0,              // Gesamt
+      ratings: multiRatings,             // Detail
+      tags: Array.from(chipState),
+      text: (document.getElementById('fbText').value || '').slice(0,1000),
+      appVersion: APP_VERSION,
+      scenario: getScenario(),
+      device: navigator.userAgent,
+      licenseHash: getLicenseHash()
+    };
+
+    const ok = await trySend(payload);
+    if(!ok){
+      enqueue(payload);
+      showErrorToast('Konnte nicht senden – offline gespeichert. Wird später übertragen.');
+    }else{
+      toast('Feedback gesendet. Danke!');
+    }
+
+    document.querySelectorAll('main > section.card').forEach(s=> s.style.display='none');
+    document.getElementById('thanksCard').style.display = 'block';
+    flushQ();
+  }
+  document.getElementById('sendBtn').addEventListener('click', handleSend);
+
+  flushQ();
+})();
+</script>
+</body>
+</html>

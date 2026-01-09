@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Info · FAQ · Rechtliches</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="Kurze FAQ, Datenschutzhinweise und Impressum zur 1Rettungsmittel PWA.">
+
+  <!-- PWA/iOS -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/manifest.json">
+
+  <!-- Schrift (falls später lokal: diesen Link entfernen und @font-face nutzen) -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --ink:#0b1220; --bgdim:rgba(0,0,0,.5);
+      --boxbg:rgba(255,255,255,.92); --line:#e5e7eb;
+      --accent:#007bff; --accentHover:#0056b3; --danger:#e11d48; --dangerHover:#b91c1c;
+      --radius:12px; --space:20px; --shadow:0 14px 36px rgba(0,0,0,.35);
+      --muted:#374151; --link:#0ea5e9;
+    }
+
+    html,body{height:100%}
+
+    body{
+      margin:0; padding:0; font-family:'Roboto', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:#333; display:flex; justify-content:center; align-items:flex-start;
+      background:url('fotos/Patientenkarte.jpg') no-repeat center center fixed;
+      background-size:cover; position:relative;
+      min-height:100vh; min-height:100dvh;
+      padding-top:calc(12px + env(safe-area-inset-top));
+      padding-bottom:calc(12px + env(safe-area-inset-bottom));
+      overflow:auto;
+      text-align:left;
+    }
+    body::after{ content:""; position:fixed; inset:0; background:var(--bgdim); z-index:0; }
+
+    .container{
+      width:100%; max-width:900px; z-index:1; background:var(--boxbg);
+      border-radius:10px; padding:var(--space); box-shadow: var(--shadow);
+      border:1px solid rgba(255,255,255,.6); margin:20px;
+      max-height:calc(100dvh - 40px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+      overflow:auto; overscroll-behavior:contain;
+    }
+
+    h1{ margin:0 0 12px; font-size:2rem; color:#0056b3; font-weight:700; }
+    .sub{ margin:0 0 16px; color:var(--muted); }
+
+    /* Tabs sticky + Startseite oben integriert */
+    .tabs{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+      position:sticky; top:0; z-index:3;
+      background:var(--boxbg);
+      padding:8px 0; border-bottom:1px solid #e5e7eb;
+    }
+    .tabBtn{
+      appearance:none; border:1px solid #d1d5db; background:#fff; color:#111827;
+      padding:12px 14px; border-radius:8px; font-weight:600; cursor:pointer;
+      transition:background .2s ease, border-color .2s ease, transform .08s ease;
+    }
+    .tabBtn:hover{ background:#f9fafb; }
+    .tabBtn[aria-selected="true"]{ background:var(--accent); color:#fff; border-color:var(--accent); }
+    .tabBtn:focus-visible{ outline:3px solid #93c5fd; outline-offset:2px; }
+
+    .spacer{ flex:1 1 auto; min-width:16px; }
+
+    .topStart{
+      text-decoration:none; display:inline-flex; align-items:center; justify-content:center;
+      padding:12px 14px; border-radius:8px; font-weight:700; border:1px solid #d1d5db; background:#fff; color:#111827;
+      transition:background .2s ease, border-color .2s ease, transform .06s ease;
+    }
+    .topStart:hover{ background:#f9fafb; }
+    .topStart:active{ transform:translateY(1px); }
+    .topStart:focus-visible{ outline:3px solid #93c5fd; outline-offset:2px; }
+    .topStart .icon{ width:18px; height:18px; margin-right:8px; display:inline-block }
+
+    .panel{ display:none; background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:16px; }
+    .panel.active{ display:block; }
+
+    details{ background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px 14px; margin:8px 0; }
+    details summary{ cursor:pointer; font-weight:700; list-style:none; }
+    details summary::-webkit-details-marker{ display:none; }
+    details p{ margin:10px 0 0; line-height:1.55; }
+
+    p{ line-height:1.6; margin:0 0 10px; }
+    ul{ margin:8px 0 0 18px }
+    .muted{ color:#6b7280 }
+
+    .startBtn{
+      width:100%; margin-top:14px; padding:14px; border:none; border-radius:8px; cursor:pointer;
+      background:var(--danger); color:#fff; font-size:1.05rem; font-weight:700;
+      transition:background .2s ease, transform .06s ease; text-align:center;
+    }
+    .startBtn:hover{ background:var(--dangerHover); }
+    .startBtn:active{ transform:translateY(1px); }
+
+    a{ color:var(--link); text-decoration:none; }
+    a:hover{ text-decoration:underline; }
+  </style>
+</head>
+<body>
+
+  <div class="container" role="region" aria-label="Info · FAQ · Rechtliches">
+    <h1>Info · FAQ · Rechtliches</h1>
+    <p class="sub">Kurz & kompakt innerhalb der App. Für ausführliche Erklärungen und Videos bitte die Homepage besuchen.</p>
+
+    <div class="tabs" role="tablist" aria-label="Info-Tabs">
+      <button class="tabBtn" role="tab" id="tab-faq" aria-controls="panel-faq" aria-selected="true">FAQ</button>
+      <button class="tabBtn" role="tab" id="tab-dse" aria-controls="panel-dse" aria-selected="false">Datenschutz</button>
+      <button class="tabBtn" role="tab" id="tab-imp" aria-controls="panel-imp" aria-selected="false">Impressum</button>
+      <button class="tabBtn" role="tab" id="tab-insta" aria-controls="panel-insta" aria-selected="false">Instagram</button>
+      <span class="spacer" aria-hidden="true"></span>
+      <!-- Startseite oben integriert -->
+      <a class="topStart" href="index.html" role="button" aria-label="Zur Startseite">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M3 12l9-8 9 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M9 21V9h6v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Zur Startseite
+      </a>
+    </div>
+
+    <!-- FAQ -->
+    <section id="panel-faq" class="panel active" role="tabpanel" aria-labelledby="tab-faq">
+      <details open>
+        <summary>Wie installiere ich die App als PWA?</summary>
+        <p><strong>iOS:</strong> Teilen-Symbol → „Zum Home-Bildschirm“<br>
+           <strong>Android:</strong> Browser-Menü → „App installieren“</p>
+        <p>Danach ist sie ganz normal als App auf dem Homescreen sichtbar.</p>
+      </details>
+
+      <details>
+        <summary>Warum werden QR-Codes nicht erkannt?</summary>
+        <p>Achte auf gute Beleuchtung, passenden Abstand und eine erteilte Kamera-Berechtigung.</p>
+        <p>Falls die Kamera auf manchen Geräten plötzlich nicht mehr scannt (obwohl aktiv): Zur <strong>Startseite</strong> zurück, über <strong>Status 4</strong> direkt einen Patienten scannen – dann läuft es in der Regel weiter.</p>
+      </details>
+
+      <details>
+        <summary>Demo</summary>
+        <p>Die Demo gibt euch 60 Minuten vollen Zugriff auf alle derzeitigen Inhalte!<br>
+        Kann aber nur einmal pro Gerät genutzt werden.</p>
+      </details>
+
+      <details>
+        <summary>Kann ich offline trainieren?</summary>
+        <p>Ja. Nach dem ersten Üben mit Internetverbindung werden Inhalte zwischengespeichert. Anschließend kannst du offline trainieren.</p>
+        <p>Empfehlung: Ab und zu online sein, damit Updates automatisch eingespielt werden.</p>
+      </details>
+
+      <details>
+        <summary>Wie lange gilt mein Zugang?</summary>
+        <p>Abhängig vom gebuchten Paket (Low, Basic, Premium, Jahreslizenz).</p>
+      </details>
+
+      <details>
+        <summary>Wofür ist die App gedacht?</summary>
+        <p>Training der ersten Abläufe im MANV: strukturierte Lagemeldung, Vorsichtung/Sofortmaßnahmen, erste Patientenablage.</p>
+      </details>
+
+      <details>
+        <summary>Kontakt & Feedback</summary>
+        <p>Fragen? <a href="mailto:kontakt@1rettungsmittel.de">kontakt@1rettungsmittel.de</a></p>
+      </details>
+    </section>
+
+    <!-- Datenschutz -->
+    <section id="panel-dse" class="panel" role="tabpanel" aria-labelledby="tab-dse">
+      <h2>Datenschutzerklärung</h2>
+
+      <h3>1. Verantwortlicher</h3>
+      <p>1Rettungsmittel – Marc-Andre Hoffmann<br>
+         Im Lütgen Kamp 15, 31241 Ilsede, Deutschland<br>
+         E-Mail: <a href="mailto:kontakt@1rettungsmittel.de">kontakt@1rettungsmittel.de</a></p>
+
+      <h3>2. Zwecke, Datenarten, Rechtsgrundlagen</h3>
+      <p>Wir verarbeiten Daten zur Bereitstellung unserer Website und der webbasierten Trainingsanwendung (PWA),
+         zur Qualitätssicherung, zur Lizenzverwaltung sowie zur Abwicklung von Bestellungen.</p>
+      <ul>
+        <li><strong>Technische Protokolldaten:</strong> z. B. gekürzte/anonymisierte IP, Zeitpunkt, User-Agent, Referrer (Art. 6 Abs. 1 lit. f DSGVO – Betrieb/IT-Sicherheit).</li>
+        <li><strong>Kommunikationsdaten:</strong> Inhalte Ihrer Anfrage (Art. 6 Abs. 1 lit. b DSGVO, ggf. lit. f).</li>
+        <li><strong>Zahlungsdaten via PayPal (optional):</strong> Verarbeitung bei PayPal als eigenständig Verantwortlichem (Art. 6 Abs. 1 lit. b DSGVO).</li>
+      </ul>
+
+      <h4>Nutzungsstatistik (eigene Erhebung, ohne Personenbezug)</h4>
+      <ul>
+        <li><strong>Welche Daten?</strong> Aufrufe einzelner Patientenseiten (Labels wie „patient-1“) und Funktionsseiten (z. B. <code>instruktor.html</code>, <code>auswertung.html</code>), Nutzungsdauer pro Tag (aggregierte Sekundenwerte).</li>
+        <li><strong>Kein Personenbezug:</strong> keine IP-Adressen im Klartext, keine Cookies/IDs, keine sonstigen Kennungen; keine Zusammenführung mit personenbezogenen Daten.</li>
+        <li><strong>Erfassungsart:</strong> eventbasiert (z. B. Seitenlabel) per <code>sendBeacon</code>, ohne Fingerprinting, ohne Cross-Site-Tracking und ohne Wiedererkennung über Sitzungen/Endgeräte hinweg.</li>
+        <li><strong>Speicherort:</strong> lokale Datenbank (SQLite) auf unserem Server (IONOS, Deutschland/EU).</li>
+        <li><strong>Cookies:</strong> keine Tracking-Cookies; es werden nur technisch notwendige Browser-APIs genutzt.</li>
+        <li><strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. f DSGVO (Funktionssicherheit, Qualitätssicherung, Weiterentwicklung).</li>
+        <li><strong>Speicherdauer:</strong> grundsätzlich dauerhaft (Langzeitvergleiche).</li>
+        <li><strong>Widerspruch:</strong> Sie können der Verarbeitung aus Gründen, die sich aus Ihrer besonderen Situation ergeben, jederzeit widersprechen (Art. 21 DSGVO) – Kontakt siehe oben.</li>
+      </ul>
+      <p><button id="optout-off" type="button">Tracking deaktivieren</button> <button id="optout-on" type="button" style="display:none">Tracking wieder aktivieren</button></p>
+
+      <h3>3. PWA, Service Worker & Offline-Cache</h3>
+      <p>Unsere Trainingsanwendung ist als Progressive Web App (PWA) realisiert. Ihr Browser nutzt dafür einen <em>Service Worker</em>, der zur Funktionssicherung (z. B. schneller Seitenaufbau, Offline-Nutzung) Inhalte lokal zwischenspeichert (Cache Storage).</p>
+      <ul>
+        <li><strong>Welche Daten?</strong> Technische Kopien von App-Inhalten (Seiten, Skripte, Medien); keine Profilbildung.</li>
+        <li><strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. f DSGVO (Betrieb, IT-Sicherheit, Nutzerkomfort).</li>
+        <li><strong>Speicherdauer:</strong> bis zur Cache-Invalidierung/-Aktualisierung oder manuellen Löschung in den Browser-Einstellungen.</li>
+      </ul>
+
+      <h3>4. Lizenzverwaltung, Gerätebindung & Lokaler Speicher</h3>
+      <p>Für die Lizenzprüfung verwenden wir lizenzbezogene Tokens. Technisch notwendige Informationen (z. B. Lizenzstatus/Flags) können lokal im Browser (Local/Session Storage) gespeichert werden; bei Aktivierung/Deaktivierung werden lizenzbezogene Daten an unseren Server übermittelt.</p>
+      <ul>
+        <li><strong>Welche Daten?</strong> Lizenz-Token, Aktivierungs-/Deaktivierungszeitpunkte, Browsergerät (z. B. User-Agent), ggf. gehashte Gerätekennung; keine Klarnamen der Geräteträger.</li>
+        <li><strong>Zweck:</strong> Lizenzprüfung, Missbrauchsvermeidung, Support (z. B. Geräte-Reset), temporäre Kulanz-Fenster bei Gerätewechseln.</li>
+        <li><strong>Rechtsgrundlagen:</strong> Art. 6 Abs. 1 lit. b DSGVO (Vertrag) und lit. f (Betriebs-/Missbrauchssicherheit).</li>
+        <li><strong>Speicherdauer (Server):</strong> Lizenzprotokolle bis 24 Monate nach Ablauf der Lizenz; abrechnungsrelevante Datensätze gemäß gesetzlicher Aufbewahrung.</li>
+      </ul>
+
+      <h3>5. Push-Benachrichtigungen (Web Push)</h3>
+      <p>Auf Wunsch können Sie Web-Push aktivieren. Ihr Browser erzeugt hierfür eine anonyme Abonnement-Adresse („Endpoint“) mit öffentlichen Schlüsseln. Wir speichern diese Daten, um Benachrichtigungen an Ihr Gerät zu senden.</p>
+      <ul>
+        <li><strong>Welche Daten?</strong> Push-Endpoint-URL, Public Key, ggf. Zeitpunkte des Abos; keine Klarnamen/IDs.</li>
+        <li><strong>Zweck/Rechtsgrundlage:</strong> Informationsbereitstellung auf Basis Ihrer Einwilligung (Art. 6 Abs. 1 lit. a DSGVO). Widerruf jederzeit in der App oder in den Browser-/Systemeinstellungen.</li>
+        <li><strong>Speicherdauer:</strong> bis zum Widerruf oder bis das Abo technisch ungültig wird.</li>
+      </ul>
+
+      <h3>6. Hosting / Content-Delivery & Logfiles</h3>
+      <p>Hosting bei <strong>IONOS SE</strong> (Deutschland/EU) mit AVV. Die Statistik-Datenbank verbleibt ausschließlich auf unserem IONOS-Server.</p>
+      <p>Zusätzlich nutzen wir <strong>Netlify, Inc.</strong> (USA) für Auslieferung/Caching (CDN). Übermittlungen in Drittländer sind möglich; Netlify setzt EU-Standardvertragsklauseln ein.</p>
+      <p><strong>Logfiles:</strong> IONOS und Netlify verarbeiten aus Sicherheits- und Betriebsgründen Zugriffsdaten (z. B. IP-Adresse, Zeitpunkt, Ressource, User-Agent) auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO. Speicherdauer nach Anbieter-Vorgabe.</p>
+
+      <h3>7. Zahlung & Aufbewahrung</h3>
+      <p>Bei Zahlung über PayPal erfolgt die Verarbeitung durch PayPal (Europe) S.à r.l. et Cie, S.C.A. als eigenständig Verantwortlichem. Wir erhalten transaktionsbezogene Informationen (z. B. Zahlungsstatus) zur Vertragsabwicklung (Art. 6 Abs. 1 lit. b DSGVO).</p>
+      <p><strong>Rechnungs-/Zahlungsdaten (Aufbewahrung):</strong> Abrechnungs- und steuerrelevante Daten (z. B. Rechnungen, Zahlungsbelege) werden aufgrund gesetzlicher Vorgaben (AO/HGB) bis zu 10 Jahre gespeichert (Art. 6 Abs. 1 lit. c DSGVO).</p>
+
+      <h3>8. Einbindung externer Inhalte (YouTube, optional)</h3>
+      <p>Externe Inhalte (z. B. YouTube im erweiterten Datenschutzmodus) werden <strong>erst nach Ihrer aktiven Auswahl</strong> geladen („Klick zum Laden“). Bis dahin erfolgt keine Datenübermittlung. Nach dem Laden können technische Daten (z. B. IP/Browser-Infos) an Google Ireland Limited übermittelt werden; es werden keine personalisierten Cookies gesetzt.</p>
+
+      <h3>9. Schriftarten (Google Fonts)</h3>
+      <p>Wir verwenden die Schrift „Roboto“ über Google Fonts (Bereitstellung durch Google Ireland Limited). Beim Abruf der Schrift werden technische Daten (u. a. IP-Adresse, Browser-Infos) an Google-Server übermittelt; eine Übermittlung in die USA ist möglich. Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (optimierte Darstellung). <em>Hinweis:</em> Wir prüfen eine lokale Bereitstellung der Schrift, um künftige Übermittlungen zu vermeiden.</p>
+      <!-- Wenn du auf lokale Fonts umstellst, ersetze den Absatz durch:
+      <p>Zur Darstellung verwenden wir lokal gehostete Schriftarten. Es werden dabei keine Verbindungen zu externen Schrift-CDNs aufgebaut.</p>
+      -->
+
+      <h3>10. Cookies / Lokaler Speicher</h3>
+      <p>Wir setzen <strong>keine Tracking-Cookies</strong> ein. Technisch notwendige Speicherungen (z. B. Sitzungsfreigaben, Lizenz-Status) erfolgen lokal im Browser (Session/Local Storage). Für PWA-Funktionen werden Inhalte im Cache gespeichert (siehe „PWA, Service Worker & Offline-Cache“). Lokale Daten können Sie in den Browser-Einstellungen löschen.</p>
+
+      <h3>11. Betroffenenrechte</h3>
+      <ul>
+        <li>Auskunft, Berichtigung, Löschung, Einschränkung (Art. 15–18 DSGVO)</li>
+        <li>Datenübertragbarkeit (Art. 20 DSGVO)</li>
+        <li>Widerspruch (Art. 21 DSGVO)</li>
+        <li>Beschwerde bei einer Aufsichtsbehörde (z. B. Landesbeauftragte für den Datenschutz Niedersachsen)</li>
+      </ul>
+      <p>Zur Ausübung Ihrer Rechte genügt eine E-Mail an <a href="mailto:kontakt@1rettungsmittel.de">kontakt@1rettungsmittel.de</a>.</p>
+
+      <h3>12. Speicherdauern</h3>
+      <ul>
+        <li>Kommunikationsdaten: bis Zweckfortfall oder Widerruf/Widerspruch (gesetzliche Aufbewahrung unberührt).</li>
+        <li>Nutzungsstatistik (anonym/aggregiert): dauerhaft (keine automatische Löschung).</li>
+        <li>Server-/Zugriffslogs bei Hosting/CDN: gemäß Anbieter-Regelungen.</li>
+        <li>Abrechnungs-/Rechnungsdaten: bis zu 10 Jahre (AO/HGB).</li>
+      </ul>
+
+      <p class="muted">Stand: <span id="dse-date"></span> – Es gilt die jeweils auf dieser Seite veröffentlichte Fassung.</p>
+    </section>
+
+    <!-- Impressum -->
+    <section id="panel-imp" class="panel" role="tabpanel" aria-labelledby="tab-imp">
+      <h2>Impressum</h2>
+      <p><strong>Angaben gemäß § 5 TMG:</strong><br>
+         Marc-Andre Hoffmann<br>
+         Im Lütgen Kamp 15<br>
+         31241 Ilsede</p>
+      <p><strong>Kontakt:</strong><br>
+         E-Mail: <a href="mailto:kontakt@1rettungsmittel.de">kontakt@1rettungsmittel.de</a></p>
+      <p class="muted">Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV: Marc-Andre Hoffmann</p>
+    </section>
+
+    <!-- Instagram -->
+    <section id="panel-insta" class="panel" role="tabpanel" aria-labelledby="tab-insta" hidden>
+      <h2>Instagram</h2>
+      <p>Scanne den QR-Code, um unserem Instagram-Profil zu folgen:</p>
+      <img src="fotos/Instagramm QR.png" alt="Instagram QR-Code" style="max-width:220px;display:block;margin:20px auto;">
+      <p style="text-align:center">
+        <a href="https://www.instagram.com/1rettungsmittel" target="_blank" rel="noopener">
+          Direkt zu Instagram
+        </a>
+      </p>
+    </section>
+
+    <!-- Großer Button unten (optional) -->
+    <button class="startBtn" onclick="location.href='index.html'">Zur Startseite</button>
+  </div>
+
+  <script>
+    // Tabs: Aktivierung, Pfeiltasten, Deep-Links (#faq / #datenschutz / #impressum / #instagram)
+    const tabs = Array.from(document.querySelectorAll('.tabBtn'));
+    const panels = Array.from(document.querySelectorAll('.panel'));
+    const container = document.querySelector('.container');
+
+    function mapHashToTabId(hash){
+      switch((hash||'').toLowerCase()){
+        case '#datenschutz': return 'tab-dse';
+        case '#impressum':  return 'tab-imp';
+        case '#instagram':  return 'tab-insta';
+        case '#faq':
+        default:            return 'tab-faq';
+      }
+    }
+    function activateTab(tabId, pushHash=true){
+      tabs.forEach(btn=>{
+        const on = (btn.id === tabId);
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      panels.forEach(p=>{
+        const on = ('panel-' + tabId.split('tab-')[1]) === p.id;
+        p.classList.toggle('active', on);
+        p.hidden = !on;
+      });
+      if(pushHash){
+        const h = tabId==='tab-dse' ? '#datenschutz' :
+                  tabId==='tab-imp' ? '#impressum'  :
+                  tabId==='tab-insta' ? '#instagram' : '#faq';
+        history.replaceState(null, '', h);
+      }
+      if(container){ container.scrollTo({ top: 0, behavior: 'smooth' }); }
+      (document.getElementById(tabId) || tabs[0]).focus();
+    }
+
+    tabs.forEach(btn=>{
+      btn.addEventListener('click', ()=> activateTab(btn.id));
+      btn.addEventListener('keydown', (e)=>{
+        const i = tabs.indexOf(btn);
+        if(e.key==='ArrowRight'){ (tabs[i+1]||tabs[0]).focus(); e.preventDefault(); }
+        if(e.key==='ArrowLeft'){  (tabs[i-1]||tabs[tabs.length-1]).focus(); e.preventDefault(); }
+        if(e.key==='Home'){ tabs[0].focus(); e.preventDefault(); }
+        if(e.key==='End'){ tabs[tabs.length-1].focus(); e.preventDefault(); }
+      });
+    });
+
+    // Initial nach Hash aktivieren
+    activateTab(mapHashToTabId(location.hash), false);
+    window.addEventListener('hashchange', ()=> activateTab(mapHashToTabId(location.hash), false));
+
+    // Datenschutz: Stand-Datum automatisch setzen
+    document.getElementById('dse-date').textContent = new Date().toLocaleDateString('de-DE');
+
+    // Opt-out Buttons für anonyme Nutzungsstatistik
+    (function(){
+      const KEY = 'rm_stats_optout';
+      const off = document.getElementById('optout-off');
+      const on  = document.getElementById('optout-on');
+      function sync(){
+        const isOff = localStorage.getItem(KEY) === '1';
+        off.style.display = isOff ? 'none' : 'inline-block';
+        on.style.display  = isOff ? 'inline-block' : 'none';
+      }
+      off?.addEventListener('click', ()=>{ localStorage.setItem(KEY,'1'); sync(); alert('Anonyme Nutzungsstatistik für dieses Browser-Profil deaktiviert.'); });
+      on?.addEventListener('click',  ()=>{ localStorage.removeItem(KEY);   sync(); alert('Anonyme Nutzungsstatistik wieder aktiviert.'); });
+      sync();
+    })();
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Push senden · 1Rettungsmittel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body{font-family:system-ui,sans-serif;background:#0b0f1a;color:#fff;padding:40px 16px;max-width:860px;margin:0 auto}
+  h1{text-align:center;margin-bottom:22px}
+  form{display:grid;gap:14px}
+  input,textarea,select,button{font-size:16px;padding:10px 14px;border-radius:8px;border:1px solid #555;background:#111827;color:#fff}
+  button{background:#0B5FFF;border:0;cursor:pointer;font-weight:600;transition:.2s}
+  button:hover{background:#2563eb}
+  .result{margin-top:20px;font-size:15px}
+  .err{color:#f87171}.ok{color:#9ee6a9}
+  fieldset{border:1px solid #374151;border-radius:10px;padding:12px;margin-bottom:18px}
+  legend{opacity:.8;font-size:14px;padding:0 6px}
+  .row{display:flex;gap:8px;align-items:center}
+  .row > *{flex:1}
+  .muted{color:#c7cbd4;font-size:13px}
+  .inline{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .badge{font-size:12px;padding:2px 8px;border-radius:999px;background:#1f2937;border:1px solid #374151}
+  .grid{display:grid;gap:16px;margin-top:22px;grid-template-columns:1fr}
+  @media (min-width:980px){.grid{grid-template-columns:1fr 1fr}}
+  .card{border:1px solid #374151;border-radius:12px;padding:12px;background:#0d1422}
+</style>
+</head>
+<body>
+
+<h1>Push-Nachricht senden</h1>
+
+<!-- --- Unlock / Token-Verwaltung --- -->
+<fieldset id="lockBox">
+  <legend>Zugriff</legend>
+
+  <div class="row" style="margin-bottom:8px">
+    <input id="pinInput" type="password" inputmode="numeric" maxlength="6"
+           pattern="\d{6}" autocomplete="one-time-code"
+           placeholder="6-stellige PIN" aria-label="PIN">
+    <button id="unlockBtn" type="button" style="flex:0 0 auto">Entsperren</button>
+  </div>
+
+  <div class="inline" style="margin-bottom:8px">
+    <label class="inline" style="gap:6px">
+      <input id="rememberSession" type="checkbox">
+      PIN merken <span class="badge">bis Browser geschlossen</span>
+    </label>
+    <label class="inline" style="gap:6px">
+      <input id="rememberDevice" type="checkbox">
+      PIN auf diesem Gerät merken <span class="badge">dauerhaft</span>
+    </label>
+  </div>
+
+  <div class="row">
+    <input id="tokenInput" type="password" placeholder="Admin-Token (nur beim ersten Mal nötig)" aria-label="Admin-Token" autocomplete="off">
+    <button id="saveEncBtn" type="button" style="flex:0 0 auto">Token verschlüsselt speichern</button>
+  </div>
+
+  <div class="inline" style="justify-content:space-between">
+    <span id="lockStatus" class="muted">Status: warte auf PIN/Token …</span>
+    <div class="inline">
+      <button id="clearBtn" type="button" style="background:#374151">Token löschen</button>
+    </div>
+  </div>
+</fieldset>
+
+<!-- Senden -->
+<form id="pushForm" style="display:none">
+  <input name="title" placeholder="Titel der Nachricht" required>
+  <textarea name="body" rows="3" placeholder="Text der Nachricht" required></textarea>
+  <input name="url" placeholder="Ziel-URL (z. B. /instruktor.html)">
+  <select name="segment">
+    <option value="">Alle Empfänger</option>
+    <option value="2h">Nur 2-h-Lizenzen</option>
+    <option value="12h">Nur 12-h-Lizenzen</option>
+    <option value="365d">Nur 365-Tage-Lizenzen</option>
+  </select>
+  <button type="submit">Nachricht senden</button>
+</form>
+
+<div class="result" id="result"></div>
+
+<!-- Verwaltung & Verlauf -->
+<div class="grid">
+  <section class="card" id="manageWrap">
+    <h2 style="margin:0 0 10px 0">Zentralen Verlauf steuern</h2>
+    <div class="inline" style="justify-content:flex-start; gap:8px; margin-bottom:8px">
+      <button id="btnClear" type="button" style="background:#374151">Verlauf zentral löschen</button>
+      <button id="btnSeed" type="button" style="background:#374151">5 Standard-Nachrichten setzen</button>
+      <button id="btnRefreshServer" type="button" style="background:#374151">Server-Verlauf neu laden</button>
+      <button id="btnDedupe" type="button" style="background:#374151">Doppelte Subscriptions bereinigen</button>
+    </div>
+    <p class="muted" id="manageInfo">Wirkt auf alle Geräte/Neuinstallationen (lesen die letzten 5 aus dem Server-Store).</p>
+  </section>
+
+  <section class="card" id="sentWrap">
+    <h2 style="margin:0 0 10px 0">Zentral gespeicherte Nachrichten</h2>
+    <div id="sentList" class="muted">Bitte entsperren …</div>
+  </section>
+</div>
+
+<script>
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));}
+function setStatus(t){lockStatus.textContent=t;}
+function showForm(){pushForm.style.display="grid";}
+function hideForm(){pushForm.style.display="none";}
+
+const enc=new TextEncoder();const dec=new TextDecoder();
+const LS_PAYLOAD='admin_token.enc.v1',LS_META='admin_token.meta.v1',LS_PIN_PERSIST='admin_pin.persist.v1',SS_PIN_SESSION='admin_pin.session.v1';
+const pinInput=document.getElementById('pinInput'),tokenInput=document.getElementById('tokenInput'),unlockBtn=document.getElementById('unlockBtn'),
+saveEncBtn=document.getElementById('saveEncBtn'),clearBtn=document.getElementById('clearBtn'),
+rememberSession=document.getElementById('rememberSession'),rememberDevice=document.getElementById('rememberDevice'),
+lockStatus=document.getElementById('lockStatus'),pushForm=document.getElementById('pushForm'),resultEl=document.getElementById('result'),
+sentList=document.getElementById('sentList'),manageInfo=document.getElementById('manageInfo');
+let ADMIN_TOKEN=null;
+
+const b64=b=>btoa(String.fromCharCode(...new Uint8Array(b)));const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)).buffer;
+async function deriveKey(pin,salt,it=100000){const m=await crypto.subtle.importKey('raw',enc.encode(pin),'PBKDF2',false,['deriveKey']);
+return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:it,hash:'SHA-256'},m,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);}
+async function encryptToken(t,p){const iv=crypto.getRandomValues(new Uint8Array(12)),salt=crypto.getRandomValues(new Uint8Array(16));
+const k=await deriveKey(p,salt);const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},k,enc.encode(t));return{iv:b64(iv),salt:b64(salt),ct:b64(ct),ts:Date.now(),iter:100000,algo:'AES-GCM'};}
+async function decryptToken(payload,pin){const iv=new Uint8Array(unb64(payload.iv)),salt=new Uint8Array(unb64(payload.salt));
+const k=await deriveKey(pin,salt,payload.iter??100000);const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv},k,unb64(payload.ct));return dec.decode(pt);}
+
+(async function init(){
+  try{
+    if(!window.crypto?.subtle){setStatus('WebCrypto nicht verfügbar – HTTPS nutzen');return;}
+    const raw=localStorage.getItem(LS_PAYLOAD);if(!raw){setStatus('Kein gespeicherter Token.');return;}
+    const pin=sessionStorage.getItem(SS_PIN_SESSION)||localStorage.getItem(LS_PIN_PERSIST);
+    if(pin){try{ADMIN_TOKEN=await decryptToken(JSON.parse(raw),pin);setStatus('Entsperrt ✔');showForm();loadServerMessages();}catch(e){setStatus(e.message);}}
+    else{setStatus('Token gefunden. Bitte PIN eingeben.');pinInput.focus();}
+  }catch(e){setStatus('Init-Fehler: '+e.message);}
+})();
+
+saveEncBtn.addEventListener('click',async()=>{
+  try{
+    const p=pinInput.value.trim(),t=tokenInput.value.trim();
+    if(!/^\d{6}$/.test(p)){alert('6-stellige PIN nötig');return;}
+    if(!t){alert('Admin-Token fehlt');return;}
+    const payload=await encryptToken(t,p);
+    localStorage.setItem(LS_PAYLOAD,JSON.stringify(payload));localStorage.setItem(LS_META,JSON.stringify({iter:payload.iter,algo:payload.algo}));
+    sessionStorage.removeItem(SS_PIN_SESSION);localStorage.removeItem(LS_PIN_PERSIST);
+    if(rememberSession.checked)sessionStorage.setItem(SS_PIN_SESSION,p);
+    if(rememberDevice.checked)localStorage.setItem(LS_PIN_PERSIST,p);
+    ADMIN_TOKEN=t;tokenInput.value='';setStatus('Token gespeichert & entsperrt ✔');showForm();loadServerMessages();
+  }catch(e){alert(e.message);setStatus(e.message);}
+});
+unlockBtn.addEventListener('click',async()=>{
+  try{
+    const p=pinInput.value.trim();if(!/^\d{6}$/.test(p)){alert('6-stellige PIN nötig');return;}
+    const raw=localStorage.getItem(LS_PAYLOAD);if(!raw){alert('Kein Token gespeichert');return;}
+    ADMIN_TOKEN=await decryptToken(JSON.parse(raw),p);
+    sessionStorage.removeItem(SS_PIN_SESSION);localStorage.removeItem(LS_PIN_PERSIST);
+    if(rememberSession.checked)sessionStorage.setItem(SS_PIN_SESSION,p);
+    if(rememberDevice.checked)localStorage.setItem(LS_PIN_PERSIST,p);
+    setStatus('Entsperrt ✔');showForm();loadServerMessages();
+  }catch(e){setStatus(e.message);hideForm();}
+});
+clearBtn.addEventListener('click',()=>{
+  [LS_PAYLOAD,LS_META,LS_PIN_PERSIST].forEach(k=>localStorage.removeItem(k));
+  sessionStorage.removeItem(SS_PIN_SESSION);ADMIN_TOKEN=null;hideForm();
+  tokenInput.value='';pinInput.value='';setStatus('Gelöscht. Bitte neu speichern.');sentList.innerHTML='<p class="muted">Bitte entsperren …</p>';
+});
+
+// ====== Server ======
+async function adminCall(m,b){
+  const r=await fetch('/.netlify/functions/push-messages-admin?nc='+Date.now(),{method:m,headers:{'Authorization':'Bearer '+ADMIN_TOKEN,'Content-Type':'application/json','Cache-Control':'no-store'},cache:'no-store',body:b?JSON.stringify(b):undefined});
+  const t=await r.text();let j=null;try{j=JSON.parse(t);}catch{}return{ok:r.ok,status:r.status,text:t,json:j};
+}
+async function loadServerMessages(){
+  if(!ADMIN_TOKEN){sentList.innerHTML='<p class="muted">Bitte entsperren.</p>';return;}
+  sentList.innerHTML='<p class="muted">Lade …</p>';
+  const r=await adminCall('GET');
+  if(!r.ok){sentList.innerHTML='<p class="err">'+escapeHtml(r.text)+'</p>';return;}
+  const it=r.json?.items||[];if(!it.length){sentList.innerHTML='<p class="muted">Keine Einträge.</p>';return;}
+  sentList.innerHTML=it.slice(0,5).map(x=>`<div style="border:1px solid #374151;border-radius:10px;padding:12px;margin-bottom:10px">
+  <div style="font-weight:600">${escapeHtml(x.title||'(ohne Titel)')}</div>
+  <div style="opacity:.9">${escapeHtml(x.body||'')}</div>${x.url?`<div class="muted" style="margin-top:4px">URL: ${escapeHtml(x.url)}</div>`:''}
+  <div style="font-size:12px;opacity:.75;margin-top:8px">${x.ts?new Date(x.ts).toLocaleString('de-DE'):''}</div></div>`).join('');
+}
+
+document.getElementById('pushForm').addEventListener('submit',async e=>{
+  e.preventDefault();resultEl.textContent='Sende …';
+  const d=Object.fromEntries(new FormData(e.target).entries());
+  const r=await fetch('/.netlify/functions/broadcast',{method:'POST',headers:{'Authorization':'Bearer '+ADMIN_TOKEN,'Content-Type':'application/json'},body:JSON.stringify(d)});
+  const t=await r.text();resultEl.className='result '+(r.ok?'ok':'err');resultEl.textContent='Ergebnis: '+t;if(r.ok)loadServerMessages();
+});
+document.getElementById('btnClear').addEventListener('click',async()=>{
+  if(!confirm('Verlauf löschen?'))return;const r=await adminCall('DELETE');
+  manageInfo.textContent=r.ok?'Verlauf gelöscht.':'Fehler: '+r.text;loadServerMessages();
+});
+document.getElementById('btnSeed').addEventListener('click',async()=>{
+  const s={messages:[
+    {title:'Willkommen bei 1Rettungsmittel',body:'Tippe für die Kurzanleitung.',url:'/faq.html'},
+    {title:'Instruktor-Menü',body:'Neue Szenarien verfügbar.',url:'/instruktor.html'},
+    {title:'Update verfügbar',body:'Einmal neu laden.',url:'/'},
+    {title:'Offline nutzen',body:'Patientenseiten online öffnen.',url:'/patienten.html'},
+    {title:'Feedback',body:'Sag uns deine Meinung!',url:'/feedback.html'}]};
+  const r=await adminCall('POST',s);manageInfo.textContent=r.ok?'Seed gesetzt.':'Fehler: '+r.text;loadServerMessages();
+});
+document.getElementById('btnRefreshServer').addEventListener('click',()=>loadServerMessages());
+document.getElementById('btnDedupe').addEventListener('click',async()=>{
+  if(!confirm('Doppelte Subscriptions bereinigen?'))return;
+  const r=await fetch('/.netlify/functions/subscriptions-dedupe?nc='+Date.now(),{method:'POST',headers:{'Authorization':'Bearer '+ADMIN_TOKEN}});
+  const t=await r.text();let j=null;try{j=JSON.parse(t);}catch{}
+  if(!r.ok||!j?.ok){alert('Fehler: '+t);return;}
+  manageInfo.textContent=`Bereinigt: ${j.removed} entfernt · ${j.kept} gültig`;alert(`Fertig.\nEntfernt: ${j.removed}\nBehalten: ${j.kept}`);
+});
+</script>
+</body>
+</html>
