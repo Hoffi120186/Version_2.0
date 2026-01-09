@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>QR-Codes · 1Rettungsmittel</title>
+  <meta name="description" content="QR-Codes – sauber gruppiert, zugeklappt, schnell nutzbar." />
+  <link rel="icon" href="/logoneu.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+  <style>
+    :root{
+      --bg:#0b0f1a;
+      --ink:#e5e7eb;
+      --muted:#c7cfdd;
+      --line: rgba(255,255,255,.16);
+      --shadow: 0 12px 30px rgba(0,0,0,.30);
+      --danger:#e53935;
+      --radius:16px;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--ink);
+      background: var(--bg) url("fotos/Patientenkarte.jpg") center/cover no-repeat fixed;
+      padding: calc(env(safe-area-inset-top) + 10px) 12px calc(env(safe-area-inset-bottom) + 14px);
+    }
+    body::before{
+      content:"";
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.58);
+      z-index:-1;
+    }
+
+    .wrap{ max-width: 1050px; margin: 0 auto; }
+
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .title{
+      flex: 1;
+      text-align:center;
+      font-weight: 950;
+      letter-spacing: .2px;
+      font-size: clamp(18px, 4.8vw, 28px);
+    }
+    .actions{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .btnlink{
+      text-decoration:none;
+      color:#fff;
+      font-weight:900;
+      padding:10px 14px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.10);
+      box-shadow: 0 10px 22px rgba(0,0,0,.25);
+      white-space: nowrap;
+    }
+    .btnlink.back{ background: var(--danger); border-color: rgba(255,255,255,.18); }
+
+    /* Accordion */
+    details{
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255,255,255,.08);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      margin-bottom: 12px;
+    }
+    summary{
+      list-style: none;
+      cursor: pointer;
+      padding: 14px 14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      background: rgba(0,0,0,.20);
+      font-weight: 950;
+      letter-spacing:.2px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    summary::-webkit-details-marker{ display:none; }
+
+    .sum-left{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .badge{
+      font-size: 12px;
+      font-weight: 950;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.08);
+      color: rgba(229,231,235,.95);
+    }
+    .count{
+      color: var(--muted);
+      font-weight: 900;
+      font-size: 13px;
+    }
+    .chev{ opacity:.85; font-weight: 950; }
+
+    .panel{
+      padding: 12px;
+      border-top: 1px solid rgba(255,255,255,.12);
+    }
+
+    /* Clean QR Grid */
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 12px;
+    }
+    @media (max-width: 1100px){ .grid{ grid-template-columns: repeat(5, 1fr); } }
+    @media (max-width: 900px){  .grid{ grid-template-columns: repeat(4, 1fr); } }
+    @media (max-width: 700px){  .grid{ grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 520px){  .grid{ grid-template-columns: repeat(2, 1fr); } }
+
+    .card{
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      overflow:hidden;
+      box-shadow: 0 10px 22px rgba(0,0,0,.18);
+      transition: transform .08s ease, border-color .08s ease;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .card:active{ transform: scale(.99); }
+    .card:hover{ border-color: rgba(255,255,255,.22); }
+
+    .label{
+      padding: 10px 10px 8px;
+      font-weight: 950;
+      font-size: 13px;
+      letter-spacing: .15px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+    }
+    .hint{
+      font-size: 11px;
+      font-weight: 900;
+      color: rgba(199,207,221,.85);
+    }
+
+    .qr{
+      background:#fff;
+      padding: 10px;
+    }
+    .qr img{
+      width:100%;
+      height:auto;
+      display:block;
+      border-radius: 12px;
+      pointer-events: none; /* Klick soll auf Karte gehen */
+    }
+
+    /* ===== QR OVERLAY (mit Zurück) ===== */
+    .qrOverlay[hidden]{ display:none; }
+    .qrOverlay{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.90);
+      z-index: 9999;
+      display:flex;
+      flex-direction: column;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .qrHeader{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding: 12px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.35);
+      backdrop-filter: blur(6px);
+    }
+
+    .qrBack{
+      appearance:none;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.12);
+      color:#fff;
+      font-weight:950;
+      padding:10px 14px;
+      border-radius:12px;
+      cursor:pointer;
+      white-space: nowrap;
+    }
+
+    .qrTitle{
+      font-weight:950;
+      font-size:15px;
+      opacity:.95;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .qrContent{
+      flex:1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 16px;
+    }
+
+    .qrContent img{
+      width: min(560px, 92vw);
+      height:auto;
+      background:#fff;
+      padding:14px;
+      border-radius:18px;
+      box-shadow: 0 18px 50px rgba(0,0,0,.45);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <header>
+      <div class="actions">
+        <a class="btnlink back" href="Instruktor.html">Zurück</a>
+      </div>
+      <div class="title">QR-Codes</div>
+      <div style="width:1px"></div>
+    </header>
+
+    <!-- Standard: ALLES ZUGEklappt -->
+    <details id="secP1">
+      <summary>
+        <div class="sum-left">
+          <span>Patienten 1–20</span>
+          <span class="badge">PAT</span>
+          <span class="count" id="countP1"></span>
+        </div>
+        <div class="chev">▼</div>
+      </summary>
+      <div class="panel">
+        <div class="grid" id="gridP1"></div>
+      </div>
+    </details>
+
+    <details id="secP2">
+      <summary>
+        <div class="sum-left">
+          <span>Patienten 21–40</span>
+          <span class="badge">PAT</span>
+          <span class="count" id="countP2"></span>
+        </div>
+        <div class="chev">▼</div>
+      </summary>
+      <div class="panel">
+        <div class="grid" id="gridP2"></div>
+      </div>
+    </details>
+
+    <details id="secSc">
+      <summary>
+        <div class="sum-left">
+          <span>Szenarien</span>
+          <span class="badge">SZ</span>
+          <span class="count" id="countSc"></span>
+        </div>
+        <div class="chev">▼</div>
+      </summary>
+      <div class="panel">
+        <div class="grid" id="gridSc"></div>
+      </div>
+    </details>
+
+  </div>
+
+  <!-- QR OVERLAY -->
+  <div id="qrOverlay" class="qrOverlay" hidden aria-hidden="true">
+    <div class="qrHeader">
+      <button class="qrBack" id="qrClose" type="button">← Zurück</button>
+      <div class="qrTitle" id="qrTitle"></div>
+    </div>
+    <div class="qrContent">
+      <img id="qrImage" src="" alt="QR Code" />
+    </div>
+  </div>
+
+<script>
+  // =========================
+  // CLEAN & SKALIERBAR
+  // - Kein Suchen / keine Tools
+  // - Keine Dateinamen / keine Direktlinks
+  // - QR groß im Overlay mit "Zurück"
+  //
+  // ERWEITERN:
+  // - Patientenbereiche: PATIENT_GROUPS anpassen/erweitern
+  // - Szenarien: SCENARIOS Array erweitern
+  // =========================
+
+  const QR_DIR = "/qr/";
+  const patientQrFile = (n) => `Patient ${n}.png`;
+  const fileUrl = (file) => QR_DIR + file;
+
+  // Patienten-Gruppen (später easy erweitern z.B. 41–60)
+  const PATIENT_GROUPS = [
+    { id: "P1", title: "Patient", from: 1,  to: 20, mount: "gridP1", count: "countP1" },
+    { id: "P2", title: "Patient", from: 21, to: 40, mount: "gridP2", count: "countP2" },
+  ];
+
+  // Szenarien (einfach Liste erweitern)
+  const SCENARIOS = [
+    { name: "Szenario 1", file: "Szenario1.png" },
+    { name: "Szenario 2", file: "Szenario2.png" },
+    { name: "Szenario 3", file: "Szenario3.png" },
+    { name: "Szenario 4", file: "Szenario4.png" },
+    { name: "Szenario 5", file: "Szenario5.png" },
+    { name: "Szenario 6", file: "Szenario6.png" },
+    { name: "Szenario 7", file: "Szenario7.png" },
+    { name: "Szenario 8", file: "Szenario8.png" },
+  ];
+
+  // ===== Overlay refs =====
+  const overlay = document.getElementById("qrOverlay");
+  const qrImg   = document.getElementById("qrImage");
+  const qrTitle = document.getElementById("qrTitle");
+  const qrClose = document.getElementById("qrClose");
+
+  function openQR(label, src){
+    qrTitle.textContent = label;
+    qrImg.src = src;
+    overlay.hidden = false;
+    overlay.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+
+    // History: Back-Button (Android/Browser) schließt Overlay
+    // Nur pushen, wenn Overlay nicht schon offen ist
+    if (!history.state || history.state.qrOpen !== true) {
+      history.pushState({ qrOpen: true }, "");
+    }
+  }
+
+  function closeQR(){
+    overlay.hidden = true;
+    overlay.setAttribute("aria-hidden", "true");
+    qrImg.src = "";
+    document.body.style.overflow = "";
+  }
+
+  // Back/Close
+  qrClose.addEventListener("click", () => {
+    // Wenn wir per pushState geöffnet haben -> back(), damit state sauber ist
+    if (history.state && history.state.qrOpen === true) history.back();
+    else closeQR();
+  });
+
+  // Klick auf Hintergrund schließt auch
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) {
+      if (history.state && history.state.qrOpen === true) history.back();
+      else closeQR();
+    }
+  });
+
+  // ESC schließt (Desktop)
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !overlay.hidden) {
+      if (history.state && history.state.qrOpen === true) history.back();
+      else closeQR();
+    }
+  });
+
+  // Browser/Android Back schließt Overlay
+  window.addEventListener("popstate", () => {
+    if (!overlay.hidden) closeQR();
+  });
+
+  function cardHTML(label, href){
+    // super clean: Label + QR, kein Dateiname
+    return `
+      <div class="card" role="button" tabindex="0" data-qr="${href}" data-label="${label}">
+        <div class="label">
+          <span>${label}</span>
+          <span class="hint">Tippen</span>
+        </div>
+        <div class="qr">
+          <img loading="lazy" src="${href}" alt="QR ${label}">
+        </div>
+      </div>
+    `;
+  }
+
+  function renderPatients(){
+    PATIENT_GROUPS.forEach(g => {
+      const mount = document.getElementById(g.mount);
+      const count = document.getElementById(g.count);
+      if(!mount || !count) return;
+
+      let html = "";
+      let n = 0;
+
+      for(let i=g.from; i<=g.to; i++){
+        n++;
+        const label = `${g.title} ${i}`;
+        const href = fileUrl(patientQrFile(i));
+        html += cardHTML(label, href);
+      }
+
+      mount.innerHTML = html;
+      count.textContent = `(${n})`;
+    });
+  }
+
+  function renderScenarios(){
+    const mount = document.getElementById("gridSc");
+    const count = document.getElementById("countSc");
+    if(!mount || !count) return;
+
+    let html = "";
+    SCENARIOS.forEach(sc => {
+      html += cardHTML(sc.name, fileUrl(sc.file));
+    });
+
+    mount.innerHTML = html;
+    count.textContent = `(${SCENARIOS.length})`;
+  }
+
+  // Klick/Enter auf Karten => Overlay
+  document.addEventListener("click", (e) => {
+    const card = e.target.closest(".card");
+    if (!card) return;
+    const src = card.getAttribute("data-qr");
+    const label = card.getAttribute("data-label");
+    openQR(label, src);
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    const card = document.activeElement?.closest?.(".card");
+    if (!card) return;
+    const src = card.getAttribute("data-qr");
+    const label = card.getAttribute("data-label");
+    openQR(label, src);
+  });
+
+  renderPatients();
+  renderScenarios();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,403 @@
+[
+  {
+    "id": 1,
+    "kategorie": "rot",
+    "darstellung": "sitzend",
+    "verletzung": "Schnittwunden am Unterarm",
+    "af": 18,
+    "puls": 95,
+    "age": 22,
+    "gender": "männlich"
+  },
+  {
+    "id": 2,
+    "kategorie": "rot",
+    "darstellung": "sitzend",
+    "verletzung": "spritzende Blutung unterschenkel rechts",
+    "af": 28,
+    "puls": 130,
+    "age": 19,
+    "gender": "weiblich"
+  },
+  {
+    "id": 3,
+    "kategorie": "schwarz",
+    "darstellung": "liegend",
+    "verletzung": "keine Vitalfunktionen Stichwunden am Thorax",
+    "af": 0,
+    "puls": 0,
+    "age": 29,
+    "gender": "männlich"
+  },
+  {
+    "id": 4,
+    "kategorie": "gelb",
+    "darstellung": "liegend",
+    "verletzung": "Schmerzen am rlinken Handgelenk",
+    "af": 20,
+    "puls": 100,
+    "age": 25,
+    "gender": "weiblich"
+  },
+  {
+    "id": 5,
+    "kategorie": "rot",
+    "darstellung": "liegend",
+    "verletzung": "Stichwunde Bauch erstversorgt",
+    "af": 30,
+    "puls": 120,
+    "age": 32,
+    "gender": "männlich"
+  },
+  {
+    "id": 6,
+    "kategorie": "gruen",
+    "darstellung": "sitzend",
+    "verletzung": "keine sichtbaren Verletzungen",
+    "af": 18,
+    "puls": 88,
+    "age": 30,
+    "gender": "männlich"
+  },
+    {
+    "id":7 ,
+    "kategorie": "rot",
+    "darstellung": "liegend",
+    "verletzung": "SHT Bewusstlos",
+    "af": 9,
+    "puls": 48,
+      "age": 41,
+    "gender": "männlich"
+  },
+  {
+    "id": 8,
+    "kategorie": "rot",
+    "darstellung": "liegend",
+    "verletzung": "Starke Blutung Unterschenkel erstversorgt",
+    "af": 25,
+    "puls": 130,
+    "age": 29,
+    "gender": "männlich"
+  },
+
+  {
+    "id": 9,
+    "kategorie": "gelb",
+    "darstellung": "sitzend",
+    "verletzung": "Sprunggelenk links geschlossen",
+    "af": 20,
+    "puls": 90,
+    "age": 18,
+    "gender": "weiblich"
+  },
+  {
+    "id": 10,
+    "kategorie": "gelb",
+    "darstellung": "sitzend",
+    "verletzung": "Kopfplatzwunde erstversorgt",
+    "af": 20,
+    "puls": 100,
+    "age": 21,
+    "gender": "männlich"
+  },
+  {
+    "id": 11,
+    "kategorie": "rot",
+    "darstellung": "liegend",
+    "verletzung": "SHT Atemwege verlegt",
+    "af": 8,
+    "puls": 40,
+    "age": 36,
+    "gender": "männlich"
+  },
+  {
+    "id": 12,
+    "kategorie": "gelb",
+    "darstellung": "liegend",
+    "verletzung": "Schnittwunden am Rücken",
+    "af": 24,
+    "puls": 100,
+    "age": 29,
+    "gender": "männlich"
+  },
+  {
+    "id": 13,
+    "kategorie": "gruen",
+    "darstellung": "stehend",
+    "verletzung": "Hämatom im Gesicht",
+    "af": 20,
+    "puls": 90,
+    "age": 20,
+    "gender": "männlich"
+  },
+  {
+    "id": 14,
+    "kategorie": "gelb",
+    "darstellung": "stehend",
+    "verletzung": "geschlossene Fehlstellung Unterarm",
+    "af": 20,
+    "puls": 100,
+    "age": 55,
+    "gender": "männlich"
+  },
+  {
+    "id": 15,
+    "kategorie": "rot",
+    "darstellung": "liegend",
+    "verletzung": "Bewusstlos stehende Blutung",
+    "af": 15,
+    "puls": 95,
+    "age": 30,
+    "gender": "männlich"
+  },
+   {
+    "id": 16,
+    "kategorie": "gelb",
+    "darstellung": "sitzend",
+    "verletzung": "Hämatom im Gesicht und Nackenschmerzen",
+    "af": 16,
+    "puls": 95,
+    "age": 25,
+    "gender": "weiblich"
+  },
+   {
+    "id": 17,
+    "kategorie": "schwarz",
+    "darstellung": "liegend",
+    "verletzung": "Bewusstlos Tod",
+    "af": 0,
+    "puls": 0,
+    "age": 27,
+    "gender": "weiblich"
+  },
+   {
+    "id": 18,
+    "kategorie": "gruen",
+    "darstellung": "sitzend",
+    "verletzung": "Keine ist Betroffene",
+    "af": 19,
+    "puls": 95,
+    "age": 31,
+    "gender": "weiblich"
+  },
+   {
+    "id": 19,
+    "kategorie": "gelb",
+    "darstellung": "sitzend",
+    "verletzung": "Schnittverletzung am Oberkörper",
+    "af": 22,
+    "puls": 100,
+    "age": 28,
+    "gender": "männlich"
+  },
+   {
+    "id": 20,
+    "kategorie": "gelb",
+    "darstellung": "liegend",
+    "verletzung": "Bauchschmerzen nach Tritten",
+    "af": 25,
+    "puls": 110,
+    "age": 32,
+    "gender": "weiblich"
+  },
+   {
+    "id": 21,
+    "kategorie": "gelb",
+    "darstellung": "sitzend",
+    "verletzung": "Kopfplatzwunde Blutung steht",
+    "af": 21,
+    "puls": 95,
+    "age": 55,
+    "gender": "männlich"
+  },
+   {
+    "id": 22,
+    "kategorie": "rot",
+    "darstellung": "liegend",
+    "verletzung": "Bewusstlos",
+    "af": 10,
+    "puls": 55,
+    "age": 62,
+    "gender": "männlich"
+  },
+   {
+    "id": 23,
+    "kategorie": "gruen",
+    "darstellung": "stehend",
+    "verletzung": "keine sichtbaren Verletzungen",
+    "af": 17,
+    "puls": 98,
+    "age": 28,
+    "gender": "weiblich"
+  },
+   {
+    "id": 24,
+    "kategorie": "gelb",
+    "darstellung": "sitzend",
+    "verletzung": "Bauchschmerzen nach Tritten",
+    "af": 20,
+    "puls": 90,
+    "age": 40,
+    "gender": "weiblich"
+  },
+   {
+    "id": 25,
+    "kategorie": "rot",
+    "darstellung": "sitzend",
+    "verletzung": "Schnittverletzung am Oberschenkel",
+    "af": 27,
+    "puls": 121,
+    "age": 62,
+    "gender": "weiblich"
+  },
+   {
+    "id": 26,
+    "kategorie": "schwarz",
+    "darstellung": "liegend",
+    "verletzung": "Bewusstlos Tod",
+    "af": 0,
+    "puls": 0,
+    "age": 33,
+    "gender": "weiblich"
+  },
+   {
+    "id": 27,
+    "kategorie": "gruen",
+    "darstellung": "stehend",
+    "verletzung": "Keine ist Betroffene",
+    "af": 19,
+    "puls": 95,
+    "age": 40,
+    "gender": "weiblich"
+  },
+   {
+    "id": 28,
+    "kategorie": "gruen",
+    "darstellung": "sitzend",
+    "verletzung": "Prellung Unterarm",
+    "af": 21,
+    "puls": 100,
+    "age": 53,
+    "gender": "weiblich"
+  },
+   {
+    "id": 29,
+    "kategorie": "rot",
+    "darstellung": "liegend",
+    "verletzung": "SHT Bewusstlos",
+    "af": 7,
+    "puls": 38,
+    "age": 55,
+    "gender": "männlich"
+  },
+   {
+    "id": 30,
+    "kategorie": "gelb",
+    "darstellung": "sitzend",
+    "verletzung": "Fehlstellung Unterarm",
+    "af": 27,
+    "puls": 100,
+    "age": 61,
+    "gender": "männlich"
+  },
+   {
+    "id": 31,
+    "kategorie": "rot",
+    "darstellung": "sitzend",
+    "verletzung": "Schnittverletzung am Schulterbereich",
+    "af": 27,
+    "puls": 130,
+    "age": 59,
+    "gender": "weiblich"
+  },
+   {
+    "id": 32,
+    "kategorie": "gruen",
+    "darstellung": "stehend",
+    "verletzung": "Keine ist Betroffener",
+    "af": 21,
+    "puls": 89,
+    "age": 55,
+    "gender": "männlich"
+  },
+   {
+    "id": 33,
+    "kategorie": "gelb",
+    "darstellung": "sitzend",
+    "verletzung": "Schnittverletzung am Unterarm",
+    "af": 25,
+    "puls": 115,
+    "age": 61,
+    "gender": "weiblich"
+  },
+   {
+    "id": 34,
+    "kategorie": "gelb",
+    "darstellung": "sitzend",
+    "verletzung": "Kopfplatzwunde Blutung steht",
+    "af": 24,
+    "puls": 90,
+    "age": 58,
+    "gender": "weiblich"
+  },
+   {
+    "id": 35,
+    "kategorie": "gruen",
+    "darstellung": "sitzend",
+    "verletzung": "Schmerzen im Knie DMS OK",
+    "af": 20,
+    "puls": 90,
+    "age": 32,
+    "gender": "weiblich"
+  },
+   {
+    "id": 36,
+    "kategorie": "schwarz",
+    "darstellung": "liegend",
+    "verletzung": "Bewusstlos",
+    "af": 0,
+    "puls": 0,
+    "age": 55,
+    "gender": "männlich"
+  },
+   {
+    "id": 37,
+    "kategorie": "gelb",
+    "darstellung": "sitzend",
+    "verletzung": "Gesichtsfraktur",
+    "af": 25,
+    "puls": 110,
+    "age": 55,
+    "gender": "männlich"
+  },
+   {
+    "id": 38,
+    "kategorie": "rot",
+    "darstellung": "liegend",
+    "verletzung": "SHT Bewusstlos",
+    "af": 12,
+    "puls": 95,
+    "age": 52,
+    "gender": "weiblich"
+  },
+   {
+    "id": 39,
+    "kategorie": "gelb",
+    "darstellung": "sitzend",
+    "verletzung": "Schnittverletzung am Unterarm",
+    "af": 18,
+    "puls": 95,
+    "age": 32,
+    "gender": "weiblich"
+  },
+   {
+    "id": 40,
+    "kategorie": "gruen",
+    "darstellung": "sitzend",
+    "verletzung": "keine sichtbaren Verletzungen",
+    "af": 25,
+    "puls": 100,
+    "age": 76,
+    "gender": "männlich"
+  }
+]

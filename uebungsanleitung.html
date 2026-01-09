@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+     <!-- Hier kommt dein fixer Viewport rein -->
+    <meta name="viewport" content="width=1024, user-scalable=no">
+    <!-- Optional, aber gut für PWA auf Smartphones -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>1 Rettungsmittel</title>
+    <link rel="manifest" href="/manifest.json">
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        header {
+            background-color: #90cff3;
+            color: white;
+            text-align: center;
+            padding: 15px 0;
+            width: 100%;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        main {
+            padding: 20px;
+            max-width: 800px;
+            margin: 80px auto 20px auto;
+            background: white;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        h1, h2, h3 {
+            color: #333;
+        }
+
+        p {
+            font-size: 1.1em;
+            line-height: 1.6;
+            color: #444;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 20px auto;
+            border-radius: 5px;
+            box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .step {
+            background-color: #e3f2fd;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+        }
+
+        .step h3 {
+            color: #005a8d;
+        }
+
+        /* Button Styling */
+        .btn1 {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            padding: 12px 20px;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 5px;
+            background-color: red;
+            color: white;
+            font-size: 1em;
+            font-weight: bold;
+            z-index: 1100;
+        }
+
+        .btn1 span {
+            display: block;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+
+        .btn1:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3),
+                        inset 0 4px 6px rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <!-- Fixierter Button -->
+    <a href="Instruktor.html" class="btn1">
+        <span>Zurück</span>
+    </a>
+
+    <header>
+        <h1>Installation der App auf dem Tablet</h1>
+    </header>
+
+    <main>
+        <!-- Deine Inhalte bleiben gleich -->
+        <section>
+            <h2>Allgemeines</h2>
+            <p>Dieses Programm soll dir helfen, dich und alle Teilnehmer/in gezielt in Abläufen und Strukturen als 1 Rettungsmittel bei Großschadenslagen zu trainieren.</p>
+            <p>Ihr könnt mit dem Programm gezielt das Sichten mit verschiedenen Schwerpunkten trainieren.</p>
+            <p>Aber gerade die erste Struktur und die ersten Abläufe bei mehreren Verletzten kann man hier schnell und einfach beüben.</p>
+            <p>Da gerade das erste Rettungsmittel viel Stress hat, sollten die ersten Abläufe gefestigt werden.</p>
+            <p>Natürlich sind im weiteren Verlauf auch andere Maßnahmen wichtig. Nur sollten dann auch andere Rettungsmittel und Führungskräfte an der Einsatzstelle verfügbar sein.</p>
+        </section>
+
+        <section>
+            <h2>Wie installiere ich die App?</h2>
+            <div class="step">
+                <h3>PWA (Progressive Web App) auf dem Homescreen installieren:</h3>
+                <p>1. Den euch zur Verfügung gestellten QR-Code scannen.</p>
+                <p>2. Nun öffnet sich in eurem Browser die PWA und ihr solltet folgendes Bild sehen.</p>
+                <img src="step1.PNG" alt="Ansicht WEB">
+                <p>Es ist normal und gewollt, dass man noch nicht sieht, um welches Einsatzszenario es sich handelt.</p>
+                <p>3. Oben auf das Teilensymbol (iOS) klicken.</p>
+                <p>Nach unten scrollen, bis ihr "Zum Home-Bildschirm" findet und auswählen.</p>
+                <img src="step2.PNG" alt="Ansicht WEB">
+                <p>4. Jetzt kann ein freier Text angegeben werden. Dieser erscheint anschließend unter der PWA auf dem Home-Bildschirm.</p>
+                <p>Man könnte zum Beispiel "Übung 1" angeben. Somit weiß man dann als Instruktor, um welches Einsatzszenario es sich handelt.</p>
+                <p>In diesem Fall wählte ich "1 Rettungsmittel" aus.</p>
+                <img src="step3.PNG" alt="Ansicht WEB">
+                <p>5. Jetzt seht ihr die Anwendung als App auf eurem Home-Bildschirm.</p>
+                <p>Einmal auf die App klicken, und es öffnet sich die PWA ohne störende Browser-Tableisten.</p>
+                <img src="step4.PNG" alt="Ansicht WEB">
+                <p>Dies erkennt ihr am blauen Streifen oben am Bildschirmrand.</p>
+                <img src="step5.PNG" alt="Ansicht WEB">
+                <p>Die App ist erfolgreich installiert, und ihr könnt mit eurer ersten Übung starten.</p>
+            </div>
+
+            <div class="step">
+                <h3>Allgemeines zur Nutzung der Anwendung</h3>
+                <p>- Die App ist für Tablets konfiguriert, vorwiegend für iPad Mini.</p>
+                <p>Sie kann natürlich auch auf anderen Geräten genutzt werden, jedoch kann es dort zu Darstellungsfehlern kommen.</p>
+                <p>Die Anwendung sollte immer im Hochformat genutzt werden, da dies in der praktischen Anwendung am besten funktioniert.</p>
+            </div>
+
+            <div class="step">
+                <h3>Fehler und Updates</h3>
+                <p>Sollte die App gar nicht funktioniert, muss sie einfach deinstalliert werden.</p>
+                <p>Anschließend muss im Webbrowser der Verlauf und die Websitedaten gelöscht werden.</p>
+                <p>Dies gillt auch wenn man Updates installieren möchte.</p>
+                <p>Erst jetzt den QR-Code scannen und wie oben beschrieben neu installieren.</p>
+                <p>Solltet ihr dies vergessen, kann es sein das die neue Version nicht richtig funktioniert.</p>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
+

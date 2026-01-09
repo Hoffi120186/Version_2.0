@@ -1,0 +1,633 @@
+/* =========================================================
+   1Rettungsmittel – style.css (V2 Tactical + Premium Glass)
+   Ziel: App-Feeling + klare Hierarchie + großer Touch + Glass-Look
+   kompatibel mit bestehenden IDs/Klassen
+   ========================================================= */
+
+/* ===== Reset gegen Überlauf ===== */
+html { box-sizing: border-box; }
+*, *::before, *::after { box-sizing: inherit; }
+html, body { max-width:100%; overflow-x:hidden; }
+
+/* ===== Design Tokens ===== */
+:root{
+  /* Backgrounds */
+  --bg-main: #0b1220;
+  --bg-grad-1: #0b1220;
+  --bg-grad-2: #020617;
+
+  /* Text */
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+
+  /* Accents */
+  --accent: #ef4444;          /* Rot = kritisch / wichtig */
+  --accent-deep: #b91c1c;
+
+  --ok: #22c55e;
+  --warn: #eab308;
+  --info: #60a5fa;
+
+  /* Radius / Shadow */
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 18px;
+
+  --shadow: 0 12px 32px rgba(0,0,0,.55);
+  --shadow-soft: 0 8px 18px rgba(0,0,0,.35);
+}
+
+/* ===== Base ===== */
+body{
+  margin:0;
+  padding:16px;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", Arial, sans-serif;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  min-height:100vh;
+
+  background:
+    radial-gradient(1200px 700px at 20% 0%, rgba(239,68,68,0.08), transparent 55%),
+    radial-gradient(900px 600px at 80% 10%, rgba(96,165,250,0.07), transparent 55%),
+    linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
+
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== Menübutton oben links ===== */
+#menuButton{
+  position:fixed;
+  top:15px; left:15px;
+  z-index:1001;
+
+  /* Glass */
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+
+  color: var(--text);
+  font-size:1.05em;
+  padding:10px 14px;
+
+  border:1px solid rgba(255,255,255,0.22);
+  border-radius: 12px;
+
+  box-shadow: var(--shadow-soft);
+  cursor:pointer;
+
+  transition: transform .15s ease, box-shadow .15s ease, border-color .2s ease, background .2s ease, filter .2s ease;
+}
+#menuButton:hover{
+  background: rgba(255,255,255,0.18);
+  border-color: rgba(255,255,255,0.34);
+  transform: translateY(-1px);
+}
+#menuButton:active{
+  transform: translateY(1px) scale(.98);
+}
+
+/* ===== Modal Backdrops ===== */
+#menuModal, #modal{
+  display:none;
+  position:fixed; inset:0;
+  justify-content:center; align-items:center;
+  z-index:1000;
+}
+#menuModal{ background: rgba(0,0,0,.55); }
+#modal{     background: rgba(0,0,0,.78); }
+#menuModal.open, #modal.open{ display:flex; }
+
+/* ===== Modal Content ===== */
+#modalContent{
+  /* Glass Card */
+  background: rgba(17,24,39,.90);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+
+  color: var(--text);
+  border-radius: var(--r-lg);
+  padding:18px;
+  text-align:center;
+  max-width: min(92vw, 560px);
+
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: 0 18px 46px rgba(0,0,0,.55);
+}
+#modal img{
+  width:100%;
+  max-width:520px;
+  height:auto;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.10);
+}
+#modal span{
+  display:block;
+  margin-top:12px;
+  color: var(--accent);
+  font-size:1.05em;
+  cursor:pointer;
+  text-decoration:none;
+  opacity:.95;
+}
+#modal span:hover{ text-decoration: underline; }
+
+/* ===== Button-Container ===== */
+.button-container{
+  width:100%;
+  max-width:1100px;
+  margin-top:46px;
+  margin-bottom:120px;
+  display:grid;
+  grid-template-columns: 1fr;
+  gap:16px;
+  justify-items:center;
+  align-items:start;
+  padding-inline:12px;
+}
+
+@media (min-width:900px){
+  .button-container{
+    grid-template-columns: 1fr 1fr;
+    max-width:1000px;
+  }
+}
+@media (min-width:1300px){
+  .button-container{
+    grid-template-columns: repeat(3, 1fr);
+    max-width:1200px;
+  }
+}
+
+/* =========================================================
+   Buttons (Premium Glass)
+   ========================================================= */
+.btn{
+  display:block;
+  margin:10px auto;
+  width:100%;
+  max-width:520px;
+  padding:18px 18px;
+
+  /* GLASS */
+  background: rgba(255,255,255,0.10);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+
+  color: var(--text);
+
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(255,255,255,0.22);
+
+  box-shadow:
+    0 12px 32px rgba(0,0,0,.55),
+    inset 0 1px 0 rgba(255,255,255,.25);
+
+  font-size:1.15em;
+  font-weight: 750;
+  letter-spacing: .2px;
+
+  cursor:pointer;
+  text-align:left;
+  white-space: normal;
+  word-break: break-word;
+  line-height:1.25;
+
+  transition:
+    transform .15s ease,
+    box-shadow .15s ease,
+    background .2s ease,
+    border-color .2s ease,
+    filter .2s ease;
+}
+
+.btn:hover{
+  background: rgba(255,255,255,0.18);
+  border-color: rgba(255,255,255,0.35);
+  transform: translateY(-2px);
+  box-shadow:
+    0 20px 46px rgba(0,0,0,.65),
+    inset 0 1px 0 rgba(255,255,255,.35);
+}
+
+.btn:active{
+  transform: translateY(1px) scale(.985);
+  box-shadow:
+    0 10px 22px rgba(0,0,0,.45),
+    inset 0 1px 0 rgba(255,255,255,.2);
+}
+
+/* Subtitle/Info in Buttons */
+.btn span{
+  display:block;
+  margin-top:10px;
+  font-size:.85em;
+  color: rgba(239,68,68,.90);
+  font-weight:700;
+  letter-spacing:.15px;
+}
+
+/* Optional Klassen (falls du später setzt) */
+.btn.critical{
+  border-left: 4px solid var(--accent);
+  padding-left: 14px;
+  background:
+    linear-gradient(90deg, rgba(239,68,68,.12), transparent 45%),
+    rgba(255,255,255,0.10);
+}
+.btn.ok{
+  border-left: 4px solid var(--ok);
+  padding-left: 14px;
+}
+.btn.warn{
+  border-left: 4px solid var(--warn);
+  padding-left: 14px;
+}
+
+/* Phones: kompakter */
+@media (max-width:600px){
+  .btn{
+    padding:16px 16px;
+    font-size:1.05em;
+  }
+}
+
+/* Tablets: etwas größer */
+@media (min-width:601px) and (max-width:1024px){
+  .btn{
+    font-size:1.18em;
+    padding:20px 20px;
+  }
+}
+
+/* Desktop: normal */
+@media (min-width:1025px){
+  .btn{
+    font-size:1.15em;
+    padding:18px 18px;
+  }
+}
+
+/* ===== SK-Buttons ===== */
+.sk-button-container{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:10px;
+  margin-top:12px;
+}
+
+.sk-btn{
+  padding:12px 12px;
+  font-size:1em;
+  font-weight:800;
+
+  border:none;
+  border-radius: 12px;
+  cursor:pointer;
+  color:#fff;
+
+  width:78px;
+  text-align:center;
+
+  box-shadow: 0 10px 20px rgba(0,0,0,.35);
+  border: 1px solid rgba(255,255,255,.10);
+
+  transition: transform .12s ease, filter .15s ease, box-shadow .15s ease;
+}
+.sk-btn:active{ transform: translateY(1px) scale(.98); }
+
+.sk-btn.red{ background: linear-gradient(180deg, #ef4444, #b91c1c); }
+.sk-btn.yellow{ background: linear-gradient(180deg, #facc15, #ca8a04); color:#111; }
+.sk-btn.green{ background: linear-gradient(180deg, #22c55e, #15803d); }
+.sk-btn.black{ background: linear-gradient(180deg, #111827, #000000); }
+
+.sk-btn:hover{
+  filter: brightness(1.08);
+  box-shadow: 0 14px 28px rgba(0,0,0,.45);
+}
+
+/* Selected State (dein JS setzt .selected) */
+.sk-btn.selected{
+  outline: 2px solid rgba(255,255,255,.75);
+  box-shadow: 0 0 0 3px rgba(96,165,250,.35), 0 16px 32px rgba(0,0,0,.45);
+  filter: brightness(1.08);
+}
+
+/* ===== Bottom-Bar (Premium Glass) ===== */
+#bottom-buttons{
+  position:fixed;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  left:0; right:0;
+  width:auto;
+  display:flex;
+  justify-content:space-evenly;
+  padding:0 14px;
+  z-index:1000;
+  box-sizing:border-box;
+
+  /* damit nur Buttons klicken */
+  pointer-events: none;
+}
+
+#bottom-buttons button,
+#bottom-buttons a#startseiteButton{
+  pointer-events: auto;
+
+  flex:1;
+  margin:0 8px;
+  padding:14px 14px;
+
+  font-size:1.05em;
+  font-weight: 800;
+  letter-spacing: .2px;
+
+  /* GLASS */
+  background: rgba(255,255,255,0.14);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+
+  border: 1px solid rgba(255,255,255,0.28);
+  border-radius: 999px;
+
+  box-shadow:
+    0 10px 28px rgba(0,0,0,.55),
+    inset 0 1px 0 rgba(255,255,255,.30);
+
+  color:#fff;
+  cursor:pointer;
+
+  transition: transform .15s ease, filter .15s ease, box-shadow .15s ease, background .2s ease;
+  text-align:center;
+  text-decoration:none;
+  display:inline-block;
+}
+
+#bottom-buttons button:hover,
+#bottom-buttons a#startseiteButton:hover{
+  background: rgba(255,255,255,0.22);
+  filter: brightness(1.06);
+  box-shadow:
+    0 14px 36px rgba(0,0,0,.62),
+    inset 0 1px 0 rgba(255,255,255,.35);
+}
+
+#bottom-buttons button:active,
+#bottom-buttons a#startseiteButton:active{
+  transform: scale(.98);
+}
+
+/* ===== Sichtbarkeit (Logik) ===== */
+.hidden{ display:none !important; }
+.button-container > .btn.hidden{ display:none !important; }
+
+#sk-btns.hidden{ display:none !important; }
+#sk-btns:not(.hidden){
+  display:flex !important;
+  justify-content:center;
+  gap:10px;
+  margin-top:12px;
+}
+
+.step{ display:none !important; }
+.step.is-active{ display:flex !important; }
+.step.is-active:not(.btn){ display:block !important; }
+.btn.step.is-active{ display:block !important; }
+
+/* =========================================================
+   PHONE Layout: Grid -> Flex (stabil fürs „nach und nach“)
+   ========================================================= */
+@media (max-width: 600px){
+  .button-container{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:16px;
+
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+
+    width:100%;
+    max-width:100%;
+
+    /* Platz für Bottom-Bar */
+    margin-bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .button-container .btn{
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 520px !important;
+    margin: 10px auto;
+  }
+}
+
+/* ===== Toggle Box ===== */
+.toggle-box {
+  margin-top: 10px;
+  text-align: center;
+
+  /* Glass Card */
+  background: rgba(255,255,255,0.10);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.20);
+  box-shadow: var(--shadow-soft);
+  color: var(--text);
+}
+
+.toggle-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* Transportpriorität: JA = Rot, NEIN = Grün */
+#transportToggle #t-yes{
+  background: linear-gradient(180deg, #ef4444, #b91c1c);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px;
+  padding: 10px 14px;
+}
+#transportToggle #t-no{
+  background: linear-gradient(180deg, #22c55e, #15803d);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px;
+  padding: 10px 14px;
+}
+#transportToggle #t-yes:hover,
+#transportToggle #t-no:hover{ filter: brightness(1.08); }
+
+/* Selected */
+#transportToggle .selected{
+  outline: 2px solid rgba(255,255,255,.7);
+  box-shadow: 0 0 0 3px rgba(96,165,250,.35), 0 12px 24px rgba(0,0,0,.35);
+}
+
+/* Betroffener: JA/NEIN */
+#affectedToggle #b-yes{
+  background: rgba(229, 250, 224, 0.95) !important;
+  color: #111 !important;
+  border-radius: 999px;
+  padding: 10px 14px;
+  border: 1px solid rgba(0,0,0,.08);
+}
+#affectedToggle #b-no{
+  background: linear-gradient(180deg, #22c55e, #15803d) !important;
+  color: #fff !important;
+  border-radius: 999px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255,255,255,.12);
+}
+#affectedToggle .selected{
+  outline: 2px solid rgba(255,255,255,.7);
+  box-shadow: 0 0 0 3px rgba(96,165,250,.35), 0 12px 24px rgba(0,0,0,.35);
+}
+
+/* =========================================
+   Übungsabbruch-Modal (global)
+   ========================================= */
+.app-modal-backdrop{
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.app-modal-backdrop.hidden{ display: none; }
+
+.app-modal{
+  /* Glass */
+  background: rgba(17,24,39,.92);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+
+  color: var(--text);
+  padding: 1.4rem 1.6rem;
+  border-radius: 16px;
+  max-width: 360px;
+  width: 92%;
+  text-align: center;
+
+  box-shadow: 0 22px 56px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.app-modal-title{
+  font-size: 1.05rem;
+  font-weight: 750;
+  margin-bottom: 0.45rem;
+}
+.app-modal-text{
+  font-size: 0.95rem;
+  opacity: 0.9;
+  margin-bottom: 1.1rem;
+  color: var(--muted);
+}
+.app-modal-actions{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.7rem;
+}
+
+.app-btn-primary,
+.app-btn-secondary{
+  border: none;
+  border-radius: 999px;
+  padding: 0.65rem 1.35rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+  font-weight: 750;
+  min-width: 132px;
+  transition: transform .15s ease, filter .15s ease, background .2s ease;
+}
+
+/* "Ja, abbrechen" – kritisch */
+.app-btn-primary{
+  background: linear-gradient(180deg, #ef4444, #b91c1c);
+  color: #ffffff;
+  border: 1px solid rgba(255,255,255,.12);
+}
+
+/* "Nein, bleiben" – neutral (Glass) */
+.app-btn-secondary{
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  color: #ffffff;
+  border: 1px solid rgba(255,255,255,.14);
+}
+
+.app-btn-primary:hover,
+.app-btn-secondary:hover{ filter: brightness(1.08); }
+
+.app-btn-primary:active,
+.app-btn-secondary:active{ transform: translateY(1px) scale(.98); }
+/* ===== Button-Text wieder mittig (Minimal-Fix) ===== */
+.btn{
+  text-align: center;
+}
+
+.btn span{
+  text-align: center;
+}
+/* =========================================================
+   Countdown – Sofortmaßnahme (zentral, visuell)
+   ========================================================= */
+
+.countdown{
+  display:inline-block;
+  margin-left:10px;
+  padding:6px 12px;
+  border-radius:999px;
+  font-weight:900;
+  font-size:1.1em;
+  font-variant-numeric: tabular-nums;
+  letter-spacing:.3px;
+
+  background: rgba(255,255,255,.15);
+  border: 1px solid rgba(255,255,255,.30);
+  box-shadow: 0 10px 24px rgba(0,0,0,.25);
+}
+
+/* Countdown läuft */
+.btn.countdown-active{
+  animation: pulseSoft 1.1s ease-in-out infinite;
+  outline: 2px solid rgba(255,255,255,.35);
+  box-shadow:
+    0 16px 34px rgba(0,0,0,.35),
+    inset 0 1px 0 rgba(255,255,255,.25);
+}
+
+/* Countdown kritisch (≤10s) */
+.btn.countdown-urgent{
+  animation: pulseUrgent .65s ease-in-out infinite;
+  outline: 3px solid rgba(239,68,68,.65);
+}
+
+.btn.countdown-urgent .countdown{
+  background: rgba(239,68,68,.20);
+  border-color: rgba(239,68,68,.55);
+}
+
+/* Animationen */
+@keyframes pulseSoft{
+  0%,100%{ transform: scale(1); filter: brightness(1); }
+  50%{ transform: scale(1.02); filter: brightness(1.06); }
+}
+@keyframes pulseUrgent{
+  0%,100%{ transform: scale(1); filter: brightness(1); }
+  50%{ transform: scale(1.05); filter: brightness(1.14); }
+}

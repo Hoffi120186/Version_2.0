@@ -1,0 +1,190 @@
+1<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+     <!-- Hier kommt dein fixer Viewport rein -->
+    <meta name="viewport" content="width=1024, user-scalable=no">
+    <!-- Optional, aber gut für PWA auf Smartphones -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>1 Rettungsmittel</title>
+    <link rel="manifest" href="/manifest.json">
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #90cff3;
+            color: white;
+            text-align: center;
+            padding: 15px 0;
+            width: 100%;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        main {
+            padding: 80px 20px 20px; /* oben Platz für fixierten Header */
+            max-width: 800px;
+            background: white;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            margin: 20px;
+        }
+
+        h1, h2, h3 {
+            color: #333;
+        }
+
+        p {
+            font-size: 1.1em;
+            line-height: 1.6;
+            color: #444;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 20px auto;
+            border-radius: 5px;
+            box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .step {
+            background-color: #e3f2fd;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+        }
+
+        .step h3 {
+            color: #005a8d;
+        }
+
+        /* Button Styling */
+        .btn1 {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            padding: 12px 30px;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 5px;
+            background-color: red;
+            color: white;
+            font-size: 1.2em;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        .btn1 span {
+            display: block;
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: white;
+            font-weight: bold;
+        }
+
+        .btn1:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3),
+                        inset 0 4px 6px rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Wie funktioniert die App?</h1>
+        <a href="Instruktor.html" class="btn1">
+            <span>Zurück</span>
+        </a>
+    </header>
+    
+    <main>
+        <section>
+            <h1>Allgemeines</h1>
+            <p>Die Anleitung im folgenden zeigt die Anwendung der App</p>
+            <p>Jeder QR-Patient funktioniert wie in dem unteren Beispiel.</p>
+            <p>Es kann sein das mal ein Button mehr und einer weniger kommt. Aber vom Grundsatz ist es immer gleich.</p>
+        </section>
+
+        <section>
+            <h1>App starten</h1>
+            <div class="step">
+                <h2>Es öffnet sich der Startbildschirm der App</h2>
+                <p>Hier einfach Status 1 klicken wenn das Team Einsatzbereit ist.</p>
+                <img src="scan1.JPG" alt="Ansicht WEB">
+                <h2>Auf dem Bildschirm erscheint eine Einsatzmeldung. Auch akustisch klingelt der Melder.</h2>
+                <p>Durch klicken auf den Melder hört der Alarmierungston auf. Die Einsatzmeldung kann weiter gelesen werden.</p>
+                <p>Das Team begibt sich zu der Einsatzstelle. Bei erreichen wird Status 4 gedrückt.</p>
+                <p>Es öffnet sich die Kamera und es kann der 1 QR Code "STATUS 4" gescannt werden.</p>
+                <img src="scan2.JPG" alt="Ansicht WEB">
+                <h2>Jetzt erhält das Team eine erste Lagemeldung</h2>
+                <p>Hier hat man einmal in der Mitte die Lagemeldung (Also das was das Team vorfindet)</p>
+                <p>Weitere Button sind vorhanden.</p>
+                <p>1. Startseite: Hier gelingt man immer wieder zur ersten Seite.</p>
+                <p>2. Patienen scannen: Sobald Patienten gefunden werden, kann der QR-Code gescannt werden.</p>
+                <img src="scan4.JPG" alt="Ansicht WEB">
+                <h2>Wenn der QR-Code erkannt wurde öffnet sich sofort der dazugehörige Patient.</h2>
+                <p>Hier kann es sein, dass ihr in euren Einstellungen die Kamera für Die App bzw. den Browser freigeben müsst.</p>
+                <p>Nun erhält man einen ersten Eindruck vom Patienten. Durch klicken auf den Button erhält man weitere Informationen</p>
+                <p>Weiter sind noch fogende Button zu sehen:</p>
+                <p>Einsatzabbruch: Hier gelangt man wieder zur Lagemeldung. Also man befindet sich noch im Szenario.</p>
+                <p>Einsatzende: Dieser Button beendet die Übung. Dieser leitet auch zur Auswertung</p>
+                <img src="scan5.JPG" alt="Ansicht WEB">
+                <h2>Durch klicken auf die Informationen des Patienten erscheint ein Bild zur genauen Sichtung</h2>
+                <h3>Dieses kann auch gezoomt werden. Zum schließen einfach neben das Bild oder auf "schließen" drücken.</h3>
+                <img src="scan6.JPG" alt="Ansicht WEB">
+                <h2>Nun muss man sich entscheiden ob und wenn welche Sofortmaßnahme getätigt werden soll.</h2>
+                <h3>Je nach Wahl beginnt ein Countdown. Dieser muss erst abgewartet werden bevor man weitermachen kann.</h3>
+                <img src="scan7.JPG" alt="Ansicht WEB">
+                <h2>Nach der Sofortmaßnahme muss die Sichtungskategorie gewählt werden.</h2>
+                <h3>Hier macht es Sinn, auch reale Patientenumhängekarten zu nutzen. Dies ermöglicht weitere Ausbildungsschritte.</h3>
+                <img src="scan8.JPG" alt="Ansicht WEB">
+                <h2>Durch das Sichten und das bestätigen des letzten Button, wird man wieder zur Lagemeldung geleitet.</h2>
+                <h3>Durch erneutes drücken auf "Patienten scannen" kann man den nächsten Patienten erfassen.</h3>
+                <p>Dies geht jetzt so lange bis man beim letzten Patienten ist.</p>
+                <img src="scan9.JPG" alt="Ansicht WEB">
+                <h2>Hier wird euch angezeigt, wie lange pro Patient gebraucht wurde und welche Sichtungskategorie gewählt wurde.</h2>
+                <h3>Sobald ihr auf Neuer Einsatz klickt werden die Zeiten automatisch zurückgesetzt.</h3>
+                <p>Also für einen späteren Vergleich macht es Sinn Screenshots zu machen.</p>
+                <img src="scan10.JPG" alt="Ansicht WEB">
+            </div>
+
+            <div class="step">
+                <h3>Allgemeines zur Nutzung der Anwendung</h3>
+                <p>- Die App ist für Tablets konfiguriert, vorwiegend für iPad Mini.</p>
+                <p>Sie kann natürlich auch auf anderen Geräten genutzt werden, jedoch kann es dort zu Darstellungsfehlern kommen.</p>
+                <p>Die Anwendung sollte immer im Hochformat genutzt werden, da dies in der praktischen Anwendung am besten funktioniert.</p>
+                <p>Bei manchen Geräten kann es notwendig sein, dass in den Einstellungen die Kamerarechte freigegeben werden müssen.</p>
+            </div>
+
+            <div class="step">
+                <h3>Fehler und Updates</h3>
+                <p>Sollte die App gar nicht funktionieren, muss sie einfach deinstalliert werden.</p>
+                <p>Anschließend muss im Webbrowser der Verlauf und die Websitedaten gelöscht werden.</p>
+                <p>Dies gilt auch wenn man Updates installieren möchte.</p>
+                <p>Erst jetzt den QR-Code scannen und wie oben beschrieben neu installieren.</p>
+                <p>Solltet ihr dies vergessen, kann es sein, dass die neue Version nicht richtig funktioniert.</p>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
+
+

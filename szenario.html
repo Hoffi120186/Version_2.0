@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Szenario auswählen</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    :root{
+      --text:#e5e7eb;
+      --muted:#cbd5e1;
+      --accent:#e31111;
+      --accentDark:#a00000;
+
+      --glass: rgba(255,255,255,.12);
+      --glass2: rgba(255,255,255,.18);
+      --border: rgba(255,255,255,.28);
+      --shadow: 0 14px 36px rgba(0,0,0,.55);
+
+      --radius: 16px;
+    }
+
+    body{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      margin:0;
+      padding:0;
+      background-image: url(fotos/Patientenkarte.jpg);
+      background-size: cover;
+      background-position: center;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      min-height:100vh;
+      position:relative;
+      color:var(--text);
+    }
+
+    body::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background: rgba(0,0,0,0.55);
+      z-index:-1;
+    }
+
+    /* Zurück-Button: neutral + glass (kein rosa) */
+    a.zurueck{
+      position:absolute;
+      top:15px;
+      left:15px;
+
+      background: var(--glass);
+      color: var(--text);
+      text-decoration:none;
+
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-weight: 800;
+      letter-spacing: .2px;
+
+      border: 1px solid var(--border);
+      box-shadow: 0 10px 24px rgba(0,0,0,.45);
+
+      backdrop-filter: blur(14px) saturate(140%);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+
+      transition: transform .15s ease, background .2s ease, border-color .2s ease, filter .2s ease;
+    }
+    a.zurueck:hover{
+      background: var(--glass2);
+      border-color: rgba(255,255,255,.38);
+      transform: translateY(-1px);
+    }
+    a.zurueck:active{
+      transform: translateY(1px) scale(.98);
+    }
+
+    /* Container: Glass-Card statt "schwarzer Block" */
+    .container{
+      background: rgba(0,0,0,0.20);
+      border: 1px solid rgba(255,255,255,.16);
+      backdrop-filter: blur(14px) saturate(140%);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+
+      padding: 26px 22px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+
+      max-width: 420px;
+      width: 90%;
+      text-align: center;
+    }
+
+    h2{
+      margin: 0 0 14px;
+      font-size: 28px;
+      line-height: 1.15;
+      text-shadow: 0 2px 10px rgba(0,0,0,.55);
+    }
+
+    /* Select + Buttons: modern, touch, sauber */
+    select, button{
+      font-size: 1.1em;
+      padding: 14px 14px;
+      margin: 12px 0;
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: 0 10px 22px rgba(0,0,0,.35);
+      outline: none;
+    }
+
+    select{
+      background: rgba(255,255,255,.92);
+      color: #111;
+      font-weight: 700;
+    }
+
+    /* Primary */
+    button{
+      background: linear-gradient(180deg, var(--accent), var(--accentDark));
+      color: white;
+      font-weight: 900;
+      letter-spacing: .2px;
+      cursor: pointer;
+      border: none;
+      transition: transform .15s ease, filter .15s ease;
+    }
+    button:hover{ filter: brightness(1.07); transform: translateY(-1px); }
+    button:active{ transform: translateY(1px) scale(.99); }
+
+    /* sekundärer Button */
+    .btn-secondary{
+      background: rgba(55,65,81,.92);
+      border: 1px solid rgba(255,255,255,.14);
+      box-shadow: 0 10px 22px rgba(0,0,0,.35);
+    }
+    .btn-secondary:hover{ filter: brightness(1.07); }
+
+    /* Info-Text */
+    .hint{
+      margin-top: 10px;
+      font-size: .92em;
+      color: rgba(229,231,235,.92);
+      opacity: .95;
+      text-shadow: 0 2px 10px rgba(0,0,0,.45);
+    }
+
+    /* Modal (dark + glass, passt besser) */
+    .modal{
+      display:none;
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,0.65);
+      justify-content:center;
+      align-items:center;
+      z-index:1000;
+      padding:16px;
+    }
+    .modal-content{
+      background: rgba(17,24,39,.92);
+      color: var(--text);
+      padding: 18px 18px;
+      border-radius: 14px;
+      max-width: 420px;
+      width: 100%;
+      text-align: left;
+
+      border: 1px solid rgba(255,255,255,.14);
+      box-shadow: 0 18px 46px rgba(0,0,0,.65);
+
+      backdrop-filter: blur(16px) saturate(140%);
+      -webkit-backdrop-filter: blur(16px) saturate(140%);
+    }
+    .modal-content h3{
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+    .modal-content p{
+      margin: 0 0 12px;
+      line-height: 1.35;
+      color: rgba(229,231,235,.92);
+    }
+    .modal-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      margin-top: 6px;
+    }
+    .modal-actions button{
+      width:auto;
+      margin:0;
+      padding:10px 14px;
+      font-size: 1em;
+      border-radius: 12px;
+      box-shadow:none;
+      border: 1px solid rgba(255,255,255,.14);
+    }
+    .modal-actions .details{
+      background: rgba(255,255,255,.14);
+      border: 1px solid rgba(255,255,255,.22);
+    }
+    .modal-actions .details:hover{ filter: brightness(1.10); }
+    .modal-actions .close{
+      background: linear-gradient(180deg, var(--accent), var(--accentDark));
+      border:none;
+    }
+    .modal-actions .close:hover{ filter: brightness(1.08); }
+
+    /* Mobile Feinschliff */
+    @media (max-width:420px){
+      h2{ font-size: 24px; }
+      .container{ padding: 22px 18px; }
+    }
+  </style>
+
+  <!-- WICHTIG: app-flow NACH Inline-CSS, sonst überschreibt es nichts -->
+  <link rel="stylesheet" href="/css/app-flow.css?v=2">
+</head>
+
+<body>
+
+  <a href="Instruktor.html" class="zurueck">Zurück</a>
+
+  <div class="container">
+    <h2>Szenario für Einsatz auswählen</h2>
+
+    <select id="bildAuswahl" onchange="zeigePopup()">
+      <option value="fotos/Melder1rett.png">Szenario 1 – Schlägerei auf Party</option>
+      <option value="fotos/MelderBahnhof.png">Szenario 2 – Unklare Lage am Bahnhof</option>
+      <option value="fotos/MelderIndustrie.png">Szenario 3 – Schnittverletzung in der Industriehalle</option>
+      <option value="fotos/MelderZOB.png">Szenario 4 – Platzwunde ZOB</option>
+      <option value="fotos/MelderGalerie.jpg">Szenario 5 – Schlägerei in der Einkaufspassage</option>
+      <option value="fotos/MelderKaufhaus.jpg">Szenario 6 – Schnittverletzung im Kaufhaus</option>
+      <option value="fotos/MelderRegionalbahn.jpg">Szenario 7 – Schlägerei in der Regionalbahn</option>
+      <option value="fotos/MelderFußgängerzone.jpg">Szenario 8 – Unklare Lage in der Fußgängerzone</option>
+    </select>
+
+    <button onclick="speichern()">Szenario speichern</button>
+
+    <button class="btn-secondary" onclick="openDetailsForCurrent()">
+      Szenario-Details lesen
+    </button>
+
+    <p class="hint">
+      Das gewählte Szenario-Bild wird beim „Status 1“ automatisch angezeigt.
+    </p>
+  </div>
+
+  <!-- Modal für Kurz-Info -->
+  <div class="modal" id="infoModal" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <h3 id="modalTitle">Szenario</h3>
+      <p id="modalText"></p>
+
+      <div class="modal-actions">
+        <button class="details" type="button" onclick="openDetailsFromModal()">Details lesen</button>
+        <button class="close" type="button" onclick="schliesseModal()">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Kurzbeschreibungen (Popup)
+    const beschreibungen = {
+      "fotos/Melder1rett.png": "Szenario 1 – Schlägerei auf Party: Mehrere Verletzte nach Schlägerei mit Messerbeteiligung.",
+      "fotos/MelderBahnhof.png": "Szenario 2 – Unklare Lage am Bahnhof: Unbekannte schlagen und stechen auf Passanten ein.",
+      "fotos/MelderIndustrie.png": "Szenario 3 – Schnittverletzung: Mehrere Verletzte in einer Industriehalle nach Feierlichkeiten.",
+      "fotos/MelderZOB.png": "Szenario 4 – Platzwunde: Mehrere Verletzte am ZOB nach psychischem Ausnahmezustand.",
+      "fotos/MelderGalerie.jpg": "Szenario 5 – Schlägerei in der Einkaufspassage: Durch mehrere Täter wurden Passanten verletzt.",
+      "fotos/MelderKaufhaus.jpg": "Szenario 6 – Schnittverletzung im Kaufhaus: Amoklauf im Kaufhaus.",
+      "fotos/MelderRegionalbahn.jpg": "Szenario 7 – Schlägerei in der Regionalbahn: Mehrere Verletzte. Zug steht im Bahnhof.",
+      "fotos/MelderFußgängerzone.jpg": "Szenario 8 – Unklare Lage in der Fußgängerzone: Viele Verletzte durch verschiedene Täter."
+    };
+
+    // Detailseiten-Mapping
+    const detailsPages = {
+      "fotos/Melder1rett.png": "/status4.html",
+      "fotos/MelderBahnhof.png": "/status4a.html",
+      "fotos/MelderIndustrie.png": "/status4b.html",
+      "fotos/MelderZOB.png": "/status4c.html",
+      "fotos/MelderGalerie.jpg": "/status4d.html",
+      "fotos/MelderKaufhaus.jpg": "/status4e.html",
+      "fotos/MelderRegionalbahn.jpg": "/status4f.html",
+      "fotos/MelderFußgängerzone.jpg": "/status4g.html"
+    };
+
+    function speichern(){
+      const bild = document.getElementById("bildAuswahl").value;
+      localStorage.setItem("meldebild", bild);
+      alert("Gespeichert: " + bild);
+    }
+
+    function zeigePopup(){
+      const key = document.getElementById("bildAuswahl").value;
+      const sel = document.getElementById("bildAuswahl");
+      const title = sel.options[sel.selectedIndex]?.textContent || "Szenario";
+
+      document.getElementById("modalTitle").textContent = title;
+      document.getElementById("modalText").textContent =
+        beschreibungen[key] || "Keine Beschreibung vorhanden.";
+
+      document.getElementById("infoModal").style.display = "flex";
+    }
+
+    function schliesseModal(){
+      document.getElementById("infoModal").style.display = "none";
+    }
+
+    function openScenarioDetailsByKey(key){
+      const url = detailsPages[key];
+      if(!url){
+        alert("Für dieses Szenario ist noch keine Detailseite hinterlegt.");
+        return;
+      }
+      sessionStorage.setItem("fromScenario", "1");
+      sessionStorage.setItem("scenario_back_to", "/szenario.html");
+      window.location.href = url;
+    }
+
+    function openDetailsForCurrent(){
+      const key = document.getElementById("bildAuswahl").value;
+      openScenarioDetailsByKey(key);
+    }
+
+    function openDetailsFromModal(){
+      const key = document.getElementById("bildAuswahl").value;
+      schliesseModal();
+      openScenarioDetailsByKey(key);
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const gespeichertes = localStorage.getItem("meldebild");
+      if (gespeichertes) document.getElementById("bildAuswahl").value = gespeichertes;
+    });
+
+    document.getElementById("infoModal").addEventListener("click", (e) => {
+      if (e.target.id === "infoModal") schliesseModal();
+    });
+  </script>
+
+  <script src="/metrics.js" defer></script>
+</body>
+</html>

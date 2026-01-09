@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Status 4 · Erste Lagemeldung</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="LogoApp.jpg" type="image/jpeg" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; }
+    html { overflow-x: hidden; touch-action: pan-y; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      font-family: Arial, sans-serif;
+      color: #000;
+      background: #000;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: url("fotos/polizei350.jpg") center / cover no-repeat;
+      z-index: -1;
+      will-change: transform;
+      transform: translateZ(0);
+    }
+
+    :root{
+      --red:#e53935;
+      --red2:#c62828;
+    }
+
+    main{
+      width: 100%;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px 12px;
+      padding-bottom: calc(190px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .text-container{
+      margin: 28px auto 18px;
+      max-width: 740px;
+      padding: clamp(18px, 3vw, 28px);
+      background: rgba(245,245,245,0.92);
+      text-align:center;
+      border-radius:14px;
+      border:8px solid transparent;
+      animation: blink 1s infinite;
+      box-shadow: 0 10px 26px rgba(0,0,0,.18);
+      overflow: hidden;
+    }
+    @keyframes blink{
+      0%{border-color:red}
+      50%{border-color:transparent}
+      100%{border-color:red}
+    }
+
+    .headline{
+      display:block;
+      font-weight:700;
+      font-size: clamp(24px,4.5vw,36px);
+      line-height:1.2;
+      margin: 0 0 clamp(10px,2vw,14px);
+    }
+
+    .brief{
+      font-size: clamp(18px,2.6vw,22px);
+      line-height: 1.6;
+      margin: 0;
+      min-height: 6.2em;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .brief.fade{
+      opacity: 0;
+      transform: translateY(6px);
+    }
+
+    .stepper{
+      margin-top: 14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .dots{
+      display:flex;
+      gap: 8px;
+      align-items:center;
+      justify-content:center;
+      flex: 1;
+      min-width: 160px;
+    }
+    .dot{
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.18);
+      box-shadow: inset 0 0 0 2px rgba(0,0,0,.12);
+    }
+    .dot.active{
+      background: var(--red);
+      box-shadow: 0 0 0 3px rgba(229,57,53,.18);
+    }
+
+    .mini-btn{
+      border: none;
+      border-radius: 999px;
+      padding: 12px 16px;
+      font-weight: 800;
+      cursor: pointer;
+      background: var(--red);
+      color: #fff;
+      box-shadow: 0 10px 20px rgba(0,0,0,.25);
+      transition: transform .1s ease, filter .2s ease, background .2s ease;
+      white-space: nowrap;
+      min-width: 150px;
+    }
+    .mini-btn:active{ transform: translateY(1px); }
+    .mini-btn:hover{ background: var(--red2); filter: brightness(1.03); }
+    .mini-btn[disabled]{ opacity:.55; cursor:not-allowed; filter:saturate(.6); }
+
+    .hintline{
+      margin-top: 10px;
+      color: rgba(0,0,0,.75);
+      font-weight: 700;
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .timerline{
+      margin-top: 12px;
+      font-weight: 900;
+      font-size: 14px;
+      color: rgba(0,0,0,.75);
+    }
+    .timerline .pill{
+      display:inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 2px solid rgba(0,0,0,.14);
+      background: rgba(0,0,0,.04);
+      min-width: 86px;
+    }
+
+    .cta-wrap{
+      position: sticky;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+      margin: 0 auto;
+      width: 100%;
+      max-width: 940px;
+      display:flex;
+      gap:12px;
+      justify-content:center;
+      align-items:center;
+      padding:12px;
+      border-radius:16px;
+      background: rgba(255,255,255,0.06);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow:0 8px 24px rgba(0,0,0,.25);
+      z-index:20;
+      flex-wrap: wrap;
+    }
+    .btn{
+      flex:1;
+      min-height:56px;
+      max-width:360px;
+      padding:14px 18px;
+      border:none; border-radius:999px;
+      font-weight:800; font-size:16px;
+      color:#fff; cursor:pointer;
+      box-shadow:0 10px 20px rgba(0,0,0,.25);
+      transition: transform .1s ease, filter .2s ease, background .2s ease;
+      white-space: normal;
+      line-height:1.15;
+      text-align:center;
+    }
+    .btn:active{ transform: translateY(1px); }
+    .btn-primary{ background:var(--red); }
+    .btn-primary:hover{ background:var(--red2); filter:brightness(1.03); }
+    .btn-secondary{ background:var(--red); opacity:.95; }
+    .btn-secondary:hover{ background:var(--red2); filter:brightness(1.02); }
+    .btn-ghost{
+      background: rgba(255,255,255,.14);
+      color:#fff;
+      border: 1px solid rgba(255,255,255,.20);
+    }
+    .btn-ghost:hover{ filter: brightness(1.06); }
+    .btn[disabled]{ opacity:.55; cursor:not-allowed; filter:saturate(.6); }
+
+    @media (max-width: 640px){
+      .cta-wrap{
+        flex-direction:column;
+        align-items:stretch;
+        gap:14px;
+        padding:14px;
+        border-radius:14px;
+      }
+      .btn{
+        width:100%;
+        max-width:none;
+        min-height:54px;
+        font-size:16px;
+        padding:14px 18px;
+      }
+    }
+
+    video, canvas{ display:none; }
+
+    /* Pre */
+    .pre{
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,.55);
+      z-index: 999;
+      transition: opacity .25s ease;
+    }
+    .pre.hide{ opacity: 0; pointer-events: none; }
+    .prebox{
+      width: min(520px, calc(100% - 32px));
+      background: rgba(245,245,245,0.92);
+      border-radius: 14px;
+      border: 8px solid var(--red);
+      padding: 18px 16px;
+      text-align: center;
+      box-shadow: 0 10px 26px rgba(0,0,0,.18);
+    }
+    .prebox .t1{ font-weight: 900; font-size: 20px; margin: 0 0 6px; }
+    .prebox .t2{ margin: 0; font-weight: 800; color: rgba(0,0,0,.75); }
+  </style>
+
+  <script src="/freigabe.js?v=2025-09-11-REV2" defer></script>
+</head>
+
+<body>
+  <div class="pre" id="pre">
+    <div class="prebox">
+      <p class="t1">Polizei vor Ort</p>
+      <p class="t2">Erste Lagemeldung wird übergeben…</p>
+    </div>
+  </div>
+
+  <main>
+    <div class="text-container" id="briefBox">
+      <span class="headline" id="headline">Mehrere Verletzte nach Messerstecherei</span>
+
+      <p class="brief" id="brief"></p>
+
+      <div class="stepper" id="stepper">
+        <button class="mini-btn" id="backBtn" type="button" disabled>Zurück</button>
+        <div class="dots" id="dots"></div>
+        <button class="mini-btn" id="nextBtn" type="button">Weiter</button>
+      </div>
+
+      <div class="hintline" id="hintline">
+        Hinweis: Dies ist ein Ersteindruck. Anzahl &amp; Schweregrad stellt ihr vor Ort selbst fest.
+      </div>
+
+      <div class="timerline" id="timerLine" style="display:none;">
+        Einsatz läuft: <span class="pill" id="timer">00:00</span>
+      </div>
+    </div>
+
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+
+    <div class="cta-wrap">
+      <button id="backBtnScenario" class="btn btn-secondary" type="button" style="display:none;">
+        ← Zurück zur Szenarioauswahl
+      </button>
+
+      <button id="briefingButton" class="btn btn-ghost" type="button">Briefing lesen</button>
+      <button id="cameraButton" class="btn btn-primary" type="button" disabled>Patienten scannen</button>
+      <button id="einsatzendeButton" class="btn btn-secondary" type="button">Einsatz Ende</button>
+    </div>
+  </main>
+
+  <div id="button-container"></div>
+  <script>
+    fetch("Btninstruktor.html")
+      .then(r=>r.ok?r.text():"")
+      .then(html => { if(html) document.getElementById("button-container").innerHTML = html; })
+      .catch(()=>{});
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+
+  <script>
+    // ✅ Zurück-Button nur wenn von szenario.html gekommen
+    document.addEventListener('DOMContentLoaded', () => {
+      const backBtnScenario = document.getElementById('backBtnScenario');
+      if (!backBtnScenario) return;
+
+      const ok = sessionStorage.getItem('fromScenario') === '1';
+      if (ok) {
+        backBtnScenario.style.display = 'block';
+        backBtnScenario.addEventListener('click', () => {
+          sessionStorage.removeItem('fromScenario');
+          sessionStorage.removeItem('scenario_back_to');
+          location.href = '/szenario.html';
+        });
+      }
+    });
+
+    // ====== BRIEFING-KARTEN (MESSERSTECHEREI / FEIER) ======
+    const steps = [
+      `Bei Eintreffen ist die Polizei bereits vor Ort.<br>
+       Die Täter wurden bereits festgenommen.`,
+
+      `Nach Angaben der Polizei kam es während einer Feier zu einer Auseinandersetzung.<br>
+       Dabei sollen zwei Personen mit einem Messer auf mehrere Beteiligte eingestochen haben.`,
+
+      `Die Polizei hat die Räumlichkeiten freigegeben.<br>
+       Im Gebäude befinden sich mehrere Verletzte.`,
+
+      `Teilweise wurde durch Polizeikräfte bereits Erste Hilfe geleistet.<br>
+       Anzahl und Schweregrad der Verletzungen sind aktuell noch unklar.`
+    ];
+
+    const pre         = document.getElementById("pre");
+    const briefEl     = document.getElementById("brief");
+    const dotsEl      = document.getElementById("dots");
+    const backBtn     = document.getElementById("backBtn");
+    const nextBtn     = document.getElementById("nextBtn");
+
+    const briefingButton = document.getElementById("briefingButton");
+    const cameraButton   = document.getElementById("cameraButton");
+    const endButton      = document.getElementById("einsatzendeButton");
+
+    const timerLine   = document.getElementById("timerLine");
+    const timerEl     = document.getElementById("timer");
+
+    const video  = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const ctx    = canvas.getContext('2d');
+
+    let stepIndex = 0;
+    let briefingConfirmed = false;
+
+    // Timer startet beim Bestätigen
+    let t0 = null;
+    let timerInt = null;
+    function startTimer(){
+      if(timerInt) return;
+      t0 = Date.now();
+      timerLine.style.display = "block";
+      timerInt = setInterval(()=>{
+        const s = Math.floor((Date.now()-t0)/1000);
+        const mm = String(Math.floor(s/60)).padStart(2,"0");
+        const ss = String(s%60).padStart(2,"0");
+        timerEl.textContent = `${mm}:${ss}`;
+      }, 500);
+    }
+
+    function renderDots(){
+      dotsEl.innerHTML = "";
+      for(let i=0;i<steps.length;i++){
+        const d = document.createElement("div");
+        d.className = "dot" + (i===stepIndex ? " active" : "");
+        dotsEl.appendChild(d);
+      }
+    }
+
+    function setBrief(html){
+      briefEl.classList.add("fade");
+      setTimeout(()=>{
+        briefEl.innerHTML = html;
+        briefEl.classList.remove("fade");
+      }, 160);
+    }
+
+    function updateStepper(){
+      backBtn.disabled = (stepIndex === 0);
+      const last = (stepIndex === steps.length - 1);
+      nextBtn.textContent = last ? "Briefing bestätigen" : "Weiter";
+      renderDots();
+      setBrief(steps[stepIndex]);
+    }
+
+    backBtn.addEventListener("click", ()=>{
+      if(stepIndex > 0){ stepIndex--; updateStepper(); }
+    });
+
+    nextBtn.addEventListener("click", ()=>{
+      const last = (stepIndex === steps.length - 1);
+      if(!last){
+        stepIndex++;
+        updateStepper();
+      }else{
+        briefingConfirmed = true;
+        cameraButton.disabled = false;
+        startTimer();
+
+        nextBtn.disabled = true;
+        backBtn.disabled = true;
+
+        document.getElementById("briefBox").style.animation = "none";
+        document.getElementById("hintline").textContent =
+          "Einsatz läuft. Briefing kann jederzeit erneut gelesen werden.";
+      }
+    });
+
+    briefingButton.addEventListener("click", ()=>{
+      stepIndex = 0;
+      updateStepper();
+
+      nextBtn.disabled = briefingConfirmed;
+      backBtn.disabled = briefingConfirmed;
+
+      if(briefingConfirmed){
+        document.getElementById("briefBox").style.animation = "none";
+      }
+    });
+
+    // Pre + Init (wie bei deinen anderen Seiten)
+    setTimeout(()=> pre.classList.add("hide"), 700);
+    setTimeout(()=> updateStepper(), 760);
+
+    // Navigation
+    endButton.addEventListener("click", ()=> location.href="/Auswertung.html");
+
+    // Scanner
+    let stream=null, scanning=false, rafId=null;
+
+    cameraButton.addEventListener("click", async ()=>{
+      if(cameraButton.disabled) return;
+      if(!scanning){ await startScanner(); }
+      else{ stopScanner(); }
+    });
+
+    async function startScanner(){
+      try{
+        if(!navigator.mediaDevices?.getUserMedia){
+          alert("Die Kamera-API wird von diesem Gerät nicht unterstützt.");
+          return;
+        }
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false
+        });
+        video.srcObject = stream;
+        await video.play();
+        video.style.display = "block";
+
+        canvas.width  = video.videoWidth  || 640;
+        canvas.height = video.videoHeight || 480;
+
+        scanning = true;
+        cameraButton.textContent = "Scanner stoppen";
+        scanLoop();
+      }catch(err){
+        console.error("Kamera-Zugriff fehlgeschlagen:", err);
+        alert("Kamera-Zugriff fehlgeschlagen. Bitte Berechtigungen prüfen.");
+      }
+    }
+
+    function stopScanner(){
+      scanning = false;
+      if(rafId) cancelAnimationFrame(rafId);
+      if(video.srcObject){
+        video.srcObject.getTracks().forEach(t=>t.stop());
+        video.srcObject = null;
+      }
+      video.style.display = "none";
+      cameraButton.textContent = "Patienten scannen";
+    }
+
+    function scanLoop(){
+      if(!scanning) return;
+      try{
+        ctx.drawImage(video,0,0,canvas.width,canvas.height);
+        const imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+        const code = jsQR(imageData.data,canvas.width,canvas.height,{ inversionAttempts:"dontInvert" });
+        if(code && code.data){
+          stopScanner();
+          location.href = code.data;
+          return;
+        }
+      }catch(e){}
+      rafId = requestAnimationFrame(scanLoop);
+    }
+
+    window.addEventListener('pagehide', stopScanner);
+    document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopScanner(); });
+  </script>
+
+  <script src="/metrics.js" defer></script>
+</body>
+</html>
