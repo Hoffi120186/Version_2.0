@@ -1,4 +1,4 @@
-// /coop.js (ROOT) — stable session + resume + lock + only end by reset/end/expiry
+// /coop.js (ROOT) — stable session, persists across navigation, ends on explicit click OR app restart
 (() => {
   "use strict";
 
@@ -6,19 +6,13 @@
     apiBase: "https://www.1rettungsmittel.de/api/coop_test",
     pollMs: 1500,
     heartbeatMs: 8000,
-    storageKey: "coop_session_v1",
     sinceSkewSeconds: 2,
 
-    // simple UI flag
+    storageKey: "coop_session_v1",
     lsActive: "coop.active",
 
-    // Lock (damit nicht mehrere Tabs/HomeScreens gleichzeitig pollen)
-    lockKey: "coop.lock.v1",
-    lockTtlMs: 12_000, // alle 12s erneuern
-
-    // optional: Session expiry (damit uralte Sessions nicht ewig leben)
-    // 0 = deaktiviert
-    sessionTtlMs: 24 * 60 * 60 * 1000, // 24h
+    // Boot marker: sessionStorage is cleared on full app restart (iOS homescreen)
+    ssBoot: "coop.boot.v1",
   };
 
   const S = {
@@ -34,35 +28,19 @@
     since: "",
     lastVersion: new Map(),
 
-    timers: { poll: null, hb: null, lock: null },
+    timers: { poll: null, hb: null },
+    _bootFresh: false,
   };
 
-  // -------- helpers --------
-  const log  = (...a) => console.log("[COOP]", ...a);
-  const warn = (...a) => console.warn("[COOP]", ...a);
-  const emit = (name, detail = {}) => {
+  // ---------------------------
+  // Helpers
+  // ---------------------------
+  function log(...a) { console.log("[COOP]", ...a); }
+  function warn(...a) { console.warn("[COOP]", ...a); }
+  function emit(name, detail = {}) {
     window.dispatchEvent(new CustomEvent(`coop:${name}`, { detail }));
-  };
-
-  // -------- device id (stable) --------
-  function getDeviceId() {
-    try {
-      const KEY = "COOP_DEVICE_ID_V1";
-      let id = localStorage.getItem(KEY);
-      if (!id) {
-        id = (crypto.randomUUID ? crypto.randomUUID() : (Date.now() + "-" + Math.random()))
-          .toString()
-          .replace(/[^a-z0-9\-]/gi, "");
-        localStorage.setItem(KEY, id);
-      }
-      return id;
-    } catch {
-      return "web-" + Date.now();
-    }
   }
-  const DEVICE_ID = getDeviceId();
 
-  // -------- active flag --------
   function setActiveFlag(on) {
     try { localStorage.setItem(DEFAULTS.lsActive, on ? "1" : "0"); } catch {}
   }
@@ -70,7 +48,6 @@
     try { return localStorage.getItem(DEFAULTS.lsActive) === "1"; } catch { return false; }
   }
 
-  // -------- session storage --------
   function saveSession() {
     const payload = {
       apiBase: S.apiBase,
@@ -80,7 +57,7 @@
       role: S.role,
       token: S.token,
       since: S.since,
-      t: Date.now()
+      t: Date.now(),
     };
     try { localStorage.setItem(DEFAULTS.storageKey, JSON.stringify(payload)); } catch {}
   }
@@ -100,14 +77,20 @@
     try { localStorage.removeItem(DEFAULTS.storageKey); } catch {}
   }
 
-  function isSessionExpired(sess) {
-    if (!sess || !DEFAULTS.sessionTtlMs) return false;
-    const t = Number(sess.t || 0);
-    if (!t) return false;
-    return (Date.now() - t) > DEFAULTS.sessionTtlMs;
+  // Boot logic:
+  // - if app was fully restarted, sessionStorage is empty → we consider coop "ended on restart"
+  function ensureBootMarker() {
+    try {
+      const boot = sessionStorage.getItem(DEFAULTS.ssBoot);
+      if (!boot) {
+        sessionStorage.setItem(DEFAULTS.ssBoot, String(Date.now()));
+        S._bootFresh = true; // new boot detected
+      }
+    } catch {
+      // if sessionStorage not available, do nothing
+    }
   }
 
-  // -------- fetch helpers --------
   async function fetchJSON(url, opts = {}) {
     const res = await fetch(url, opts);
     const data = await res.json().catch(() => ({}));
@@ -142,59 +125,15 @@
     }
   }
 
-  // -------- lock (single poller) --------
-  function readLock() {
-    try { return JSON.parse(localStorage.getItem(DEFAULTS.lockKey) || "null"); } catch { return null; }
-  }
-  function writeLock(v) {
-    try { localStorage.setItem(DEFAULTS.lockKey, JSON.stringify(v)); } catch {}
-  }
-  function clearLock() {
-    try { localStorage.removeItem(DEFAULTS.lockKey); } catch {}
-  }
-
-  function claimLock() {
-    const now = Date.now();
-    const cur = readLock();
-    const expired = !cur || !cur.until || now > cur.until;
-
-    // Wenn Lock frei/abgelaufen oder bereits von mir -> ich nehme ihn
-    if (expired || cur.owner === DEVICE_ID) {
-      writeLock({ owner: DEVICE_ID, until: now + DEFAULTS.lockTtlMs });
-      return true;
-    }
-    return false;
-  }
-
-  function startLockHeartbeat() {
-    stopLockHeartbeat();
-    // Sofort versuchen
-    claimLock();
-    S.timers.lock = setInterval(() => {
-      claimLock();
-    }, Math.max(3000, DEFAULTS.lockTtlMs - 3000));
-  }
-
-  function stopLockHeartbeat() {
-    if (S.timers.lock) clearInterval(S.timers.lock);
-    S.timers.lock = null;
-  }
-
-  function iAmLockOwner() {
-    const cur = readLock();
-    if (!cur) return false;
-    if (cur.owner !== DEVICE_ID) return false;
-    if (Date.now() > Number(cur.until || 0)) return false;
-    return true;
-  }
-
-  // -------- API --------
+  // ---------------------------
+  // API
+  // ---------------------------
   async function createIncident(payload = {}) {
     const url = `${S.apiBase}/create_incident.php`;
     const data = await fetchJSON(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
 
     S.incident_id = data.incident_id || S.incident_id;
@@ -210,8 +149,9 @@
     setActiveFlag(true);
 
     emit("created", data);
+    emit("status", getStatus());
     log("created", data);
-    start(); // startet poll/heartbeat (mit lock check)
+    start();
     return data;
   }
 
@@ -220,14 +160,14 @@
     const data = await fetchJSON(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ join_code, role })
+      body: JSON.stringify({ join_code, role }),
     });
 
-    S.incident_id = data.incident_id;
-    S.client_id   = data.client_id;
-    S.role        = data.role;
-    S.token       = data.token;
-    S.join_code   = join_code;
+    S.incident_id = (data.incident_id || "").trim();
+    S.client_id   = (data.client_id || "").trim();
+    S.role        = (data.role || role || "").trim();
+    S.token       = (data.token || "").trim();
+    S.join_code   = (join_code || "").trim();
 
     S.since = "";
     S.lastVersion.clear();
@@ -236,8 +176,9 @@
     setActiveFlag(true);
 
     emit("joined", data);
+    emit("status", getStatus());
     log("joined", data);
-    start(); // startet poll/heartbeat (mit lock check)
+    start();
     return data;
   }
 
@@ -248,7 +189,7 @@
       await fetchJSON(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ incident_id: S.incident_id, token: S.token })
+        body: JSON.stringify({ incident_id: S.incident_id, token: S.token }),
       });
       emit("heartbeat", { ok: true });
     } catch (e) {
@@ -257,10 +198,8 @@
   }
 
   async function pullState() {
-    if (!S.enabled || !S.incident_id || !S.token) return;
-
-    // WICHTIG: nur Lock-Owner pollt (sonst doppelte Calls / Stress)
-    if (!iAmLockOwner()) return;
+    if (!S.enabled || !isActiveFlag()) return;
+    if (!S.incident_id || !S.token) return;
 
     const sinceSafe = S.since
       ? subtractSecondsFromDatetimeString(S.since, DEFAULTS.sinceSkewSeconds)
@@ -269,7 +208,7 @@
     const url = `${S.apiBase}/state.php?` + qs({
       incident_id: S.incident_id,
       token: S.token,
-      since: sinceSafe
+      since: sinceSafe,
     });
 
     try {
@@ -299,7 +238,14 @@
         emit("changes", { changes: filtered, server_time: serverTime });
       }
     } catch (e) {
-      // wenn unauthorized -> Session nicht automatisch killen (du wolltest nur per Klick beenden)
+      // If backend says unauthorized, we STOP polling but DO NOT delete session automatically.
+      // (User wants it to persist until explicit stop.)
+      if (String(e.message).includes("unauthorized") || String(e.message).includes("403")) {
+        emit("auth_error", { error: e.message });
+        warn("pullState unauthorized -> stopped polling (session kept):", e.message);
+        stop();
+        return;
+      }
       emit("poll_error", { error: e.message });
       warn("pullState fail:", e.message);
     }
@@ -310,30 +256,25 @@
     if (!S.incident_id || !S.token) throw new Error("missing_session");
 
     const url = `${S.apiBase}/patch_patient.php`;
-    const body = {
-      incident_id: S.incident_id,
-      token: S.token,
-      patient_id,
-      ...patch
-    };
+    const body = { incident_id: S.incident_id, token: S.token, patient_id, ...patch };
 
     const data = await fetchJSON(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
     });
 
     emit("patched", { patient_id, patch, version: data.version });
     return data;
   }
 
-  // -------- timers --------
+  // ---------------------------
+  // Timers
+  // ---------------------------
   function start() {
-    // immer enabled setzen, aber polling nur wenn lock owner
+    stop();
     S.enabled = true;
-
-    stop(); // stop poll/hb (nicht lock)
-    startLockHeartbeat();
+    if (!isActiveFlag()) setActiveFlag(true);
 
     S.timers.poll = setInterval(pullState, DEFAULTS.pollMs);
     S.timers.hb   = setInterval(ping, DEFAULTS.heartbeatMs);
@@ -349,134 +290,145 @@
     S.timers.hb   = null;
   }
 
-  // -------- public control --------
+  // ---------------------------
+  // Control
+  // ---------------------------
   function enable(opts = {}) {
     S.apiBase = opts.apiBase || S.apiBase;
     S.enabled = true;
 
     const sess = loadSession();
+    if (sess?.token && sess?.incident_id) {
+      S.apiBase     = sess.apiBase || S.apiBase;
+      S.incident_id = String(sess.incident_id || "").trim();
+      S.join_code   = String(sess.join_code || "").trim() || null;
+      S.client_id   = String(sess.client_id || "").trim() || null;
+      S.role        = String(sess.role || "").trim() || null;
+      S.token       = String(sess.token || "").trim();
+      S.since       = String(sess.since || "");
 
-    // Wenn Session existiert -> automatisch "active"
-    if (sess?.token && sess?.incident_id && !isSessionExpired(sess)) {
       setActiveFlag(true);
-      return resume(); // zieht aus Session und startet timer
-    }
-
-    // abgelaufen -> nur wenn du es willst: löschen
-    if (sess && isSessionExpired(sess)) {
-      warn("stored session expired -> cleared");
-      clearSession();
-      setActiveFlag(false);
+      emit("restored", { session: sess });
+      emit("status", getStatus());
+      log("restored", { incident_id: S.incident_id, role: S.role });
+      start();
+      return true;
     }
 
     emit("need_join", {});
-    // NICHT start() (weil ohne session sinnlos)
+    emit("status", getStatus());
     return false;
   }
 
-  async function resume({ incident_id, token, role } = {}) {
+  async function resume() {
     const sess = loadSession();
+    if (!sess?.token || !sess?.incident_id) return false;
 
-    if (sess && isSessionExpired(sess)) {
-      warn("resume: session expired -> cleared");
-      clearSession();
-      setActiveFlag(false);
-      emit("need_join", {});
-      return false;
-    }
+    S.apiBase     = sess.apiBase || S.apiBase;
+    S.incident_id = String(sess.incident_id || "").trim();
+    S.join_code   = String(sess.join_code || "").trim() || null;
+    S.client_id   = String(sess.client_id || "").trim() || null;
+    S.role        = String(sess.role || "").trim() || null;
+    S.token       = String(sess.token || "").trim();
+    S.since       = String(sess.since || "");
 
-    S.apiBase     = sess?.apiBase || S.apiBase;
-    S.incident_id = incident_id || sess?.incident_id || S.incident_id;
-    S.token       = token       || sess?.token       || S.token;
-    S.role        = role        || sess?.role        || S.role;
-    S.join_code   = sess?.join_code || S.join_code;
-    S.client_id   = sess?.client_id || S.client_id;
-    S.since       = sess?.since || S.since;
-
-    if (!S.incident_id || !S.token) {
-      emit("need_join", {});
-      return false;
-    }
-
-    // Session existiert => active=true
+    S.enabled = true;
     setActiveFlag(true);
 
-    emit("restored", { session: loadSession() });
+    emit("restored", { session: sess });
+    emit("status", getStatus());
+    log("resumed", { incident_id: S.incident_id, role: S.role });
+
     start();
-    log("resumed", { incident_id: S.incident_id, role: S.role, lockOwner: iAmLockOwner() });
     return true;
   }
 
-  function disable() {
-    // disable heißt: coop engine anhalten, aber Session NICHT löschen
-    S.enabled = false;
+  function endSession() {
+    // “Beenden” = nicht weiter pollen, Flag aus, Session bleibt optional (ich lasse sie da, falls du später "fortsetzen" willst)
     stop();
-    stopLockHeartbeat();
-    emit("disabled", {});
-  }
-
-  function end() {
-    // "Einsatz beenden" -> Session bleibt optional, aber active aus + stop
-    // wenn du wirklich komplett raus willst: reset() benutzen
+    S.enabled = false;
     setActiveFlag(false);
-    disable();
-    emit("ended", {});
+    emit("disabled", {});
+    emit("status", getStatus());
   }
 
   function reset() {
-    // HARTE Beendigung (nur durch Klick)
-    disable();
+    // Hard reset = alles weg
+    stop();
+    S.enabled = false;
+
     clearSession();
     setActiveFlag(false);
-    clearLock();
 
     S.incident_id = null;
-    S.join_code = null;
-    S.client_id = null;
-    S.role = null;
-    S.token = null;
-    S.since = "";
+    S.join_code   = null;
+    S.client_id   = null;
+    S.role        = null;
+    S.token       = null;
+    S.since       = "";
     S.lastVersion.clear();
 
     emit("reset", {});
-    log("reset");
+    emit("status", getStatus());
   }
 
-  // -------- expose --------
+  function getStatus() {
+    return {
+      active: isActiveFlag(),
+      enabled: !!S.enabled,
+      incident_id: S.incident_id,
+      join_code: S.join_code,
+      role: S.role,
+      hasSession: !!loadSession(),
+    };
+  }
+
+  // ---------------------------
+  // Auto behavior:
+  // - If app restarted (fresh boot) => coop ends automatically (as you wanted)
+  // - If NOT restarted and active flag true => resume on each page
+  // ---------------------------
+  function autoResume() {
+    ensureBootMarker();
+
+    // End on app restart:
+    // When boot is fresh AND coop was active previously, we turn it off.
+    if (S._bootFresh && isActiveFlag()) {
+      // End on restart (your requirement)
+      setActiveFlag(false);
+      stop();
+      S.enabled = false;
+      emit("status", getStatus());
+      log("boot detected -> coop ended on restart");
+      return;
+    }
+
+    // Normal navigation: keep running if active+session exists
+    const sess = loadSession();
+    if (isActiveFlag() && sess?.token && sess?.incident_id) {
+      resume().catch(() => {});
+    } else {
+      emit("status", getStatus());
+    }
+  }
+
   window.Coop = {
     enable,
     resume,
-    disable,
-    end,     // ✅ optional
-    reset,   // ✅ harte Beendigung
+    endSession, // ✅ "beenden" ohne session löschen
+    reset,      // ✅ hard reset
 
     createIncident,
     joinIncident,
     patchPatient,
 
     pullState,
-    getState: () => ({
-      ...S,
-      activeFlag: isActiveFlag(),
-      deviceId: DEVICE_ID,
-      lock: readLock()
-    }),
+    ping,
+
+    getState: () => ({ ...S, activeFlag: isActiveFlag() }),
+    getStatus,
+    isActive: () => isActiveFlag() && !!loadSession(),
   };
-
-  // -------- auto-resume --------
-  function autoResume() {
-    const sess = loadSession();
-
-    // Wenn Session existiert, aber activeFlag fehlt -> activeFlag automatisch setzen
-    if (sess?.token && sess?.incident_id && !isSessionExpired(sess) && !isActiveFlag()) {
-      setActiveFlag(true);
-    }
-
-    // Nur wenn activeFlag true -> resume
-    if (isActiveFlag() && sess?.token && sess?.incident_id && !isSessionExpired(sess)) {
-      resume().catch(() => {});
-    }
-  }
 
   window.addEventListener("load", autoResume);
   document.addEventListener("visibilitychange", () => {
