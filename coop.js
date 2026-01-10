@@ -1,4 +1,4 @@
-// /js/coop/coop.js
+// /coop.js  (ROOT) — unified session + resume + stable persistence
 (() => {
   "use strict";
 
@@ -7,7 +7,10 @@
     pollMs: 1500,
     heartbeatMs: 8000,
     storageKey: "coop_session_v1",
-    sinceSkewSeconds: 2, // safety window for "updated_at > since"
+    sinceSkewSeconds: 2,
+
+    // simple UI flags (for “Coop aktiv?”)
+    lsActive: "coop.active",
   };
 
   const S = {
@@ -15,14 +18,13 @@
     apiBase: DEFAULTS.apiBase,
 
     incident_id: null,
-    join_code: null, // optional (nice to have)
+    join_code: null,
     client_id: null,
     role: null,
     token: null,
 
-    // pull cursor
-    since: "", // 'YYYY-mm-dd HH:ii:ss'
-    lastVersion: new Map(), // patient_id -> version
+    since: "",
+    lastVersion: new Map(),
 
     timers: { poll: null, hb: null },
   };
@@ -31,6 +33,16 @@
   function warn(...a) { console.warn("[COOP]", ...a); }
   function emit(name, detail = {}) {
     window.dispatchEvent(new CustomEvent(`coop:${name}`, { detail }));
+  }
+
+  // ---------------------------
+  // Storage (ONE source of truth)
+  // ---------------------------
+  function setActiveFlag(on) {
+    try { localStorage.setItem(DEFAULTS.lsActive, on ? "1" : "0"); } catch {}
+  }
+  function isActiveFlag() {
+    try { return localStorage.getItem(DEFAULTS.lsActive) === "1"; } catch { return false; }
   }
 
   function saveSession() {
@@ -44,7 +56,7 @@
       since: S.since,
       t: Date.now()
     };
-    localStorage.setItem(DEFAULTS.storageKey, JSON.stringify(payload));
+    try { localStorage.setItem(DEFAULTS.storageKey, JSON.stringify(payload)); } catch {}
   }
 
   function loadSession() {
@@ -59,9 +71,12 @@
   }
 
   function clearSession() {
-    localStorage.removeItem(DEFAULTS.storageKey);
+    try { localStorage.removeItem(DEFAULTS.storageKey); } catch {}
   }
 
+  // ---------------------------
+  // Fetch helpers
+  // ---------------------------
   async function fetchJSON(url, opts = {}) {
     const res = await fetch(url, opts);
     const data = await res.json().catch(() => ({}));
@@ -81,27 +96,31 @@
     return u.toString();
   }
 
-  // ---- API Wrappers (match your backend) ----
-
+  // ---------------------------
+  // API
+  // ---------------------------
   async function createIncident(payload = {}) {
-    // expected endpoint: create_incident.php
     const url = `${S.apiBase}/create_incident.php`;
     const data = await fetchJSON(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-    // should contain: incident_id, join_code, token, client_id, role (OrgL)
-    // if your API returns slightly different fields, we can map.
+
     S.incident_id = data.incident_id || S.incident_id;
-    S.join_code = data.join_code || S.join_code;
-    S.token = data.token || S.token;
-    S.client_id = data.client_id || S.client_id;
-    S.role = data.role || "ORGL";
-    S.since = ""; // reset cursor
+    S.join_code   = data.join_code   || S.join_code;
+    S.token       = data.token       || S.token;
+    S.client_id   = data.client_id   || S.client_id;
+    S.role        = data.role        || "ORGL";
+
+    S.since = "";
     S.lastVersion.clear();
+
     saveSession();
+    setActiveFlag(true);
+
     emit("created", data);
+    log("created", data);
     return data;
   }
 
@@ -114,24 +133,25 @@
     });
 
     S.incident_id = data.incident_id;
-    S.client_id = data.client_id;
-    S.role = data.role;
-    S.token = data.token;
-    S.join_code = join_code;
+    S.client_id   = data.client_id;
+    S.role        = data.role;
+    S.token       = data.token;
+    S.join_code   = join_code;
 
     S.since = "";
     S.lastVersion.clear();
+
     saveSession();
+    setActiveFlag(true);
+
     emit("joined", data);
     log("joined", data);
     return data;
   }
 
   async function ping() {
-    // optional; use if your ping.php requires token+incident_id
     try {
       const url = `${S.apiBase}/ping.php`;
-      // Many implementations: POST {incident_id, token}
       await fetchJSON(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -144,8 +164,6 @@
   }
 
   function subtractSecondsFromDatetimeString(dt, seconds) {
-    // dt: 'YYYY-mm-dd HH:ii:ss'
-    // parse manually to avoid timezone issues; treat as local
     try {
       const [d, t] = dt.split(" ");
       const [Y, M, D] = d.split("-").map(Number);
@@ -156,14 +174,13 @@
       const pad = (n) => String(n).padStart(2, "0");
       return `${d2.getFullYear()}-${pad(d2.getMonth() + 1)}-${pad(d2.getDate())} ${pad(d2.getHours())}:${pad(d2.getMinutes())}:${pad(d2.getSeconds())}`;
     } catch {
-      return dt; // fallback
+      return dt;
     }
   }
 
   async function pullState() {
     if (!S.enabled || !S.incident_id || !S.token) return;
 
-    // Safety-window to prevent missing same-second updates
     const sinceSafe = S.since
       ? subtractSecondsFromDatetimeString(S.since, DEFAULTS.sinceSkewSeconds)
       : "";
@@ -177,10 +194,9 @@
     try {
       const data = await fetchJSON(url);
 
-      const serverTime = data.server_time; // 'YYYY-mm-dd HH:ii:ss'
+      const serverTime = data.server_time;
       const changes = Array.isArray(data.changes) ? data.changes : [];
 
-      // Dedupe by patient_id + version
       const filtered = [];
       for (const row of changes) {
         const pid = String(row.patient_id);
@@ -192,7 +208,6 @@
         }
       }
 
-      // advance cursor to server_time (not last row time), so clock is consistent
       if (typeof serverTime === "string" && serverTime.length >= 19) {
         S.since = serverTime;
       }
@@ -230,41 +245,76 @@
     return data;
   }
 
+  // ---------------------------
+  // Timers
+  // ---------------------------
   function start() {
     stop();
     S.timers.poll = setInterval(pullState, DEFAULTS.pollMs);
-    S.timers.hb = setInterval(ping, DEFAULTS.heartbeatMs);
+    S.timers.hb   = setInterval(ping, DEFAULTS.heartbeatMs);
     pullState();
     ping();
   }
 
   function stop() {
     if (S.timers.poll) clearInterval(S.timers.poll);
-    if (S.timers.hb) clearInterval(S.timers.hb);
+    if (S.timers.hb)   clearInterval(S.timers.hb);
     S.timers.poll = null;
-    S.timers.hb = null;
+    S.timers.hb   = null;
   }
 
+  // ---------------------------
+  // Public control
+  // ---------------------------
   function enable(opts = {}) {
     S.apiBase = opts.apiBase || S.apiBase;
     S.enabled = true;
 
-    // restore if possible
     const sess = loadSession();
     if (sess?.token && sess?.incident_id) {
-      S.apiBase = sess.apiBase || S.apiBase;
+      S.apiBase     = sess.apiBase || S.apiBase;
       S.incident_id = sess.incident_id;
-      S.join_code = sess.join_code || null;
-      S.client_id = sess.client_id || null;
-      S.role = sess.role || null;
-      S.token = sess.token;
-      S.since = sess.since || "";
+      S.join_code   = sess.join_code || null;
+      S.client_id   = sess.client_id || null;
+      S.role        = sess.role || null;
+      S.token       = sess.token;
+      S.since       = sess.since || "";
+
+      // wenn Session existiert, Flag setzen
+      setActiveFlag(true);
+
       emit("restored", { session: sess });
+      log("restored", { incident_id: S.incident_id, role: S.role });
     } else {
       emit("need_join", {});
     }
 
     start();
+    return true;
+  }
+
+  // ✅ echte Resume-Funktion (wird von UI/Seitenwechsel genutzt)
+  async function resume({ incident_id, token, role } = {}) {
+    const sess = loadSession();
+
+    // prefer args; fallback to stored session
+    S.incident_id = incident_id || sess?.incident_id || S.incident_id;
+    S.token       = token       || sess?.token       || S.token;
+    S.role        = role        || sess?.role        || S.role;
+    S.apiBase     = sess?.apiBase || S.apiBase;
+    S.since       = sess?.since   || S.since;
+
+    if (!S.incident_id || !S.token) {
+      warn("resume: missing incident/token");
+      return false;
+    }
+
+    S.enabled = true;
+    setActiveFlag(true);
+    emit("restored", { session: loadSession() });
+
+    start();
+    log("resumed", { incident_id: S.incident_id, role: S.role });
     return true;
   }
 
@@ -277,6 +327,8 @@
   function reset() {
     disable();
     clearSession();
+    setActiveFlag(false);
+
     S.incident_id = null;
     S.join_code = null;
     S.client_id = null;
@@ -284,11 +336,13 @@
     S.token = null;
     S.since = "";
     S.lastVersion.clear();
+
     emit("reset", {});
   }
 
   window.Coop = {
     enable,
+    resume,   // ✅ jetzt existiert’s wirklich
     disable,
     reset,
 
@@ -296,54 +350,26 @@
     joinIncident,
     patchPatient,
 
-    pullState, // optional manual trigger
-    getState: () => ({ ...S }),
+    pullState,
+    getState: () => ({ ...S, activeFlag: isActiveFlag() }),
   };
 
-})();
-(function(){
-  const LS = localStorage;
-
-  function getState(){
-    try{
-      return {
-        active: LS.getItem("coop.active") === "1",
-        incident_id: LS.getItem("coop.incident_id") || "",
-        token: LS.getItem("coop.token") || "",
-        role: LS.getItem("coop.role") || ""
-      };
-    }catch{
-      return { active:false, incident_id:"", token:"", role:"" };
+  // ---------------------------
+  // Auto-Resume on every page that loads coop.js
+  // ---------------------------
+  function autoResume() {
+    // Wenn du explizit “Coop aus” willst: coop.active auf 0 setzen.
+    // Sonst: wenn Session existiert, resume.
+    const sess = loadSession();
+    const active = isActiveFlag();
+    if (active && sess?.token && sess?.incident_id) {
+      resume().catch(() => {});
     }
   }
 
-  async function resumeIfNeeded(){
-    const st = getState();
-    if (!st.active || !st.incident_id || !st.token) return;
-
-    // wichtig: NICHT neu erstellen, nur reconnect/poll starten
-    console.log("[COOP] resume from localStorage", st);
-
-    try{
-      // falls du eine Coop-Instanz / API hast:
-      if (window.Coop && typeof window.Coop.resume === "function") {
-        await window.Coop.resume({
-          incident_id: st.incident_id,
-          token: st.token,
-          role: st.role
-        });
-      } else {
-        console.warn("[COOP] window.Coop.resume fehlt – coop.js API nicht geladen?");
-      }
-    }catch(e){
-      console.error("[COOP] resume failed", e);
-    }
-  }
-
-  // beim Laden & wenn Tab wieder sichtbar wird
-  window.addEventListener("load", resumeIfNeeded);
+  window.addEventListener("load", autoResume);
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") resumeIfNeeded();
+    if (document.visibilityState === "visible") autoResume();
   });
-})();
 
+})();
