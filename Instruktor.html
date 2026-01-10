@@ -88,11 +88,7 @@
     }
 
     /* Coop QR Box */
-    #coopQr {
-      background:#fff;
-      padding:10px;
-      border-radius:12px;
-    }
+    #coopQr { background:#fff; padding:10px; border-radius:12px; }
 
     /* Scanner Video */
     #coopVideo {
@@ -104,9 +100,7 @@
       object-fit: cover;
     }
 
-    .btn-secondary {
-      opacity:.95;
-    }
+    .btn-secondary { opacity:.95; }
 
     .pill {
       display:inline-flex; align-items:center; gap:8px;
@@ -763,48 +757,45 @@
   function show(el){ el.style.display = "flex"; }
   function hide(el){ el.style.display = "none"; }
 
+  // ---- robust: wir zeigen "aktiv", sobald Session existiert (auch wenn coop.active=0 ist)
+  function getStoredSession(){
+    try { return JSON.parse(localStorage.getItem("coop_session_v1") || "null"); }
+    catch { return null; }
+  }
+
   function getCoopStatus(){
-    try {
-      if (!window.Coop || typeof window.Coop.getStatus !== "function") {
-        // fallback falls coop.js mal nicht geladen
-        const active = localStorage.getItem("coop.active") === "1";
-        const sess = JSON.parse(localStorage.getItem("coop_session_v1") || "null");
-        return {
-          active,
-          join_code: sess?.join_code || "",
-          role: sess?.role || "",
-          incident_id: sess?.incident_id || "",
-          hasSession: !!sess
-        };
+    try{
+      // falls du irgendwann getStatus in coop.js ergänzt -> nutzen
+      if (window.Coop && typeof window.Coop.getStatus === "function") {
+        return window.Coop.getStatus();
       }
-      return window.Coop.getStatus();
-    } catch {
-      return { active:false, join_code:"", role:"", incident_id:"", hasSession:false };
-    }
+    }catch{}
+
+    const sess = getStoredSession();
+    const hasSession = !!(sess && sess.token && sess.incident_id);
+    return {
+      active: hasSession,                  // <- wichtig: Session => aktiv
+      hasSession,
+      join_code: sess?.join_code || "",
+      role: sess?.role || "",
+      incident_id: sess?.incident_id || "",
+      token: sess?.token || ""
+    };
   }
 
   function renderCoopUI(){
     const st = getCoopStatus();
 
-    // Standard
-    coopBtn.disabled = false;
-
     if (st.active && st.hasSession) {
-      // Coop läuft
       coopBtn.textContent = "🤝 Coop läuft…";
       coopBtn.disabled = true;
 
-      const jc   = st.join_code || "";
+      const jc = st.join_code || "";
       const role = st.role || "";
-      if (jc) {
-        coopInfo.textContent = `Coop aktiv (Join-Code: ${jc})`;
-      } else if (role) {
-        coopInfo.textContent = `Coop aktiv (${role})`;
-      } else {
-        coopInfo.textContent = "Coop aktiv";
-      }
+      if (jc) coopInfo.textContent = `Coop aktiv (Join-Code: ${jc})`;
+      else if (role) coopInfo.textContent = `Coop aktiv (${role})`;
+      else coopInfo.textContent = "Coop aktiv";
     } else {
-      // Coop aus
       coopBtn.textContent = "🤝 Coop-Modus";
       coopBtn.disabled = false;
       coopInfo.textContent = "";
@@ -821,27 +812,46 @@
     new QRCode(coopQrEl, { text: link, width: 220, height: 220 });
   }
 
-  // ---- Events vom coop.js: sobald sich Status ändert -> UI neu zeichnen
-  window.addEventListener("coop:status", renderCoopUI);
-  window.addEventListener("coop:joined", renderCoopUI);
-  window.addEventListener("coop:created", renderCoopUI);
-  window.addEventListener("coop:restored", renderCoopUI);
-  window.addEventListener("coop:disabled", renderCoopUI);
-  window.addEventListener("coop:reset", renderCoopUI);
+  async function forceResumeIfSessionExists(){
+    const sess = getStoredSession();
+    if (!sess || !sess.token || !sess.incident_id) return;
 
-  // Beim Laden einmal rendern
-  window.addEventListener("load", () => {
-    // coop.js initialisieren / autoResume läuft in coop.js selbst
-    // hier nur UI refresh:
+    // wir erzwingen "aktiv", egal ob coop.active mal 0 ist
+    try { localStorage.setItem("coop.active","1"); } catch {}
+
+    // coop.js hochfahren und resume
+    try{
+      window.Coop?.enable?.({ apiBase: COOP_API });   // restored aus storage
+      await window.Coop?.resume?.();                  // sicherheitshalber
+    }catch(e){
+      console.warn("[COOP] forceResume failed", e);
+    }
+  }
+
+  // ---- Events vom coop.js: sobald sich Status ändert -> UI neu zeichnen
+  window.addEventListener("coop:joined",   () => { try{ localStorage.setItem("coop.active","1"); }catch{}; renderCoopUI(); });
+  window.addEventListener("coop:created",  () => { try{ localStorage.setItem("coop.active","1"); }catch{}; renderCoopUI(); });
+  window.addEventListener("coop:restored", () => { try{ localStorage.setItem("coop.active","1"); }catch{}; renderCoopUI(); });
+  window.addEventListener("coop:disabled", renderCoopUI);
+  window.addEventListener("coop:reset",    renderCoopUI);
+
+  // Beim Laden/Zurückkehren immer: resume + UI
+  window.addEventListener("load", async () => {
+    await forceResumeIfSessionExists();
     renderCoopUI();
+  });
+  document.addEventListener("visibilitychange", async () => {
+    if (document.visibilityState === "visible") {
+      await forceResumeIfSessionExists();
+      renderCoopUI();
+    }
   });
 
   // Button öffnet nur Auswahl (wenn nicht aktiv)
   coopBtn.addEventListener("click", () => {
     const st = getCoopStatus();
     if (st.active && st.hasSession) {
-      // läuft bereits -> optional Hinweis
-      alert("Coop läuft bereits. Zum Beenden nutze im QR-Fenster 'Coop beenden' oder starte eine neue Übung.");
+      alert("Coop läuft bereits. Zum Beenden nutze im QR-Fenster 'Coop beenden'.");
       return;
     }
     if (!window.Coop) {
@@ -878,14 +888,13 @@
       coopStatus.textContent = `✅ Coop aktiv. Join-Code: ${join_code}`;
       coopInfo.textContent = `Coop aktiv (Join-Code: ${join_code})`;
 
-      // finaler UI refresh (wichtig für „rein/raus“)
+      try { localStorage.setItem("coop.active","1"); } catch {}
       renderCoopUI();
 
     } catch (e) {
       console.error(e);
       alert("Coop konnte nicht gestartet werden: " + (e.message || e));
 
-      // sauber zurück
       try { window.Coop?.reset?.(); } catch {}
       hide(qrModal);
       renderCoopUI();
@@ -894,9 +903,10 @@
 
   qrClose.addEventListener("click", () => hide(qrModal));
 
-  // ✅ Coop beenden: HARD reset (Session weg) – so wie du es willst „nur durch Klick“
+  // ✅ Coop beenden: HARD reset (Session weg) – nur durch Klick beendet
   coopStop.addEventListener("click", () => {
     try { window.Coop?.reset?.(); } catch {}
+    try { localStorage.setItem("coop.active","0"); } catch {}
     hide(qrModal);
     renderCoopUI();
   });
@@ -1004,12 +1014,8 @@
       await stopScanner();
       hide(scanModal);
 
-      // UI wird über coop:joined / coop:status auch aktualisiert,
-      // aber wir machen es direkt noch einmal:
+      try { localStorage.setItem("coop.active","1"); } catch {}
       renderCoopUI();
-
-      // Optional:
-      // safeGo('/index.html');
 
     } catch (e) {
       console.error(e);
@@ -1019,10 +1025,8 @@
 
   roleRTW.addEventListener("click", () => doJoin("RTW"));
   roleNEF.addEventListener("click", () => doJoin("NEF"));
-</script>
-
+  </script>
 
   <script src="/metrics.js" defer></script>
 </body>
 </html>
-
