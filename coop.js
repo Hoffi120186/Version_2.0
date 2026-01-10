@@ -301,3 +301,49 @@
   };
 
 })();
+(function(){
+  const LS = localStorage;
+
+  function getState(){
+    try{
+      return {
+        active: LS.getItem("coop.active") === "1",
+        incident_id: LS.getItem("coop.incident_id") || "",
+        token: LS.getItem("coop.token") || "",
+        role: LS.getItem("coop.role") || ""
+      };
+    }catch{
+      return { active:false, incident_id:"", token:"", role:"" };
+    }
+  }
+
+  async function resumeIfNeeded(){
+    const st = getState();
+    if (!st.active || !st.incident_id || !st.token) return;
+
+    // wichtig: NICHT neu erstellen, nur reconnect/poll starten
+    console.log("[COOP] resume from localStorage", st);
+
+    try{
+      // falls du eine Coop-Instanz / API hast:
+      if (window.Coop && typeof window.Coop.resume === "function") {
+        await window.Coop.resume({
+          incident_id: st.incident_id,
+          token: st.token,
+          role: st.role
+        });
+      } else {
+        console.warn("[COOP] window.Coop.resume fehlt – coop.js API nicht geladen?");
+      }
+    }catch(e){
+      console.error("[COOP] resume failed", e);
+    }
+  }
+
+  // beim Laden & wenn Tab wieder sichtbar wird
+  window.addEventListener("load", resumeIfNeeded);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") resumeIfNeeded();
+  });
+})();
+
