@@ -1,8 +1,9 @@
 // script.js — 2025-11-25-6 (patched: last-click-wins + SK jederzeit änderbar + T/B nur bei SK1/SK3)
+// + COOP PATCH: SK schreibt zusätzlich in Coop-Backend (triage + location=ABLAGE_1)
 
 // ==== Version & Singleton Guards (wichtig gegen doppelte Init via SW) ====
 (function(){
-  const VER = '2025-11-25-6';
+  const VER = '2025-11-25-6-coop1';
   if (window.__APP_VER && window.__APP_VER === VER) {
     console.warn('[guard] already initialized', VER);
     return;
@@ -12,7 +13,7 @@
 })();
 
 // ==== (Optional) Host-Normalizer gegen Split-Storage ====
-const CANONICAL_HOST = ""; // z.B. "app.1rettungsmittel.de"
+const CANONICAL_HOST = ""; // z.B. "www.1rettungsmittel.de" oder "app.1rettungsmittel.de"
 (function(){
   try{
     if (CANONICAL_HOST && location.hostname !== CANONICAL_HOST) {
@@ -65,7 +66,7 @@ const __SK_DEBUG = true;
   window.__detectPatientIdFromPage = __detectPatientIdFromPage;
 })();
 
-// ==== Zentraler Writer: Dedupe + Throttle + Ablage-Kompat ====
+// ==== Zentraler Writer: Dedupe + Throttle + Ablage-Kompat + COOP Sync ====
 const SKWriter = (() => {
   const MAP_KEY = "sichtungMap";
   const ABL_KEY = "ablage.active.v1";
@@ -113,6 +114,55 @@ const SKWriter = (() => {
     if (__SK_DEBUG) console.log('Ablage upsert:', { id, kat });
   }
 
+  // ===== COOP Sync (triage + location) =====
+  // Wenn du später mehrere Ablagen willst: z.B. aus localStorage "coop_ablage_loc" lesen
+  const COOP_LOC_ABLAGE = "ABLAGE_1";
+
+  const coopState = () => {
+    try {
+      if (window.Coop && typeof window.Coop.getState === "function") return window.Coop.getState();
+    } catch {}
+    try {
+      const raw = localStorage.getItem("coop_state_v1") || localStorage.getItem("coop_state");
+      return raw ? JSON.parse(raw) : null;
+    } catch {}
+    return null;
+  };
+
+  const coopEnabled = () => {
+    const st = coopState();
+    return !!(st && st.incident_id && st.token);
+  };
+
+  const pidNum = (id) => parseInt(String(id||"").replace(/\D/g,""), 10) || 0;
+
+  // kleines Debounce pro Patient, damit nicht bei Doppeltap 10 Requests rausgehen
+  const coopLastSend = new Map();
+  const COOP_MIN_MS = 250;
+
+  function coopSyncTriageAndLocation(id, kat){
+    try{
+      if (!coopEnabled()) return;
+      if (!window.Coop || typeof window.Coop.patchPatient !== "function") return;
+
+      const p = pidNum(id);
+      if (!p) return;
+
+      const t = Date.now();
+      const last = coopLastSend.get(id) || 0;
+      if (t - last < COOP_MIN_MS) return;
+      coopLastSend.set(id, t);
+
+      window.Coop.patchPatient({
+        patient_id: p,
+        triage: kat,
+        location: COOP_LOC_ABLAGE
+      }).catch(err => console.warn("[COOP] patch failed", err));
+    }catch(e){
+      console.warn("[COOP] sync error", e);
+    }
+  }
+
   // ✅ PATCH: opts.force => letzter Klick gewinnt (keine LOCK-Blockade)
   function setSK(rawId, rawKat, opts = {}){
     const id  = String(rawId||"").toLowerCase();
@@ -138,7 +188,12 @@ const SKWriter = (() => {
     try { localStorage.setItem("sichtung_" + id, kat); } catch(_){}
     try { localStorage.setItem("sichtung_" + window.location.pathname, kat); } catch(_){}
 
+    // lokal Ablage upsert
     upsertAblage(id, kat);
+
+    // ✅ COOP: direkt ins Backend syncen (triage + location)
+    coopSyncTriageAndLocation(id, kat);
+
     lastWriteTs.set(id, now);
     if (__SK_DEBUG) console.log("SKWriter.setSK ->", {id, kat, force});
     return true;
