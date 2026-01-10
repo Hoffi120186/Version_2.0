@@ -12,7 +12,6 @@
 
   <title>Instruktor Übersicht</title>
 
-
   <style>
     :root {
       --radius: 14px;
@@ -90,9 +89,18 @@
       background:#ef4444; color:#fff; font-weight:800; font-size:.9em; line-height:1;
       padding:.2rem .55rem; border-radius:999px; box-shadow:0 0 6px rgba(0,0,0,.3);
     }
+
+    /* Coop QR Box */
+    #coopQr {
+      background:#fff;
+      padding:10px;
+      border-radius:12px;
+    }
   </style>
+
   <link rel="stylesheet" href="/app-flow.css">
 </head>
+
 <body>
   <div class="header">Instruktor Übersicht</div>
 
@@ -105,10 +113,15 @@
   <div class="button-container">
     <button class="btn" type="button" onclick="safeGo('/szenario.html')">Szenario auswählen</button>
     <button class="btn" type="button" onclick="safeGo('/patienten.html')">Patientenübersicht</button>
+
+    <!-- ✅ COOP -->
+    <button id="coopBtn" class="btn" type="button">🤝 Coop-Modus starten</button>
+    <div id="coopInfo" class="small muted" style="text-align:center; margin-top:-16px;"></div>
+
     <button class="btn" type="button" onclick="safeGo('/qr.html')">QR-Codes Patienten/Szenarien</button>
     <button class="btn" type="button" onclick="safeGo('/feedback.html')">Feedback und Bewertung der App</button>
-    <button class="btn" type="button" onclick="safeGo('/last-run.html')">Letzte Übung anzeigen
-      </button>
+    <button class="btn" type="button" onclick="safeGo('/last-run.html')">Letzte Übung anzeigen</button>
+
     <!-- Push -->
     <button id="pushBtn" class="btn" type="button">Benachrichtigungen aktivieren</button>
 
@@ -165,6 +178,37 @@
           <button id="btnBack" class="btn" type="button">Zurück</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ✅ Modal: Coop -->
+  <div id="coopModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h3>🤝 Coop-Modus (OrgL)</h3>
+      <p class="small muted" id="coopModalHint">
+        QR-Code zum Beitreten (RTW/NEF scannen). Dieser Code gilt für den aktuellen Einsatz.
+      </p>
+
+      <div id="coopStatus" class="small"></div>
+
+      <div style="display:flex; justify-content:center; margin:12px 0;">
+        <div id="coopQr"></div>
+      </div>
+
+      <div class="row">
+        <input id="coopJoinLink" type="text" readonly
+               style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid #334155; background:#111827; color:#fff;" />
+        <button id="coopCopy" class="btn" type="button" style="min-width:120px">Kopieren</button>
+      </div>
+
+      <div class="actions">
+        <button id="coopClose" class="btn" type="button">Schließen</button>
+        <button id="coopReset" class="btn" type="button">Coop beenden</button>
+      </div>
+
+      <p class="small muted" style="margin-top:10px;">
+        Hinweis: Teilnehmer wählen ihre Rolle (RTW/NEF) nach dem Scan in der App.
+      </p>
     </div>
   </div>
 
@@ -424,238 +468,346 @@
     });
   </script>
 
- <!-- Schutz-Logik -->
-<script>
-  const LS = localStorage;
+  <!-- Schutz-Logik -->
+  <script>
+    const LS = localStorage;
 
-  // ==== SCOPE-Erkennung: pro Lizenz/Device eigene Keys ====
-  function getScopeId(){
-    const cand =
-      LS.getItem('license_id')     || LS.getItem('lizenz_id')     ||
-      LS.getItem('license_token')  || LS.getItem('lizenz_token')  ||
-      LS.getItem('device_id')      || LS.getItem('geraet_id')     ||
-      LS.getItem('license_key')    || LS.getItem('lizenz_key');
+    // ==== SCOPE-Erkennung: pro Lizenz/Device eigene Keys ====
+    function getScopeId(){
+      const cand =
+        LS.getItem('license_id')     || LS.getItem('lizenz_id')     ||
+        LS.getItem('license_token')  || LS.getItem('lizenz_token')  ||
+        LS.getItem('device_id')      || LS.getItem('geraet_id')     ||
+        LS.getItem('license_key')    || LS.getItem('lizenz_key');
 
-    if (cand && String(cand).trim()) return String(cand).trim();
+      if (cand && String(cand).trim()) return String(cand).trim();
 
-    // Fallback: einmalige Installations-ID (gerätelokal)
-    let iid = LS.getItem('install_id');
-    if (!iid){
-      iid = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
-        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-      );
-      LS.setItem('install_id', iid);
+      // Fallback: einmalige Installations-ID (gerätelokal)
+      let iid = LS.getItem('install_id');
+      if (!iid){
+        iid = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+          (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+        );
+        LS.setItem('install_id', iid);
+      }
+      return `install-${iid}`;
     }
-    return `install-${iid}`;
-  }
-  const SCOPE = getScopeId();
+    const SCOPE = getScopeId();
 
-  // Migration alter globaler Keys -> scoped Keys
-  (function migrateOldKeys(){
-    const OLD_ENABLED = 'instr.lock.enabled';
-    const OLD_HASH    = 'instr.lock.pinHash';
-    const NEW_ENABLED = `instr.lock.enabled.${SCOPE}`;
-    const NEW_HASH    = `instr.lock.pinHash.${SCOPE}`;
+    // Migration alter globaler Keys -> scoped Keys
+    (function migrateOldKeys(){
+      const OLD_ENABLED = 'instr.lock.enabled';
+      const OLD_HASH    = 'instr.lock.pinHash';
+      const NEW_ENABLED = `instr.lock.enabled.${SCOPE}`;
+      const NEW_HASH    = `instr.lock.pinHash.${SCOPE}`;
 
-    if (LS.getItem(OLD_ENABLED) !== null && LS.getItem(NEW_ENABLED) === null) {
-      LS.setItem(NEW_ENABLED, LS.getItem(OLD_ENABLED));
-    }
-    if (LS.getItem(OLD_HASH) !== null && LS.getItem(NEW_HASH) === null) {
-      LS.setItem(NEW_HASH, LS.getItem(OLD_HASH));
-    }
-    // Optional: alte Keys aufräumen, wenn sicher:
-    // LS.removeItem(OLD_ENABLED);
-    // LS.removeItem(OLD_HASH);
-  })();
-
-  // === Scoped Keys (pro Lizenz/Device) ===
-  const KEY_ENABLED = `instr.lock.enabled.${SCOPE}`;
-  const KEY_HASH    = `instr.lock.pinHash.${SCOPE}`;
-
-  // ==== UI-Elemente ====
-  const lockState   = document.querySelector('#lockState');
-  const btnManage   = document.querySelector('#lockManage');
-
-  const modal       = document.querySelector('#pinModal');
-  const modalTitle  = document.querySelector('#modalTitle');
-  const modalHint   = document.querySelector('#modalHint');
-
-  const viewLogin   = document.querySelector('#viewLogin');
-  const viewVerify  = document.querySelector('#viewVerify');
-  const viewSetup   = document.querySelector('#viewSetup');
-
-  const pinLogin    = document.querySelector('#pinLogin');
-  const pinVerify   = document.querySelector('#pinVerify');
-  const pinNew1     = document.querySelector('#pinNew1');
-  const pinNew2     = document.querySelector('#pinNew2');
-
-  const btnLogin        = document.querySelector('#btnLogin');
-  const btnLoginCancel  = document.querySelector('#btnLoginCancel');
-  const btnVerify       = document.querySelector('#btnVerify');
-  const btnVerifyCancel = document.querySelector('#btnVerifyCancel');
-  const btnSave         = document.querySelector('#btnSave');
-  const btnBack         = document.querySelector('#btnBack');
-
-  const chkEnabled  = document.querySelector('#chkEnabled');
-
-  const msgLogin = document.querySelector('#msgLogin');
-  const msgVerify = document.querySelector('#msgVerify');
-  const msgSetup = document.querySelector('#msgSetup');
-
-  // ==== Helpers (scoped) ====
-  function isEnabled(){ return LS.getItem(KEY_ENABLED) === 'true'; }
-  function setEnabled(v){ LS.setItem(KEY_ENABLED, v ? 'true' : 'false'); }
-  function getHash(){ return LS.getItem(KEY_HASH) || ''; }
-  function setHash(h){ if (h) LS.setItem(KEY_HASH, h); else LS.removeItem(KEY_HASH); }
-
-  function updateIndicator(){
-    const on = isEnabled();
-    lockState.textContent = on ? '🔐 Menü ist geschützt' : '🔓 Menü aktuell ohne Schutz';
-    btnManage.textContent = on ? '⚙️ Schutz verwalten'   : '🔒 Schutz verwalten';
-  }
-
-  async function sha256Hex(text){
-    const enc = new TextEncoder().encode(text);
-    const buf = await crypto.subtle.digest('SHA-256', enc);
-    return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
-  }
-
-  function showModal(which){
-    msgLogin.textContent = '';
-    msgVerify.textContent = '';
-    msgSetup.textContent = '';
-    viewLogin.style.display = 'none';
-    viewVerify.style.display = 'none';
-    viewSetup.style.display = 'none';
-
-    if (which === 'login'){
-      modalTitle.textContent = 'Instruktor-Schutz';
-      modalHint.textContent  = 'Gib die PIN ein, um dieses Menü zu öffnen.';
-      viewLogin.style.display = '';
-      modal.style.display = 'flex';
-      setTimeout(()=>pinLogin.focus(), 0);
-    } else if (which === 'verify'){
-      modalTitle.textContent = 'Schutz verwalten';
-      modalHint.textContent  = 'Zur Sicherheit bitte zuerst die aktuelle PIN eingeben.';
-      viewVerify.style.display = '';
-      modal.style.display = 'flex';
-      setTimeout(()=>pinVerify.focus(), 0);
-    } else if (which === 'setup'){
-      modalTitle.textContent = 'Schutz verwalten';
-      modalHint.textContent  = 'PIN ändern (optional) und Schutz ein-/ausschalten.';
-      chkEnabled.checked = isEnabled();
-      pinNew1.value = ''; pinNew2.value = '';
-      viewSetup.style.display = '';
-      modal.style.display = 'flex';
-    }
-  }
-  function closeModal(){ modal.style.display='none'; }
-
-  // ==== Initialisierung ====
-  document.addEventListener('DOMContentLoaded', ()=>{
-    updateIndicator();
-
-    const hasPIN  = !!getHash();
-    const enabled = isEnabled();
-
-    // Herkunft robust erkennen: Session-Flag ODER Nav-Trace ODER Referrer
-    const fromSession  = sessionStorage.getItem('needInstrPIN') === '1';
-    const fromNav      = (sessionStorage.getItem('nav_from') || '') === '/index.html';
-    const fromReferrer = (() => {
-      try { return new URL(document.referrer).pathname === '/index.html'; }
-      catch { return /\/index\.html(?:$|\?)/.test(document.referrer || ''); }
+      if (LS.getItem(OLD_ENABLED) !== null && LS.getItem(NEW_ENABLED) === null) {
+        LS.setItem(NEW_ENABLED, LS.getItem(OLD_ENABLED));
+      }
+      if (LS.getItem(OLD_HASH) !== null && LS.getItem(NEW_HASH) === null) {
+        LS.setItem(NEW_HASH, LS.getItem(OLD_HASH));
+      }
+      // Optional: alte Keys aufräumen, wenn sicher:
+      // LS.removeItem(OLD_ENABLED);
+      // LS.removeItem(OLD_HASH);
     })();
 
-    const cameFromIndex = fromSession || fromNav || fromReferrer;
+    // === Scoped Keys (pro Lizenz/Device) ===
+    const KEY_ENABLED = `instr.lock.enabled.${SCOPE}`;
+    const KEY_HASH    = `instr.lock.pinHash.${SCOPE}`;
 
-    // Flag nur für diesen Aufruf leeren
-    sessionStorage.removeItem('needInstrPIN');
+    // ==== UI-Elemente ====
+    const lockState   = document.querySelector('#lockState');
+    const btnManage   = document.querySelector('#lockManage');
 
-    // Gate nur bei aktivem Schutz, vorhandener PIN und Sprung von /index.html
-    if (enabled && hasPIN && cameFromIndex) {
-      showModal('login');
+    const modal       = document.querySelector('#pinModal');
+    const modalTitle  = document.querySelector('#modalTitle');
+    const modalHint   = document.querySelector('#modalHint');
+
+    const viewLogin   = document.querySelector('#viewLogin');
+    const viewVerify  = document.querySelector('#viewVerify');
+    const viewSetup   = document.querySelector('#viewSetup');
+
+    const pinLogin    = document.querySelector('#pinLogin');
+    const pinVerify   = document.querySelector('#pinVerify');
+    const pinNew1     = document.querySelector('#pinNew1');
+    const pinNew2     = document.querySelector('#pinNew2');
+
+    const btnLogin        = document.querySelector('#btnLogin');
+    const btnLoginCancel  = document.querySelector('#btnLoginCancel');
+    const btnVerify       = document.querySelector('#btnVerify');
+    const btnVerifyCancel = document.querySelector('#btnVerifyCancel');
+    const btnSave         = document.querySelector('#btnSave');
+    const btnBack         = document.querySelector('#btnBack');
+
+    const chkEnabled  = document.querySelector('#chkEnabled');
+
+    const msgLogin = document.querySelector('#msgLogin');
+    const msgVerify = document.querySelector('#msgVerify');
+    const msgSetup = document.querySelector('#msgSetup');
+
+    // ==== Helpers (scoped) ====
+    function isEnabled(){ return LS.getItem(KEY_ENABLED) === 'true'; }
+    function setEnabled(v){ LS.setItem(KEY_ENABLED, v ? 'true' : 'false'); }
+    function getHash(){ return LS.getItem(KEY_HASH) || ''; }
+    function setHash(h){ if (h) LS.setItem(KEY_HASH, h); else LS.removeItem(KEY_HASH); }
+
+    function updateIndicator(){
+      const on = isEnabled();
+      lockState.textContent = on ? '🔐 Menü ist geschützt' : '🔓 Menü aktuell ohne Schutz';
+      btnManage.textContent = on ? '⚙️ Schutz verwalten'   : '🔒 Schutz verwalten';
     }
 
-    // Safety: Schutz ohne PIN deaktivieren
-    if (enabled && !hasPIN) {
-      setEnabled(false);
-      updateIndicator();
+    async function sha256Hex(text){
+      const enc = new TextEncoder().encode(text);
+      const buf = await crypto.subtle.digest('SHA-256', enc);
+      return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
     }
-  });
 
-  // ==== Verwaltung öffnen ====
-  btnManage.addEventListener('click', ()=>{
-    if (isEnabled() && getHash()) showModal('verify');
-    else showModal('setup');
-  });
+    function showModal(which){
+      msgLogin.textContent = '';
+      msgVerify.textContent = '';
+      msgSetup.textContent = '';
+      viewLogin.style.display = 'none';
+      viewVerify.style.display = 'none';
+      viewSetup.style.display = 'none';
 
-  // ==== Login ====
-  btnLogin.addEventListener('click', async ()=>{
-    msgLogin.textContent = '';
-    const pin = (pinLogin.value || '').trim();
-    if (!/^\d{4,8}$/.test(pin)){ msgLogin.textContent='Ungültige PIN (4–8 Ziffern).'; return; }
-    const ok = await sha256Hex(pin) === getHash();
-    if (!ok){ msgLogin.textContent='Falsche PIN.'; return; }
-    closeModal();
-  });
-  pinLogin.addEventListener('keydown', e=>{ if(e.key==='Enter') btnLogin.click(); });
-  btnLoginCancel.addEventListener('click', ()=>{ closeModal(); safeGo('/index.html'); });
+      if (which === 'login'){
+        modalTitle.textContent = 'Instruktor-Schutz';
+        modalHint.textContent  = 'Gib die PIN ein, um dieses Menü zu öffnen.';
+        viewLogin.style.display = '';
+        modal.style.display = 'flex';
+        setTimeout(()=>pinLogin.focus(), 0);
+      } else if (which === 'verify'){
+        modalTitle.textContent = 'Schutz verwalten';
+        modalHint.textContent  = 'Zur Sicherheit bitte zuerst die aktuelle PIN eingeben.';
+        viewVerify.style.display = '';
+        modal.style.display = 'flex';
+        setTimeout(()=>pinVerify.focus(), 0);
+      } else if (which === 'setup'){
+        modalTitle.textContent = 'Schutz verwalten';
+        modalHint.textContent  = 'PIN ändern (optional) und Schutz ein-/ausschalten.';
+        chkEnabled.checked = isEnabled();
+        pinNew1.value = ''; pinNew2.value = '';
+        viewSetup.style.display = '';
+        modal.style.display = 'flex';
+      }
+    }
+    function closeModal(){ modal.style.display='none'; }
 
-  // ==== Verify (vor Setup) ====
-  btnVerify.addEventListener('click', async ()=>{
-    msgVerify.textContent = '';
-    const pin = (pinVerify.value || '').trim();
-    if (!/^\d{4,8}$/.test(pin)){ msgVerify.textContent='Ungültige PIN.'; return; }
-    const ok = await sha256Hex(pin) === getHash();
-    if (!ok){ msgVerify.textContent='Falsche PIN.'; return; }
-    showModal('setup');
-  });
-  pinVerify.addEventListener('keydown', e=>{ if(e.key==='Enter') btnVerify.click(); });
-  btnVerifyCancel.addEventListener('click', closeModal);
-
-  // ==== Setup speichern ====
-  btnSave.addEventListener('click', async ()=>{
-    msgSetup.textContent = '';
-    const wantEnabled = chkEnabled.checked;
-    const new1 = (pinNew1.value || '').trim();
-    const new2 = (pinNew2.value || '').trim();
-
-    // Schutz AUS -> Hash löschen
-    if (!wantEnabled){
-      setEnabled(false);
-      setHash('');
+    // ==== Initialisierung ====
+    document.addEventListener('DOMContentLoaded', ()=>{
       updateIndicator();
+
+      const hasPIN  = !!getHash();
+      const enabled = isEnabled();
+
+      // Herkunft robust erkennen: Session-Flag ODER Nav-Trace ODER Referrer
+      const fromSession  = sessionStorage.getItem('needInstrPIN') === '1';
+      const fromNav      = (sessionStorage.getItem('nav_from') || '') === '/index.html';
+      const fromReferrer = (() => {
+        try { return new URL(document.referrer).pathname === '/index.html'; }
+        catch { return /\/index\.html(?:$|\?)/.test(document.referrer || ''); }
+      })();
+
+      const cameFromIndex = fromSession || fromNav || fromReferrer;
+
+      // Flag nur für diesen Aufruf leeren
+      sessionStorage.removeItem('needInstrPIN');
+
+      // Gate nur bei aktivem Schutz, vorhandener PIN und Sprung von /index.html
+      if (enabled && hasPIN && cameFromIndex) {
+        showModal('login');
+      }
+
+      // Safety: Schutz ohne PIN deaktivieren
+      if (enabled && !hasPIN) {
+        setEnabled(false);
+        updateIndicator();
+      }
+    });
+
+    // ==== Verwaltung öffnen ====
+    btnManage.addEventListener('click', ()=>{
+      if (isEnabled() && getHash()) showModal('verify');
+      else showModal('setup');
+    });
+
+    // ==== Login ====
+    btnLogin.addEventListener('click', async ()=>{
+      msgLogin.textContent = '';
+      const pin = (pinLogin.value || '').trim();
+      if (!/^\d{4,8}$/.test(pin)){ msgLogin.textContent='Ungültige PIN (4–8 Ziffern).'; return; }
+      const ok = await sha256Hex(pin) === getHash();
+      if (!ok){ msgLogin.textContent='Falsche PIN.'; return; }
       closeModal();
-      return;
-    }
+    });
+    pinLogin.addEventListener('keydown', e=>{ if(e.key==='Enter') btnLogin.click(); });
+    btnLoginCancel.addEventListener('click', ()=>{ closeModal(); safeGo('/index.html'); });
 
-    // Schutz AN ohne vorhandene PIN -> neue setzen erforderlich
-    if (wantEnabled && !getHash() && !(new1 && new2)) {
-      msgSetup.textContent = 'Zum Aktivieren bitte eine neue PIN (4–8 Ziffern) setzen und wiederholen.';
-      return;
-    }
+    // ==== Verify (vor Setup) ====
+    btnVerify.addEventListener('click', async ()=>{
+      msgVerify.textContent = '';
+      const pin = (pinVerify.value || '').trim();
+      if (!/^\d{4,8}$/.test(pin)){ msgVerify.textContent='Ungültige PIN.'; return; }
+      const ok = await sha256Hex(pin) === getHash();
+      if (!ok){ msgVerify.textContent='Falsche PIN.'; return; }
+      showModal('setup');
+    });
+    pinVerify.addEventListener('keydown', e=>{ if(e.key==='Enter') btnVerify.click(); });
+    btnVerifyCancel.addEventListener('click', closeModal);
 
-    // Optional neue PIN prüfen/setzen
-    if (new1 || new2){
-      if (!/^\d{4,8}$/.test(new1) || new1 !== new2){
-        msgSetup.textContent = 'PIN muss 4–8 Ziffern lang sein und übereinstimmen.';
+    // ==== Setup speichern ====
+    btnSave.addEventListener('click', async ()=>{
+      msgSetup.textContent = '';
+      const wantEnabled = chkEnabled.checked;
+      const new1 = (pinNew1.value || '').trim();
+      const new2 = (pinNew2.value || '').trim();
+
+      // Schutz AUS -> Hash löschen
+      if (!wantEnabled){
+        setEnabled(false);
+        setHash('');
+        updateIndicator();
+        closeModal();
         return;
       }
-      const h = await sha256Hex(new1);
-      setHash(h);
+
+      // Schutz AN ohne vorhandene PIN -> neue setzen erforderlich
+      if (wantEnabled && !getHash() && !(new1 && new2)) {
+        msgSetup.textContent = 'Zum Aktivieren bitte eine neue PIN (4–8 Ziffern) setzen und wiederholen.';
+        return;
+      }
+
+      // Optional neue PIN prüfen/setzen
+      if (new1 || new2){
+        if (!/^\d{4,8}$/.test(new1) || new1 !== new2){
+          msgSetup.textContent = 'PIN muss 4–8 Ziffern lang sein und übereinstimmen.';
+          return;
+        }
+        const h = await sha256Hex(new1);
+        setHash(h);
+      }
+
+      setEnabled(true);
+      updateIndicator();
+      closeModal();
+    });
+
+    btnBack.addEventListener('click', ()=>{
+      if (getHash()) showModal('verify'); else closeModal();
+    });
+  </script>
+
+  <!-- ✅ COOP: Scripts -->
+  <!-- coop.js liegt bei dir im Root-Projekt – Pfad anpassen, falls du es anders ablegst -->
+  <script src="/js/coop/coop.js"></script>
+  <!-- QR-Lib -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- ✅ COOP: OrgL Button + QR Modal -->
+  <script>
+    const COOP_API = "https://www.1rettungsmittel.de/api/coop_test";
+
+    const coopBtn   = document.getElementById('coopBtn');
+    const coopInfo  = document.getElementById('coopInfo');
+
+    const coopModal = document.getElementById('coopModal');
+    const coopQrEl  = document.getElementById('coopQr');
+    const coopJoinLink = document.getElementById('coopJoinLink');
+    const coopCopy  = document.getElementById('coopCopy');
+    const coopClose = document.getElementById('coopClose');
+    const coopReset = document.getElementById('coopReset');
+    const coopStatus= document.getElementById('coopStatus');
+
+    function openCoopModal(){ coopModal.style.display = 'flex'; }
+    function closeCoopModal(){ coopModal.style.display = 'none'; }
+
+    function renderQr(link){
+      coopQrEl.innerHTML = "";
+      // eslint-disable-next-line no-undef
+      new QRCode(coopQrEl, { text: link, width: 220, height: 220 });
     }
 
-    setEnabled(true);
-    updateIndicator();
-    closeModal();
-  });
+    function buildJoinLink(join_code){
+      // Teilnehmer landen auf Startseite mit join_code
+      return `${location.origin}/index.html?join_code=${encodeURIComponent(join_code)}`;
+    }
 
-  btnBack.addEventListener('click', ()=>{
-    if (getHash()) showModal('verify'); else closeModal();
-  });
-</script>
+    async function startCoopAsOrgL(){
+      if (!window.Coop) {
+        alert("Coop.js nicht geladen.");
+        return;
+      }
 
+      window.Coop.enable({ apiBase: COOP_API });
 
- <script src="/metrics.js" defer></script>
+      coopBtn.disabled = true;
+      coopBtn.textContent = "🤝 Coop läuft…";
+      if (coopInfo) coopInfo.textContent = "Einsatz wird erstellt…";
+      coopStatus.textContent = "⏳ Einsatz wird erstellt…";
+
+      try {
+        const data = await window.Coop.createIncident({});
+
+        const join_code = data.join_code || data.joinCode || data.code;
+        if (!join_code) throw new Error("join_code fehlt in create_incident response");
+
+        const link = buildJoinLink(join_code);
+
+        coopJoinLink.value = link;
+        renderQr(link);
+
+        coopStatus.textContent = `✅ Coop aktiv. Join-Code: ${join_code}`;
+        if (coopInfo) coopInfo.textContent = `Coop aktiv (Join-Code: ${join_code})`;
+
+        openCoopModal();
+      } catch (e) {
+        console.error(e);
+        alert("Coop konnte nicht gestartet werden: " + (e.message || e));
+        coopBtn.disabled = false;
+        coopBtn.textContent = "🤝 Coop-Modus starten";
+        if (coopInfo) coopInfo.textContent = "";
+        coopStatus.textContent = "";
+      }
+    }
+
+    coopBtn?.addEventListener('click', startCoopAsOrgL);
+    coopClose?.addEventListener('click', closeCoopModal);
+
+    coopCopy?.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(coopJoinLink.value || "");
+        coopCopy.textContent = "✅ Kopiert";
+        setTimeout(()=>coopCopy.textContent="Kopieren", 1200);
+      } catch {
+        alert("Kopieren nicht möglich – Link markieren und manuell kopieren.");
+      }
+    });
+
+    coopReset?.addEventListener('click', () => {
+      if (window.Coop) window.Coop.reset();
+      closeCoopModal();
+      coopBtn.disabled = false;
+      coopBtn.textContent = "🤝 Coop-Modus starten";
+      if (coopInfo) coopInfo.textContent = "";
+      coopStatus.textContent = "";
+    });
+
+    // Wenn Session existiert (z.B. OrgL lädt Seite neu), Status zeigen
+    try {
+      window.Coop?.enable?.({ apiBase: COOP_API });
+    } catch {}
+
+    window.addEventListener("coop:restored", () => {
+      const st = window.Coop?.getState?.();
+      if (st?.incident_id && st?.token) {
+        coopBtn.textContent = "🤝 Coop läuft…";
+        if (coopInfo) coopInfo.textContent = "Coop-Session wiederhergestellt.";
+      }
+    });
+  </script>
+<script src="/coop.js"></script>
+  <script src="/metrics.js" defer></script>
 </body>
 </html>
