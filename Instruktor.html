@@ -732,225 +732,297 @@
   <script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
 
   <script>
-    const COOP_API = "https://www.1rettungsmittel.de/api/coop_test";
+  const COOP_API = "https://www.1rettungsmittel.de/api/coop_test";
 
-    const coopBtn = document.getElementById("coopBtn");
-    const coopInfo = document.getElementById("coopInfo");
+  const coopBtn   = document.getElementById("coopBtn");
+  const coopInfo  = document.getElementById("coopInfo");
 
-    const choiceModal = document.getElementById("coopChoiceModal");
-    const choiceClose = document.getElementById("coopChoiceClose");
-    const createBtn = document.getElementById("coopCreateBtn");
-    const joinBtn = document.getElementById("coopJoinBtn");
+  const choiceModal  = document.getElementById("coopChoiceModal");
+  const choiceClose  = document.getElementById("coopChoiceClose");
+  const createBtn    = document.getElementById("coopCreateBtn");
+  const joinBtn      = document.getElementById("coopJoinBtn");
 
-    const qrModal = document.getElementById("coopQrModal");
-    const coopQrEl = document.getElementById("coopQr");
-    const coopStatus = document.getElementById("coopStatus");
-    const qrClose = document.getElementById("coopQrClose");
-    const coopStop = document.getElementById("coopStop");
+  const qrModal     = document.getElementById("coopQrModal");
+  const coopQrEl    = document.getElementById("coopQr");
+  const coopStatus  = document.getElementById("coopStatus");
+  const qrClose     = document.getElementById("coopQrClose");
+  const coopStop    = document.getElementById("coopStop");
 
-    const scanModal = document.getElementById("coopScanModal");
-    const scanClose = document.getElementById("coopScanClose");
-    const videoEl = document.getElementById("coopVideo");
-    const camState = document.getElementById("coopCamState");
-    const manualCode = document.getElementById("coopManualCode");
-    const roleRTW = document.getElementById("coopRoleRTW");
-    const roleNEF = document.getElementById("coopRoleNEF");
-    const joinMsg = document.getElementById("coopJoinMsg");
+  const scanModal   = document.getElementById("coopScanModal");
+  const scanClose   = document.getElementById("coopScanClose");
+  const videoEl     = document.getElementById("coopVideo");
+  const camState    = document.getElementById("coopCamState");
+  const manualCode  = document.getElementById("coopManualCode");
+  const roleRTW     = document.getElementById("coopRoleRTW");
+  const roleNEF     = document.getElementById("coopRoleNEF");
+  const joinMsg     = document.getElementById("coopJoinMsg");
 
-    let scanStream = null;
-    let scanLoopRunning = false;
+  let scanStream = null;
+  let scanLoopRunning = false;
 
-    function show(el){ el.style.display = "flex"; }
-    function hide(el){ el.style.display = "none"; }
+  function show(el){ el.style.display = "flex"; }
+  function hide(el){ el.style.display = "none"; }
 
-    function buildJoinLink(join_code){
-      return `${location.origin}/index.html?join_code=${encodeURIComponent(join_code)}`;
-    }
-
-    function renderQr(link){
-      coopQrEl.innerHTML = "";
-      // eslint-disable-next-line no-undef
-      new QRCode(coopQrEl, { text: link, width: 220, height: 220 });
-    }
-
-    coopBtn.addEventListener("click", () => {
-      if (!window.Coop) {
-        alert("Coop.js nicht geladen.");
-        return;
+  function getCoopStatus(){
+    try {
+      if (!window.Coop || typeof window.Coop.getStatus !== "function") {
+        // fallback falls coop.js mal nicht geladen
+        const active = localStorage.getItem("coop.active") === "1";
+        const sess = JSON.parse(localStorage.getItem("coop_session_v1") || "null");
+        return {
+          active,
+          join_code: sess?.join_code || "",
+          role: sess?.role || "",
+          incident_id: sess?.incident_id || "",
+          hasSession: !!sess
+        };
       }
-      show(choiceModal);
-    });
+      return window.Coop.getStatus();
+    } catch {
+      return { active:false, join_code:"", role:"", incident_id:"", hasSession:false };
+    }
+  }
 
-    choiceClose.addEventListener("click", () => hide(choiceModal));
+  function renderCoopUI(){
+    const st = getCoopStatus();
 
-    // ---- ORGL: Übung erstellen ----
-    createBtn.addEventListener("click", async () => {
-      hide(choiceModal);
+    // Standard
+    coopBtn.disabled = false;
 
-      try {
-        window.Coop.enable({ apiBase: COOP_API });
+    if (st.active && st.hasSession) {
+      // Coop läuft
+      coopBtn.textContent = "🤝 Coop läuft…";
+      coopBtn.disabled = true;
 
-        coopBtn.disabled = true;
-        coopBtn.textContent = "🤝 Coop läuft…";
-        if (coopInfo) coopInfo.textContent = "Einsatz wird erstellt…";
-
-        coopStatus.textContent = "⏳ Einsatz wird erstellt…";
-        show(qrModal);
-
-        const data = await window.Coop.createIncident({});
-        const join_code = data.join_code || data.joinCode || data.code;
-        if (!join_code) throw new Error("join_code fehlt");
-
-        const link = buildJoinLink(join_code);
-        renderQr(link);
-
-        coopStatus.textContent = `✅ Coop aktiv. Join-Code: ${join_code}`;
-        if (coopInfo) coopInfo.textContent = `Coop aktiv (Join-Code: ${join_code})`;
-
-      } catch (e) {
-        console.error(e);
-        alert("Coop konnte nicht gestartet werden: " + (e.message || e));
-        coopBtn.disabled = false;
-        coopBtn.textContent = "🤝 Coop-Modus";
-        if (coopInfo) coopInfo.textContent = "";
-        hide(qrModal);
+      const jc   = st.join_code || "";
+      const role = st.role || "";
+      if (jc) {
+        coopInfo.textContent = `Coop aktiv (Join-Code: ${jc})`;
+      } else if (role) {
+        coopInfo.textContent = `Coop aktiv (${role})`;
+      } else {
+        coopInfo.textContent = "Coop aktiv";
       }
-    });
+    } else {
+      // Coop aus
+      coopBtn.textContent = "🤝 Coop-Modus";
+      coopBtn.disabled = false;
+      coopInfo.textContent = "";
+    }
+  }
 
-    qrClose.addEventListener("click", () => hide(qrModal));
-    coopStop.addEventListener("click", () => {
+  function buildJoinLink(join_code){
+    return `${location.origin}/index.html?join_code=${encodeURIComponent(join_code)}`;
+  }
+
+  function renderQr(link){
+    coopQrEl.innerHTML = "";
+    // eslint-disable-next-line no-undef
+    new QRCode(coopQrEl, { text: link, width: 220, height: 220 });
+  }
+
+  // ---- Events vom coop.js: sobald sich Status ändert -> UI neu zeichnen
+  window.addEventListener("coop:status", renderCoopUI);
+  window.addEventListener("coop:joined", renderCoopUI);
+  window.addEventListener("coop:created", renderCoopUI);
+  window.addEventListener("coop:restored", renderCoopUI);
+  window.addEventListener("coop:disabled", renderCoopUI);
+  window.addEventListener("coop:reset", renderCoopUI);
+
+  // Beim Laden einmal rendern
+  window.addEventListener("load", () => {
+    // coop.js initialisieren / autoResume läuft in coop.js selbst
+    // hier nur UI refresh:
+    renderCoopUI();
+  });
+
+  // Button öffnet nur Auswahl (wenn nicht aktiv)
+  coopBtn.addEventListener("click", () => {
+    const st = getCoopStatus();
+    if (st.active && st.hasSession) {
+      // läuft bereits -> optional Hinweis
+      alert("Coop läuft bereits. Zum Beenden nutze im QR-Fenster 'Coop beenden' oder starte eine neue Übung.");
+      return;
+    }
+    if (!window.Coop) {
+      alert("Coop.js nicht geladen.");
+      return;
+    }
+    show(choiceModal);
+  });
+
+  choiceClose.addEventListener("click", () => hide(choiceModal));
+
+  // ---- ORGL: Übung erstellen ----
+  createBtn.addEventListener("click", async () => {
+    hide(choiceModal);
+
+    try {
+      window.Coop.enable({ apiBase: COOP_API });
+
+      // UI sofort
+      coopBtn.disabled = true;
+      coopBtn.textContent = "🤝 Coop läuft…";
+      coopInfo.textContent = "Einsatz wird erstellt…";
+
+      coopStatus.textContent = "⏳ Einsatz wird erstellt…";
+      show(qrModal);
+
+      const data = await window.Coop.createIncident({});
+      const join_code = data.join_code || data.joinCode || data.code;
+      if (!join_code) throw new Error("join_code fehlt");
+
+      const link = buildJoinLink(join_code);
+      renderQr(link);
+
+      coopStatus.textContent = `✅ Coop aktiv. Join-Code: ${join_code}`;
+      coopInfo.textContent = `Coop aktiv (Join-Code: ${join_code})`;
+
+      // finaler UI refresh (wichtig für „rein/raus“)
+      renderCoopUI();
+
+    } catch (e) {
+      console.error(e);
+      alert("Coop konnte nicht gestartet werden: " + (e.message || e));
+
+      // sauber zurück
       try { window.Coop?.reset?.(); } catch {}
       hide(qrModal);
-      coopBtn.disabled = false;
-      coopBtn.textContent = "🤝 Coop-Modus";
-      if (coopInfo) coopInfo.textContent = "";
-    });
+      renderCoopUI();
+    }
+  });
 
-    // ---- JOIN: Scanner ----
-    joinBtn.addEventListener("click", async () => {
-      hide(choiceModal);
-      joinMsg.textContent = "";
-      manualCode.value = "";
-      show(scanModal);
-      await startScanner();
-    });
+  qrClose.addEventListener("click", () => hide(qrModal));
 
-    scanClose.addEventListener("click", async () => {
+  // ✅ Coop beenden: HARD reset (Session weg) – so wie du es willst „nur durch Klick“
+  coopStop.addEventListener("click", () => {
+    try { window.Coop?.reset?.(); } catch {}
+    hide(qrModal);
+    renderCoopUI();
+  });
+
+  // ---- JOIN: Scanner ----
+  joinBtn.addEventListener("click", async () => {
+    hide(choiceModal);
+    joinMsg.textContent = "";
+    manualCode.value = "";
+    show(scanModal);
+    await startScanner();
+  });
+
+  scanClose.addEventListener("click", async () => {
+    await stopScanner();
+    hide(scanModal);
+  });
+
+  async function startScanner(){
+    camState.textContent = "📷 Kamera wird gestartet…";
+    try {
+      scanStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+        audio: false
+      });
+      videoEl.srcObject = scanStream;
+      await videoEl.play();
+
+      camState.textContent = "✅ Kamera aktiv – QR scannen";
+      scanLoopRunning = true;
+      requestAnimationFrame(scanLoop);
+    } catch (e) {
+      console.error(e);
+      camState.textContent = "⚠️ Kamera nicht verfügbar – nutze Join-Code";
+    }
+  }
+
+  async function stopScanner(){
+    scanLoopRunning = false;
+    if (videoEl) {
+      try { videoEl.pause(); } catch {}
+      videoEl.srcObject = null;
+    }
+    if (scanStream) {
+      scanStream.getTracks().forEach(t => t.stop());
+      scanStream = null;
+    }
+  }
+
+  function extractJoinCodeFromText(text){
+    try {
+      if (!text) return "";
+      if (text.includes("join_code=")) {
+        const u = new URL(text);
+        return u.searchParams.get("join_code") || "";
+      }
+      const c = text.trim();
+      if (/^[A-Z0-9]{4,12}$/i.test(c)) return c;
+      return "";
+    } catch {
+      const m = String(text).match(/join_code=([A-Za-z0-9]+)/);
+      return (m && m[1]) ? m[1] : "";
+    }
+  }
+
+  function scanLoop(){
+    if (!scanLoopRunning) return;
+
+    if (videoEl.readyState >= 2) {
+      const canvas = document.createElement("canvas");
+      canvas.width = videoEl.videoWidth;
+      canvas.height = videoEl.videoHeight;
+
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      // eslint-disable-next-line no-undef
+      const code = jsQR(img.data, img.width, img.height);
+
+      if (code && code.data) {
+        const join_code = extractJoinCodeFromText(code.data);
+        if (join_code) {
+          manualCode.value = join_code;
+          camState.textContent = "✅ Code erkannt – Rolle wählen";
+        }
+      }
+    }
+
+    requestAnimationFrame(scanLoop);
+  }
+
+  async function doJoin(role){
+    joinMsg.textContent = "";
+    const join_code = extractJoinCodeFromText(manualCode.value);
+    if (!join_code) {
+      joinMsg.textContent = "Kein Join-Code erkannt. Bitte scannen oder manuell eingeben.";
+      return;
+    }
+
+    try {
+      window.Coop.enable({ apiBase: COOP_API });
+      await window.Coop.joinIncident({ join_code, role });
+
       await stopScanner();
       hide(scanModal);
-    });
 
-    async function startScanner(){
-      camState.textContent = "📷 Kamera wird gestartet…";
-      try {
-        scanStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-          audio: false
-        });
-        videoEl.srcObject = scanStream;
-        await videoEl.play();
+      // UI wird über coop:joined / coop:status auch aktualisiert,
+      // aber wir machen es direkt noch einmal:
+      renderCoopUI();
 
-        camState.textContent = "✅ Kamera aktiv – QR scannen";
-        scanLoopRunning = true;
-        requestAnimationFrame(scanLoop);
-      } catch (e) {
-        console.error(e);
-        camState.textContent = "⚠️ Kamera nicht verfügbar – nutze Join-Code";
-      }
+      // Optional:
+      // safeGo('/index.html');
+
+    } catch (e) {
+      console.error(e);
+      joinMsg.textContent = "Beitritt fehlgeschlagen: " + (e.message || e);
     }
+  }
 
-    async function stopScanner(){
-      scanLoopRunning = false;
-      if (videoEl) {
-        try { videoEl.pause(); } catch {}
-        videoEl.srcObject = null;
-      }
-      if (scanStream) {
-        scanStream.getTracks().forEach(t => t.stop());
-        scanStream = null;
-      }
-    }
+  roleRTW.addEventListener("click", () => doJoin("RTW"));
+  roleNEF.addEventListener("click", () => doJoin("NEF"));
+</script>
 
-    function extractJoinCodeFromText(text){
-      // akzeptiert: Link mit ?join_code=XXXX oder reiner Code
-      try {
-        if (!text) return "";
-        if (text.includes("join_code=")) {
-          const u = new URL(text);
-          return u.searchParams.get("join_code") || "";
-        }
-        // reiner code:
-        const c = text.trim();
-        if (/^[A-Z0-9]{4,12}$/i.test(c)) return c;
-        return "";
-      } catch {
-        // falls URL() scheitert, fallback
-        const m = String(text).match(/join_code=([A-Za-z0-9]+)/);
-        if (m && m[1]) return m[1];
-        return "";
-      }
-    }
-
-    function scanLoop(){
-      if (!scanLoopRunning) return;
-
-      if (videoEl.readyState >= 2) {
-        const canvas = document.createElement("canvas");
-        canvas.width = videoEl.videoWidth;
-        canvas.height = videoEl.videoHeight;
-
-        const ctx = canvas.getContext("2d", { willReadFrequently: true });
-        ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-
-        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        // eslint-disable-next-line no-undef
-        const code = jsQR(img.data, img.width, img.height);
-
-        if (code && code.data) {
-          const join_code = extractJoinCodeFromText(code.data);
-          if (join_code) {
-            manualCode.value = join_code;
-            camState.textContent = "✅ Code erkannt – Rolle wählen";
-            // wir lassen Kamera an bis Rolle gewählt
-          }
-        }
-      }
-
-      requestAnimationFrame(scanLoop);
-    }
-
-    async function doJoin(role){
-      joinMsg.textContent = "";
-      const join_code = extractJoinCodeFromText(manualCode.value);
-      if (!join_code) {
-        joinMsg.textContent = "Kein Join-Code erkannt. Bitte scannen oder manuell eingeben.";
-        return;
-      }
-
-      try {
-        window.Coop.enable({ apiBase: COOP_API });
-        await window.Coop.joinIncident({ join_code, role });
-
-        await stopScanner();
-        hide(scanModal);
-
-        coopBtn.disabled = true;
-        coopBtn.textContent = "🤝 Coop beigetreten";
-        if (coopInfo) coopInfo.textContent = `Beigetreten als ${role} (Code: ${join_code})`;
-
-        // Optional: direkt zur Startseite oder Szenario/Scan
-        // safeGo('/index.html');
-
-      } catch (e) {
-        console.error(e);
-        joinMsg.textContent = "Beitritt fehlgeschlagen: " + (e.message || e);
-      }
-    }
-
-    roleRTW.addEventListener("click", () => doJoin("RTW"));
-    roleNEF.addEventListener("click", () => doJoin("NEF"));
-  </script>
 
   <script src="/metrics.js" defer></script>
 </body>
 </html>
+
