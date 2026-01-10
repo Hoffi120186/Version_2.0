@@ -1,5 +1,5 @@
 /* =========================================================
-   1Rettungsmittel · ablage.js  (v10: Start nur beim Betreten)
+   1Rettungsmittel · ablage.js  (v11: Coop Klinik-Patch + Outbox)
    ========================================================= */
 (function () {
   'use strict';
@@ -9,6 +9,9 @@
   var LS_HISTORY  = 'ablage.history.v1';
   var LS_SESSION  = 'ablage.sessionStart.v1';
   var LS_DONE     = 'ablage.done.v1';
+
+  // ----- COOP Outbox
+  var LS_COOP_OUTBOX = 'coop_outbox_v1';
 
   // ----- Utils
   function now(){ return Date.now(); }
@@ -93,7 +96,113 @@
     setActive(a);
   }
 
-  // ----- Stop / Abschluss
+  // =========================================================
+  // COOP Helpers
+  // =========================================================
+  function coopGetState(){
+    try{
+      if (window.Coop && typeof window.Coop.getState === 'function'){
+        var st = window.Coop.getState();
+        if (st && st.incident_id && st.token) return st;
+      }
+    }catch(_){}
+
+    // Fallback: direkte LS-Keys (je nach Version)
+    try{
+      var raw = localStorage.getItem('coop_state_v1') || localStorage.getItem('coop_state') || '';
+      if (!raw) return null;
+      var st2 = JSON.parse(raw);
+      if (st2 && st2.incident_id && st2.token) return st2;
+    }catch(_){}
+    return null;
+  }
+
+  function coopEnabled(){
+    var st = coopGetState();
+    return !!(st && st.incident_id && st.token);
+  }
+
+  function patientIdToNumber(id){
+    var n = parseInt(String(id||'').replace(/\D/g,''), 10);
+    return (isFinite(n) && n>0) ? n : 0;
+  }
+
+  function coopOutboxGet(){ return asArray(load(LS_COOP_OUTBOX, [])); }
+  function coopOutboxSet(list){ save(LS_COOP_OUTBOX, asArray(list)); }
+
+  function coopOutboxPush(item){
+    var list = coopOutboxGet();
+    list.push(item);
+    coopOutboxSet(list);
+  }
+
+  async function coopPatch(payload){
+    // Wenn coop.js verfügbar ist, nutzen wir dessen Wrapper
+    if (window.Coop && typeof window.Coop.patchPatient === 'function'){
+      return window.Coop.patchPatient(payload);
+    }
+
+    // Fallback: direkt fetchen (nur wenn coop state existiert)
+    var st = coopGetState();
+    if(!st) throw new Error('coop_not_active');
+
+    // ⚠️ API Base musst du bei Bedarf anpassen
+    var API = (st.apiBase) || 'https://www.1rettungsmittel.de/api/coop_test';
+    var url = API.replace(/\/$/,'') + '/patch.php';
+
+    var body = Object.assign({}, payload, {
+      incident_id: st.incident_id,
+      token: st.token
+    });
+
+    var r = await fetch(url, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    var j = await r.json().catch(function(){ return null; });
+    if (!j || !j.ok) throw new Error((j && j.error) ? j.error : 'coop_patch_failed');
+    return j;
+  }
+
+  async function coopFlushOutbox(){
+    if(!coopEnabled()) return;
+    if(!navigator.onLine) return;
+
+    var list = coopOutboxGet();
+    if(!list.length) return;
+
+    var keep = [];
+    for (var i=0;i<list.length;i++){
+      var job = list[i];
+      try{
+        await coopPatch(job.payload);
+      }catch(e){
+        // wenn Fehler: behalten
+        keep.push(job);
+      }
+    }
+    coopOutboxSet(keep);
+  }
+
+  // regelmäßig versuchen, Outbox zu senden (leicht)
+  var __flushTimer = 0;
+  function startOutboxPump(){
+    if(__flushTimer) return;
+    __flushTimer = setInterval(function(){
+      coopFlushOutbox().catch(function(){});
+    }, 2500);
+    window.addEventListener('online', function(){
+      coopFlushOutbox().catch(function(){});
+    });
+    document.addEventListener('visibilitychange', function(){
+      if (document.visibilityState === 'visible') coopFlushOutbox().catch(function(){});
+    });
+  }
+
+  // =========================================================
+  // ----- Stop / Abschluss (inkl. Coop Klinik Patch)
+  // =========================================================
   function stopPatient(id, ziel, idVal){
     var a = getActive(), idx = -1;
     for(var i=0;i<a.length;i++){ if(String(a[i].id)===String(id)){ idx=i; break; } }
@@ -105,7 +214,7 @@
     if (typeof p.startedAt === 'number' && typeof p.startAt !== 'number') {
       p.startAt = p.startedAt; delete p.startedAt;
     }
-    var startAt = Number(p.startAt || now()); // falls nie gestartet wurde, dann 0 Dauer
+    var startAt = Number(p.startAt || now());
     var offset  = Number(p.offset || 0);
 
     var entry = {
@@ -118,9 +227,38 @@
       ziel: ziel || ''
     };
 
+    // ✅ LOKAL: aus Active raus / History+Done
     a.splice(idx,1); setActive(a);
     var h = getHistory(); h.push(entry); setHistory(h);
     var d = getDone(); d.push(p.id); setDone(d);
+
+    // ✅ COOP: Klinikzuweisung patchen (wenn aktiv)
+    // -> OrgL klickt "Klinik zuweisen" und alle Geräte sehen es
+    try{
+      if (coopEnabled()){
+        startOutboxPump();
+
+        var pid = patientIdToNumber(p.id);
+        if(pid){
+          var payload = {
+            patient_id: pid,
+            clinic_target: ziel || '',
+            clinic_status: 'assigned'
+          };
+
+          // Optimistisch senden – bei Fehler in Outbox
+          coopPatch(payload).catch(function(err){
+            coopOutboxPush({
+              ts: Date.now(),
+              kind: 'clinic_assign',
+              payload: payload,
+              err: String(err && err.message ? err.message : err)
+            });
+          });
+        }
+      }
+    }catch(_){}
+
     return true;
   }
 
@@ -189,8 +327,11 @@
             var ziel = zielSel ? (zielSel.value||'') : '';
             if(!ziel && !window.confirm('Ohne Ziel zuweisen?')) return;
             var cid = cardEl.getAttribute('data-patient-id') || cardEl.getAttribute('data-id');
+
             if(cid && stopPatient(cid, ziel, idVal)){
-              try{ cardEl.remove(); }catch(_){ cardEl.parentNode && cardEl.parentNode.removeChild(cardEl); }
+              try{ cardEl.remove(); }catch(_){
+                cardEl.parentNode && cardEl.parentNode.removeChild(cardEl);
+              }
             }
           }, { passive:false });
         })(card, wrap.querySelector('.btn-zuweisen'));
@@ -243,9 +384,13 @@
 
   // ----- Auto-Init: Start nur beim Betreten
   function autoInit(){
-    // 1) Alle vorhandenen, noch nicht gestarteten Einträge starten
     startTimersOnEntry();
-    // 2) (Dein Code ruft irgendwo hydrateCards(...) auf)
+
+    // Coop Outbox (falls Coop aktiv)
+    if (coopEnabled()){
+      startOutboxPump();
+      coopFlushOutbox().catch(function(){});
+    }
   }
 
   if (document.readyState === 'complete' || document.readyState === 'interactive') {
@@ -253,7 +398,7 @@
   } else {
     document.addEventListener('DOMContentLoaded', autoInit, { once:true });
   }
-  // iOS bfcache: beim „Zurück“-Navigieren erneut auslösen (neue Session im Sinne der Seite)
+  // iOS bfcache: beim „Zurück“-Navigieren erneut auslösen
   window.addEventListener('pageshow', autoInit);
 
 })();
