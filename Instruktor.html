@@ -235,7 +235,7 @@
       <p class="small muted">Was möchtest du tun?</p>
 
       <div class="row" style="flex-direction:column;">
-        <button id="coopCreateBtn" class="btn" type="button">🧑‍✈️ Übung erstellen (OrgL)</button>
+        <button id="coopCreateBtn" class="btn" type="button">🧑‍✈️ Übung erstellen (Instruktor)</button>
         <button id="coopJoinBtn" class="btn btn-secondary" type="button">🚑 Übung beitreten (RTW/NEF)</button>
       </div>
 
@@ -245,7 +245,7 @@
     </div>
   </div>
 
-  <!-- ✅ Modal 2: QR für OrgL -->
+  <!-- ✅ Modal 2: QR für Instruktor -->
   <div id="coopQrModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal">
       <h3>🧑‍✈️ Coop: Übung erstellt</h3>
@@ -270,7 +270,7 @@
   <div id="coopScanModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal">
       <h3>🚑 Coop: Übung beitreten</h3>
-      <p class="small muted">Bitte den QR-Code des OrgL scannen.</p>
+      <p class="small muted">Bitte den QR-Code des Instruktors scannen.</p>
 
       <div class="pill small" id="coopCamState">📷 Kamera wird gestartet…</div>
 
@@ -350,10 +350,9 @@
     }
   </script>
 
-  <!-- Push + Nachrichten Badge + Lizenz-Gate -->
+  <!-- Push + Nachrichten Badge + Lizenz-Gate (dein Block unverändert) -->
   <script>
     const VAPID_PUBLIC='BGfo_fq3L9NVou1-0HAWd2s1_Crd6BMLLGswUQHulrs1NUINsoBh5ak1pwosrOr8NF55ITsVn6ZCpZd_CDXjRCQ';
-
     async function getLicenseState(){
       try{
         const r = await fetch('/.netlify/functions/license-status?ts='+Date.now(), { cache:'no-store' });
@@ -366,45 +365,33 @@
       const status = (ls('license_status') || ls('lizenz_status') || '').toLowerCase();
       const until  = parseInt(ls('license_valid_until') || '0', 10);
       const now = Date.now();
-
       if (status === 'blocked' || status === 'gesperrt') return { active:false, status:'blocked' };
       if (until && now > until) return { active:false, status:'expired' };
       if (status === 'expired' || status === 'abgelaufen') return { active:false, status:'expired' };
-
       return { active:true, status: status || 'unknown' };
     }
 
     async function loadMsgBadge(){
       const el = document.getElementById('msgBadge');
       const hide = () => { el.textContent=''; el.style.display='none'; };
-
       try{
         const license = await getLicenseState();
         if (!license.active) return hide();
-
         const r = await fetch('/.netlify/functions/messages-list?ts='+Date.now(), { cache:'no-store' });
         if (!r.ok) return hide();
         const j = await r.json();
-
         const itemsRaw = j.items || j.list || j.messages || [];
         const items = Array.isArray(itemsRaw) ? itemsRaw : [];
         if (items.length === 0) return hide();
-
         const seen   = new Set((JSON.parse(localStorage.getItem('inbox_seen_v1')   || '[]')||[]).map(String));
         const hidden = new Set((JSON.parse(localStorage.getItem('inbox_hidden_v1') || '[]')||[]).map(String));
-
         const filtered = items.filter(m => !hidden.has(String(m.id)));
         const unread   = filtered.filter(m => !seen.has(String(m.id))).length;
-
         if (unread > 0){
           el.textContent = String(unread);
           el.style.display = 'inline-flex';
-        } else {
-          hide();
-        }
-      }catch{
-        hide();
-      }
+        } else hide();
+      }catch{ hide(); }
     }
 
     if (navigator.serviceWorker) {
@@ -754,7 +741,8 @@
   </script>
 
   <!-- ✅ COOP + QR + Scanner -->
-  <script src="/coop.js"></script>
+  <!-- Cache-Busting ist wichtig in der PWA -->
+  <script src="/coop.js?v=2026-01-14-2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
 
@@ -826,65 +814,11 @@
     coopDot.classList.toggle("off", !on);
   }
 
-  function renderCoopBar(){
-    const st = getCoopStatus();
-
-    const active = !!st.active;
-    setDot(active);
-
-    if (!active){
-      coopStateTxt.textContent = "Coop aus";
-      coopJoinTxt.textContent = "—";
-      coopConnTxt.textContent = "—";
-      coopBtn.textContent = "🤝 Coop-Modus";
-      stopConnPolling();
-      return;
-    }
-
-    const role = (st.role || "").toUpperCase();
-    const jc = st.join_code || "—";
-
-    coopStateTxt.textContent = role ? `Coop aktiv (${role})` : "Coop aktiv";
-    coopJoinTxt.textContent  = jc;
-
-    // Button als Toggle: Klick = beenden/leave
-    coopBtn.textContent = "🛑 Coop beenden";
-
-    // Count (falls noch nix bekannt)
-    if (typeof lastConnKnown === "number") {
-      coopConnTxt.textContent = String(lastConnKnown);
-    } else {
-      coopConnTxt.textContent = "—";
-    }
-
-    // nur OrgL muss zwingend den Count sehen/pollen
-    if (role === "ORGL") startConnPolling();
-    else stopConnPolling();
+  function stopConnPolling(){
+    if (connTimer) clearInterval(connTimer);
+    connTimer = null;
   }
 
-  function buildJoinLink(join_code){
-    return `${location.origin}/index.html?join_code=${encodeURIComponent(join_code)}`;
-  }
-
-  function renderQr(link){
-    coopQrEl.innerHTML = "";
-    // eslint-disable-next-line no-undef
-    new QRCode(coopQrEl, { text: link, width: 220, height: 220 });
-  }
-
-  async function forceResumeIfSessionExists(){
-    const sess = getStoredSession();
-    if (!sess || !sess.token || !sess.incident_id) return;
-
-    try{
-      window.Coop?.enable?.({ apiBase: COOP_API });
-      await window.Coop?.resume?.();
-    }catch(e){
-      console.warn("[COOP] forceResume failed", e);
-    }
-  }
-
-  // ✅ Connected Count: versucht /clients.php (wenn vorhanden)
   async function fetchConnectedCount(){
     const st = getCoopStatus();
     if (!st.active || !st.incident_id || !st.token) return null;
@@ -900,7 +834,6 @@
       const j = await r.json().catch(()=>null);
       if (!j) return null;
 
-      // akzeptiere mehrere Formate
       if (typeof j.count === "number") return j.count;
       if (Array.isArray(j.clients)) return j.clients.length;
       if (typeof j.clients === "number") return j.clients;
@@ -923,29 +856,74 @@
     }, 2000);
   }
 
-  function stopConnPolling(){
-    if (connTimer) clearInterval(connTimer);
-    connTimer = null;
+  function renderCoopBar(){
+    const st = getCoopStatus();
+
+    const active = !!st.active;
+    setDot(active);
+
+    if (!active){
+      coopStateTxt.textContent = "Coop aus";
+      coopJoinTxt.textContent = "—";
+      coopConnTxt.textContent = "—";
+      coopBtn.textContent = "🤝 Coop-Modus";
+      stopConnPolling();
+      return;
+    }
+
+    const role = (st.role || "").toUpperCase();
+    const jc = st.join_code || "—";
+
+    coopStateTxt.textContent = role ? `Coop aktiv (${role})` : "Coop aktiv";
+    coopJoinTxt.textContent  = jc;
+
+    coopBtn.textContent = "🛑 Coop beenden";
+
+    if (typeof lastConnKnown === "number") coopConnTxt.textContent = String(lastConnKnown);
+    else coopConnTxt.textContent = "—";
+
+    // ✅ Count polling für INSTR/ORGL (und wenn Rolle leer ist)
+    if (role === "INSTR" || role === "ORGL" || role === "") startConnPolling();
+    else stopConnPolling();
+  }
+
+  function buildJoinLink(join_code){
+    return `${location.origin}/index.html?join_code=${encodeURIComponent(join_code)}`;
+  }
+
+  function renderQr(link){
+    coopQrEl.innerHTML = "";
+    new QRCode(coopQrEl, { text: link, width: 220, height: 220 });
+  }
+
+  async function forceResumeIfSessionExists(){
+    const sess = getStoredSession();
+    if (!sess || !sess.token || !sess.incident_id) return;
+
+    try{
+      window.Coop?.enable?.({ apiBase: COOP_API });
+      await window.Coop?.resume?.();
+    }catch(e){
+      console.warn("[COOP] forceResume failed", e);
+    }
   }
 
   // ---- Events vom coop.js
-  window.addEventListener("coop:created",  () => { lastConnKnown = null; renderCoopBar(); });
-  window.addEventListener("coop:joined",   () => { lastConnKnown = null; renderCoopBar(); });
-  window.addEventListener("coop:restored", () => { renderCoopBar(); });
-  window.addEventListener("coop:reset",    () => { lastConnKnown = null; renderCoopBar(); });
-  window.addEventListener("coop:disabled", () => { lastConnKnown = null; renderCoopBar(); });
-  window.addEventListener("coop:ended",    () => { lastConnKnown = null; renderCoopBar(); });
-
-  // ✅ Wenn dein coop.js den Event coop:status feuert (in meiner finalen Version), nutzen wir ihn:
-  window.addEventListener("coop:status", (e) => {
-    // einfach neu rendern – Status aus Coop.getStatus()
-    renderCoopBar();
-  });
+  const rerender = () => { renderCoopBar(); };
+  window.addEventListener("coop:created",  () => { lastConnKnown = null; rerender(); });
+  window.addEventListener("coop:joined",   () => { lastConnKnown = null; rerender(); });
+  window.addEventListener("coop:restored", () => { rerender(); });
+  window.addEventListener("coop:reset",    () => { lastConnKnown = null; rerender(); });
+  window.addEventListener("coop:disabled", () => { lastConnKnown = null; rerender(); });
+  window.addEventListener("coop:ended",    () => { lastConnKnown = null; rerender(); });
+  window.addEventListener("coop:status",   () => { rerender(); }); // falls coop.js das feuert
+  window.addEventListener("coop:degraded", () => { rerender(); });
 
   window.addEventListener("load", async () => {
     await forceResumeIfSessionExists();
     renderCoopBar();
   });
+
   document.addEventListener("visibilitychange", async () => {
     if (document.visibilityState === "visible") {
       await forceResumeIfSessionExists();
@@ -953,16 +931,13 @@
     }
   });
 
-  // ✅ Button-Logik:
-  // - wenn aktiv: beenden (OrgL -> end, sonst leave)
-  // - wenn aus: Auswahlmodal
+  // ✅ Button Toggle:
   coopBtn.addEventListener("click", async () => {
     const st = getCoopStatus();
 
     if (st.active) {
-      // Toggle OFF: Übung beenden / verlassen
+      // Toggle OFF: wenn coop.js end/leave kann -> nutzen
       try {
-        // bevorzugt: Coop.toggle() falls vorhanden
         if (window.Coop?.toggle) {
           await window.Coop.toggle({ reason: "instr_button" });
         } else if (window.Coop?.end) {
@@ -972,8 +947,9 @@
         }
       } catch (e) {
         console.warn(e);
-        try { window.Coop?.hardReset?.("instr_button_fail"); } catch {}
+        try { window.Coop?.reset?.(); } catch {}
       }
+      lastConnKnown = null;
       renderCoopBar();
       return;
     }
@@ -987,7 +963,7 @@
 
   choiceClose.addEventListener("click", () => hide(choiceModal));
 
-  // ---- ORGL: Übung erstellen ----
+  // ---- INSTR: Übung erstellen ----
   createBtn.addEventListener("click", async () => {
     hide(choiceModal);
 
@@ -997,6 +973,7 @@
       coopStatus.textContent = "⏳ Einsatz wird erstellt…";
       show(qrModal);
 
+      // Wichtig: createIncident sollte role INSTR setzen (macht coop.js normalerweise)
       const data = await window.Coop.createIncident({});
       const join_code = data.join_code || data.joinCode || data.code;
       if (!join_code) throw new Error("join_code fehlt");
@@ -1012,8 +989,7 @@
     } catch (e) {
       console.error(e);
       alert("Coop konnte nicht gestartet werden: " + (e.message || e));
-
-      try { window.Coop?.hardReset?.("create_fail"); } catch {}
+      try { window.Coop?.reset?.(); } catch {}
       hide(qrModal);
       lastConnKnown = null;
       renderCoopBar();
@@ -1022,7 +998,7 @@
 
   qrClose.addEventListener("click", () => hide(qrModal));
 
-  // ✅ Übungsende / Coop beenden (OrgL)
+  // ✅ Übungsende / Coop beenden (Instruktor)
   coopStop.addEventListener("click", async () => {
     try {
       if (window.Coop?.end) {
@@ -1032,7 +1008,7 @@
       }
     } catch (e) {
       console.warn(e);
-      try { window.Coop?.hardReset?.("uebungsende_fail"); } catch {}
+      try { window.Coop?.reset?.(); } catch {}
     }
     hide(qrModal);
     lastConnKnown = null;
@@ -1112,7 +1088,6 @@
       ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
 
       const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      // eslint-disable-next-line no-undef
       const code = jsQR(img.data, img.width, img.height);
 
       if (code && code.data) {
