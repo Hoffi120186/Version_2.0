@@ -1,4 +1,4 @@
-// /coop.js (ROOT) — robust session truth + auto-resume + UI-safe status + HARD RESET + auto-heal
+// /coop.js (ROOT) — FINAL: robust start/stop + toggle button + hard reset + auto-end handling
 (() => {
   "use strict";
 
@@ -7,15 +7,12 @@
     pollMs: 1500,
     heartbeatMs: 8000,
     storageKey: "coop_session_v1",
-
-    // UI flag (nice-to-have, but NOT source of truth)
     lsActive: "coop.active",
-
     sinceSkewSeconds: 2,
 
-    // ✅ if we get repeated errors, we self-heal/reset
-    maxConsecutiveErrors: 6,          // ~9s at 1500ms polling
-    maxConsecutiveHbErrors: 3,        // ~24s at 8000ms heartbeat
+    // self-heal thresholds
+    maxConsecutivePollErrors: 6,   // ~9s at 1500ms
+    maxConsecutiveHbErrors: 3,     // ~24s at 8000ms
   };
 
   const S = {
@@ -25,7 +22,7 @@
     incident_id: null,
     join_code: null,
     client_id: null,
-    role: null,
+    role: null,   // "ORGL" / "RTW" / "NEF" ...
     token: null,
 
     since: "",
@@ -33,7 +30,6 @@
 
     timers: { poll: null, hb: null },
 
-    // ✅ error counters for self-heal
     pollErrStreak: 0,
     hbErrStreak: 0,
   };
@@ -56,7 +52,7 @@
       role: S.role,
       token: S.token,
       since: S.since,
-      t: Date.now()
+      t: Date.now(),
     };
     try { localStorage.setItem(DEFAULTS.storageKey, JSON.stringify(payload)); } catch {}
   }
@@ -76,7 +72,6 @@
     try { localStorage.removeItem(DEFAULTS.storageKey); } catch {}
   }
 
-  // UI flag: never trust it alone
   function setActiveFlag(on) {
     try { localStorage.setItem(DEFAULTS.lsActive, on ? "1" : "0"); } catch {}
   }
@@ -84,15 +79,32 @@
     try { return localStorage.getItem(DEFAULTS.lsActive) === "1"; } catch { return false; }
   }
 
-  // ✅ The real truth:
   function hasSession() {
     const sess = loadSession();
     return !!(sess && sess.incident_id && sess.token);
   }
 
-  // ✅ Self-heal: if session exists, force coop.active = 1
   function healActiveFlagFromSession() {
     if (hasSession()) setActiveFlag(true);
+  }
+
+  function statusSnapshot() {
+    const sess = loadSession();
+    const sessOk = !!(sess?.incident_id && sess?.token);
+    const runtimeOk = !!(S.incident_id && S.token);
+    return {
+      active: sessOk || runtimeOk,
+      enabled: !!S.enabled,
+      hasSession: sessOk,
+      incident_id: sess?.incident_id || S.incident_id || "",
+      join_code: sess?.join_code || S.join_code || "",
+      role: sess?.role || S.role || "",
+      client_id: sess?.client_id || S.client_id || "",
+    };
+  }
+
+  function broadcastStatus() {
+    emit("status", statusSnapshot());
   }
 
   // ---------------------------
@@ -101,34 +113,38 @@
   function hardReset(reason = "manual") {
     warn("HARD RESET:", reason);
 
-    // stop timers
     stop();
-
-    // disable
     S.enabled = false;
 
-    // clear RAM session
     S.incident_id = null;
     S.join_code = null;
     S.client_id = null;
     S.role = null;
     S.token = null;
+
     S.since = "";
     S.lastVersion.clear();
 
-    // clear error streaks
     S.pollErrStreak = 0;
     S.hbErrStreak = 0;
 
-    // clear storage
     clearSession();
     try { localStorage.removeItem(DEFAULTS.lsActive); } catch {}
     try { sessionStorage.clear(); } catch {}
 
-    // update UI
     setActiveFlag(false);
 
     emit("reset", { reason });
+    broadcastStatus();
+  }
+
+  function requireValidRuntimeSessionOrReset(where = "unknown") {
+    if (S.enabled && (!S.incident_id || !S.token)) {
+      hardReset(`zombie_runtime_${where}`);
+      emit("need_join", {});
+      return false;
+    }
+    return true;
   }
 
   // ---------------------------
@@ -137,9 +153,13 @@
   async function fetchJSON(url, opts = {}) {
     const res = await fetch(url, opts);
     const data = await res.json().catch(() => ({}));
+
     if (!res.ok || data?.ok === false) {
       const msg = data?.error || `HTTP_${res.status}`;
-      throw new Error(msg);
+      const err = new Error(msg);
+      err._http = res.status;
+      err._data = data;
+      throw err;
     }
     return data;
   }
@@ -153,12 +173,8 @@
     return u.toString();
   }
 
-  // ---------------------------
-  // Error classification (important!)
-  // ---------------------------
   function isInvalidSessionError(msg = "") {
     const m = String(msg || "").toLowerCase();
-    // ✅ add more keywords if your backend uses different errors
     return (
       m.includes("invalid") ||
       m.includes("token") ||
@@ -167,29 +183,67 @@
       m.includes("not_found") ||
       m.includes("incident") ||
       m.includes("expired") ||
-      m.includes("missing_session")
+      m.includes("ended") ||
+      m.includes("closed")
     );
   }
 
-  function requireValidRuntimeSessionOrReset(where = "unknown") {
-    // If UI says active but we don't have incident/token -> zombie -> reset
-    if (S.enabled && (!S.incident_id || !S.token)) {
-      hardReset(`zombie_runtime_${where}`);
-      emit("need_join", {});
-      return false;
+  function subtractSecondsFromDatetimeString(dt, seconds) {
+    try {
+      const [d, t] = dt.split(" ");
+      const [Y, M, D] = d.split("-").map(Number);
+      const [h, m, s] = t.split(":").map(Number);
+      const ms = new Date(Y, M - 1, D, h, m, s).getTime();
+      const ms2 = ms - seconds * 1000;
+      const d2 = new Date(ms2);
+      const pad = (n) => String(n).padStart(2, "0");
+      return `${d2.getFullYear()}-${pad(d2.getMonth() + 1)}-${pad(d2.getDate())} ${pad(d2.getHours())}:${pad(d2.getMinutes())}:${pad(d2.getSeconds())}`;
+    } catch {
+      return dt;
     }
-    return true;
   }
 
   // ---------------------------
-  // API
+  // Timers
+  // ---------------------------
+  function start() {
+    stop();
+
+    // if enabled but no session -> do not pretend
+    if (S.enabled && (!S.incident_id || !S.token)) {
+      setActiveFlag(false);
+      emit("need_join", {});
+      broadcastStatus();
+      return;
+    }
+
+    S.timers.poll = setInterval(pullState, DEFAULTS.pollMs);
+    S.timers.hb   = setInterval(ping, DEFAULTS.heartbeatMs);
+
+    pullState();
+    ping();
+    broadcastStatus();
+  }
+
+  function stop() {
+    if (S.timers.poll) clearInterval(S.timers.poll);
+    if (S.timers.hb)   clearInterval(S.timers.hb);
+    S.timers.poll = null;
+    S.timers.hb   = null;
+  }
+
+  // ---------------------------
+  // API: create/join/patch/state/ping
   // ---------------------------
   async function createIncident(payload = {}) {
+    // ✅ IMPORTANT: ensure coop actually runs even if UI never called enable()
+    S.enabled = true;
+
     const url = `${S.apiBase}/create_incident.php`;
     const data = await fetchJSON(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
 
     S.incident_id = data.incident_id || S.incident_id;
@@ -209,23 +263,24 @@
     emit("created", data);
     log("created", data);
 
-    // ensure timers run
-    if (S.enabled) start();
-
+    start();
     return data;
   }
 
   async function joinIncident({ join_code, role }) {
+    // ✅ IMPORTANT: ensure coop actually runs even if UI never called enable()
+    S.enabled = true;
+
     const url = `${S.apiBase}/join_incident.php`;
     const data = await fetchJSON(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ join_code, role })
+      body: JSON.stringify({ join_code, role }),
     });
 
     S.incident_id = data.incident_id;
     S.client_id   = data.client_id;
-    S.role        = data.role;
+    S.role        = data.role || role || null;
     S.token       = data.token;
     S.join_code   = join_code;
 
@@ -240,9 +295,7 @@
     emit("joined", data);
     log("joined", data);
 
-    // ensure timers run
-    if (S.enabled) start();
-
+    start();
     return data;
   }
 
@@ -255,7 +308,7 @@
       await fetchJSON(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ incident_id: S.incident_id, token: S.token })
+        body: JSON.stringify({ incident_id: S.incident_id, token: S.token }),
       });
 
       S.hbErrStreak = 0;
@@ -268,24 +321,11 @@
       warn("heartbeat fail:", msg);
 
       if (isInvalidSessionError(msg) || S.hbErrStreak >= DEFAULTS.maxConsecutiveHbErrors) {
+        // ✅ incident ended / invalid -> end locally clean
+        emit("ended", { reason: `heartbeat_${msg}` });
         hardReset(`heartbeat_invalid_${msg}`);
         emit("need_join", {});
       }
-    }
-  }
-
-  function subtractSecondsFromDatetimeString(dt, seconds) {
-    try {
-      const [d, t] = dt.split(" ");
-      const [Y, M, D] = d.split("-").map(Number);
-      const [h, m, s] = t.split(":").map(Number);
-      const ms = new Date(Y, M - 1, D, h, m, s).getTime();
-      const ms2 = ms - seconds * 1000;
-      const d2 = new Date(ms2);
-      const pad = (n) => String(n).padStart(2, "0");
-      return `${d2.getFullYear()}-${pad(d2.getMonth() + 1)}-${pad(d2.getDate())} ${pad(d2.getHours())}:${pad(d2.getMinutes())}:${pad(d2.getSeconds())}`;
-    } catch {
-      return dt;
     }
   }
 
@@ -300,17 +340,34 @@
     const url = `${S.apiBase}/state.php?` + qs({
       incident_id: S.incident_id,
       token: S.token,
-      since: sinceSafe
+      since: sinceSafe,
     });
 
     try {
       const data = await fetchJSON(url);
 
-      // success => reset streak
       S.pollErrStreak = 0;
+
+      // ✅ Optional: if your backend returns ended flags
+      if (data?.ended === true || data?.status === "ended" || data?.status === "closed") {
+        emit("ended", { reason: "server_flag" });
+        hardReset("server_flag_ended");
+        emit("need_join", {});
+        return;
+      }
 
       const serverTime = data.server_time;
       const changes = Array.isArray(data.changes) ? data.changes : [];
+
+      // ✅ Optional: handle "exercise end" via a change row
+      // If one row indicates end, we stop everything
+      const endRow = changes.find(r => String(r.type || "").toLowerCase().includes("end"));
+      if (endRow) {
+        emit("ended", { reason: "server_change", row: endRow });
+        hardReset("server_change_end");
+        emit("need_join", {});
+        return;
+      }
 
       const filtered = [];
       for (const row of changes) {
@@ -332,6 +389,8 @@
       if (filtered.length) {
         emit("changes", { changes: filtered, server_time: serverTime });
       }
+
+      broadcastStatus();
     } catch (e) {
       const msg = e?.message || "poll_error";
       S.pollErrStreak++;
@@ -339,8 +398,8 @@
       emit("poll_error", { error: msg });
       warn("pullState fail:", msg);
 
-      // ✅ auto-reset on invalid session OR too many consecutive errors
-      if (isInvalidSessionError(msg) || S.pollErrStreak >= DEFAULTS.maxConsecutiveErrors) {
+      if (isInvalidSessionError(msg) || S.pollErrStreak >= DEFAULTS.maxConsecutivePollErrors) {
+        emit("ended", { reason: `poll_${msg}` });
         hardReset(`poll_invalid_${msg}`);
         emit("need_join", {});
       }
@@ -356,14 +415,14 @@
       incident_id: S.incident_id,
       token: S.token,
       patient_id,
-      ...patch
+      ...patch,
     };
 
     try {
       const data = await fetchJSON(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
       });
 
       emit("patched", { patient_id, patch, version: data.version });
@@ -372,8 +431,8 @@
       const msg = e?.message || "patch_error";
       emit("patch_error", { patient_id, error: msg });
 
-      // ✅ if token/incident invalid -> hard reset
       if (isInvalidSessionError(msg)) {
+        emit("ended", { reason: `patch_${msg}` });
         hardReset(`patch_invalid_${msg}`);
         emit("need_join", {});
       }
@@ -382,29 +441,74 @@
   }
 
   // ---------------------------
-  // Timers
+  // End/Leave handling (Übungsende / Coop beenden)
   // ---------------------------
-  function start() {
-    stop();
-
-    // if enabled but no session => don't pretend
-    if (S.enabled && (!S.incident_id || !S.token)) {
-      emit("need_join", {});
-      return;
-    }
-
-    S.timers.poll = setInterval(pullState, DEFAULTS.pollMs);
-    S.timers.hb   = setInterval(ping, DEFAULTS.heartbeatMs);
-
-    pullState();
-    ping();
+  async function endIncidentOnServer() {
+    // If your backend supports it, this ends the whole incident for everyone.
+    // If not available (404 etc.), we still end locally.
+    const url = `${S.apiBase}/end_incident.php`;
+    return fetchJSON(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ incident_id: S.incident_id, token: S.token }),
+    });
   }
 
-  function stop() {
-    if (S.timers.poll) clearInterval(S.timers.poll);
-    if (S.timers.hb)   clearInterval(S.timers.hb);
-    S.timers.poll = null;
-    S.timers.hb   = null;
+  async function leaveIncidentOnServer() {
+    // Optional: if your backend supports leaving a session without ending it.
+    const url = `${S.apiBase}/leave_incident.php`;
+    return fetchJSON(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ incident_id: S.incident_id, token: S.token, client_id: S.client_id }),
+    });
+  }
+
+  /**
+   * End/Leave coop
+   * @param {Object} opts
+   * @param {"auto"|"leave"|"end"} opts.mode
+   *    - auto: if role ORGL => end, else leave
+   *    - end: try to end whole incident
+   *    - leave: only leave locally (and optional server leave)
+   * @param {string} opts.reason
+   */
+  async function end(opts = {}) {
+    const mode = opts.mode || "auto";
+    const reason = opts.reason || "user_action";
+
+    const role = (S.role || loadSession()?.role || "").toUpperCase();
+    const isOrgL = role === "ORGL" || role === "ORG L" || role === "ORG-L";
+
+    const finalMode = (mode === "auto")
+      ? (isOrgL ? "end" : "leave")
+      : mode;
+
+    emit("ending", { mode: finalMode, reason });
+
+    // If no session, just reset
+    if (!S.incident_id || !S.token) {
+      hardReset(`end_no_session_${reason}`);
+      emit("ended", { mode: finalMode, reason });
+      return true;
+    }
+
+    // Try server-side if available, but ALWAYS ensure local clean finish
+    try {
+      if (finalMode === "end") {
+        await endIncidentOnServer();
+      } else {
+        await leaveIncidentOnServer();
+      }
+    } catch (e) {
+      // If endpoint not there / fails -> ignore, still end locally
+      warn("end/leave server call failed (ignored):", e?.message || e);
+    }
+
+    // local final
+    emit("ended", { mode: finalMode, reason });
+    hardReset(`ended_${finalMode}_${reason}`);
+    return true;
   }
 
   // ---------------------------
@@ -426,13 +530,10 @@
       S.token       = sess.token;
       S.since       = sess.since || "";
 
-      // session exists -> active
       setActiveFlag(true);
-
       emit("restored", { session: sess });
       log("restored", { incident_id: S.incident_id, role: S.role });
     } else {
-      // no session -> no fake active
       setActiveFlag(false);
       emit("need_join", {});
     }
@@ -454,11 +555,9 @@
     S.since       = sess.since || "";
 
     S.enabled = true;
-
-    // ✅ session => always active
     setActiveFlag(true);
-    emit("restored", { session: sess });
 
+    emit("restored", { session: sess });
     start();
     log("resumed", { incident_id: S.incident_id, role: S.role });
     return true;
@@ -468,53 +567,69 @@
     S.enabled = false;
     stop();
     emit("disabled", {});
+    broadcastStatus();
   }
 
-  // Only ends on explicit user action (your "Coop beenden")
+  // "Coop beenden" button should call end() (not just reset)
   function reset() {
-    // keep semantics but make it HARD
+    // keep backwards compatibility: do a safe local reset
     hardReset("user_reset");
   }
 
-  // ✅ UI-friendly status (never lies)
+  // ✅ Toggle helper for ONE button UX
+  // If active -> end/leave. If not active -> emit need_join (or resume if session exists)
+  async function toggle(opts = {}) {
+    const st = statusSnapshot();
+
+    // if already active -> end/leave
+    if (st.active || st.enabled) {
+      return end({ mode: opts.mode || "auto", reason: opts.reason || "toggle_off" });
+    }
+
+    // if we have a stored session -> resume
+    if (hasSession()) {
+      return resume();
+    }
+
+    // otherwise UI must show join/create modal
+    emit("need_join", {});
+    return false;
+  }
+
   function getStatus() {
-    const sess = loadSession();
-    const sessOk = !!(sess?.incident_id && sess?.token);
-    const runtimeOk = !!(S.incident_id && S.token);
-    return {
-      // active means: we truly have a session OR runtime session
-      active: sessOk || runtimeOk,
-      hasSession: sessOk,
-      incident_id: sess?.incident_id || S.incident_id || "",
-      join_code: sess?.join_code || S.join_code || "",
-      role: sess?.role || S.role || "",
-      enabled: !!S.enabled
-    };
+    return statusSnapshot();
   }
 
   window.Coop = {
+    // core lifecycle
     enable,
     resume,
     disable,
     reset,
-    hardReset, // ✅ expose for emergency button
+    hardReset,
 
+    // toggle & end
+    toggle,
+    end, // end({mode:"auto"|"end"|"leave", reason:"..."})
+
+    // api
     createIncident,
     joinIncident,
     patchPatient,
-
     pullState,
-    getState: () => ({ ...S, active: hasSession() || (!!S.incident_id && !!S.token) }),
+
+    // state
+    getState: () => ({ ...S, active: statusSnapshot().active }),
     getStatus,
   };
 
   // ---------------------------
-  // Auto-Resume (every page load)
+  // Auto-Resume on load/visible
   // ---------------------------
   function autoResume() {
     healActiveFlagFromSession();
 
-    // if we only have UI flag but NO session => fix the lie
+    // if only UI flag but NO session -> fix lie
     if (isActiveFlag() && !hasSession()) {
       setActiveFlag(false);
       emit("need_join", {});
@@ -522,10 +637,11 @@
 
     if (hasSession()) {
       resume().catch((e) => {
-        // if resume fails -> hard reset to avoid zombie UI
         hardReset(`resume_fail_${e?.message || "unknown"}`);
         emit("need_join", {});
       });
+    } else {
+      broadcastStatus();
     }
   }
 
