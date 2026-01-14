@@ -1,4 +1,4 @@
-// /coop.js (ROOT) — robust session truth + auto-resume + UI-safe status
+// /coop.js (ROOT) — robust session truth + auto-resume + UI-safe status + HARD RESET + auto-heal
 (() => {
   "use strict";
 
@@ -12,6 +12,10 @@
     lsActive: "coop.active",
 
     sinceSkewSeconds: 2,
+
+    // ✅ if we get repeated errors, we self-heal/reset
+    maxConsecutiveErrors: 6,          // ~9s at 1500ms polling
+    maxConsecutiveHbErrors: 3,        // ~24s at 8000ms heartbeat
   };
 
   const S = {
@@ -28,6 +32,10 @@
     lastVersion: new Map(),
 
     timers: { poll: null, hb: null },
+
+    // ✅ error counters for self-heal
+    pollErrStreak: 0,
+    hbErrStreak: 0,
   };
 
   function log(...a) { console.log("[COOP]", ...a); }
@@ -88,6 +96,42 @@
   }
 
   // ---------------------------
+  // HARD RESET (kills zombie states)
+  // ---------------------------
+  function hardReset(reason = "manual") {
+    warn("HARD RESET:", reason);
+
+    // stop timers
+    stop();
+
+    // disable
+    S.enabled = false;
+
+    // clear RAM session
+    S.incident_id = null;
+    S.join_code = null;
+    S.client_id = null;
+    S.role = null;
+    S.token = null;
+    S.since = "";
+    S.lastVersion.clear();
+
+    // clear error streaks
+    S.pollErrStreak = 0;
+    S.hbErrStreak = 0;
+
+    // clear storage
+    clearSession();
+    try { localStorage.removeItem(DEFAULTS.lsActive); } catch {}
+    try { sessionStorage.clear(); } catch {}
+
+    // update UI
+    setActiveFlag(false);
+
+    emit("reset", { reason });
+  }
+
+  // ---------------------------
   // Fetch helpers
   // ---------------------------
   async function fetchJSON(url, opts = {}) {
@@ -110,6 +154,34 @@
   }
 
   // ---------------------------
+  // Error classification (important!)
+  // ---------------------------
+  function isInvalidSessionError(msg = "") {
+    const m = String(msg || "").toLowerCase();
+    // ✅ add more keywords if your backend uses different errors
+    return (
+      m.includes("invalid") ||
+      m.includes("token") ||
+      m.includes("unauthorized") ||
+      m.includes("forbidden") ||
+      m.includes("not_found") ||
+      m.includes("incident") ||
+      m.includes("expired") ||
+      m.includes("missing_session")
+    );
+  }
+
+  function requireValidRuntimeSessionOrReset(where = "unknown") {
+    // If UI says active but we don't have incident/token -> zombie -> reset
+    if (S.enabled && (!S.incident_id || !S.token)) {
+      hardReset(`zombie_runtime_${where}`);
+      emit("need_join", {});
+      return false;
+    }
+    return true;
+  }
+
+  // ---------------------------
   // API
   // ---------------------------
   async function createIncident(payload = {}) {
@@ -128,12 +200,18 @@
 
     S.since = "";
     S.lastVersion.clear();
+    S.pollErrStreak = 0;
+    S.hbErrStreak = 0;
 
     saveSession();
     setActiveFlag(true);
 
     emit("created", data);
     log("created", data);
+
+    // ensure timers run
+    if (S.enabled) start();
+
     return data;
   }
 
@@ -153,16 +231,25 @@
 
     S.since = "";
     S.lastVersion.clear();
+    S.pollErrStreak = 0;
+    S.hbErrStreak = 0;
 
     saveSession();
     setActiveFlag(true);
 
     emit("joined", data);
     log("joined", data);
+
+    // ensure timers run
+    if (S.enabled) start();
+
     return data;
   }
 
   async function ping() {
+    if (!S.enabled) return;
+    if (!requireValidRuntimeSessionOrReset("ping")) return;
+
     try {
       const url = `${S.apiBase}/ping.php`;
       await fetchJSON(url, {
@@ -170,9 +257,20 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ incident_id: S.incident_id, token: S.token })
       });
+
+      S.hbErrStreak = 0;
       emit("heartbeat", { ok: true });
     } catch (e) {
-      emit("heartbeat", { ok: false, error: e.message });
+      const msg = e?.message || "heartbeat_error";
+      S.hbErrStreak++;
+
+      emit("heartbeat", { ok: false, error: msg });
+      warn("heartbeat fail:", msg);
+
+      if (isInvalidSessionError(msg) || S.hbErrStreak >= DEFAULTS.maxConsecutiveHbErrors) {
+        hardReset(`heartbeat_invalid_${msg}`);
+        emit("need_join", {});
+      }
     }
   }
 
@@ -192,7 +290,8 @@
   }
 
   async function pullState() {
-    if (!S.enabled || !S.incident_id || !S.token) return;
+    if (!S.enabled) return;
+    if (!requireValidRuntimeSessionOrReset("pullState")) return;
 
     const sinceSafe = S.since
       ? subtractSecondsFromDatetimeString(S.since, DEFAULTS.sinceSkewSeconds)
@@ -206,6 +305,9 @@
 
     try {
       const data = await fetchJSON(url);
+
+      // success => reset streak
+      S.pollErrStreak = 0;
 
       const serverTime = data.server_time;
       const changes = Array.isArray(data.changes) ? data.changes : [];
@@ -231,8 +333,17 @@
         emit("changes", { changes: filtered, server_time: serverTime });
       }
     } catch (e) {
-      emit("poll_error", { error: e.message });
-      warn("pullState fail:", e.message);
+      const msg = e?.message || "poll_error";
+      S.pollErrStreak++;
+
+      emit("poll_error", { error: msg });
+      warn("pullState fail:", msg);
+
+      // ✅ auto-reset on invalid session OR too many consecutive errors
+      if (isInvalidSessionError(msg) || S.pollErrStreak >= DEFAULTS.maxConsecutiveErrors) {
+        hardReset(`poll_invalid_${msg}`);
+        emit("need_join", {});
+      }
     }
   }
 
@@ -248,14 +359,26 @@
       ...patch
     };
 
-    const data = await fetchJSON(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
+    try {
+      const data = await fetchJSON(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
 
-    emit("patched", { patient_id, patch, version: data.version });
-    return data;
+      emit("patched", { patient_id, patch, version: data.version });
+      return data;
+    } catch (e) {
+      const msg = e?.message || "patch_error";
+      emit("patch_error", { patient_id, error: msg });
+
+      // ✅ if token/incident invalid -> hard reset
+      if (isInvalidSessionError(msg)) {
+        hardReset(`patch_invalid_${msg}`);
+        emit("need_join", {});
+      }
+      throw e;
+    }
   }
 
   // ---------------------------
@@ -263,8 +386,16 @@
   // ---------------------------
   function start() {
     stop();
+
+    // if enabled but no session => don't pretend
+    if (S.enabled && (!S.incident_id || !S.token)) {
+      emit("need_join", {});
+      return;
+    }
+
     S.timers.poll = setInterval(pullState, DEFAULTS.pollMs);
     S.timers.hb   = setInterval(ping, DEFAULTS.heartbeatMs);
+
     pullState();
     ping();
   }
@@ -301,6 +432,8 @@
       emit("restored", { session: sess });
       log("restored", { incident_id: S.incident_id, role: S.role });
     } else {
+      // no session -> no fake active
+      setActiveFlag(false);
       emit("need_join", {});
     }
 
@@ -339,27 +472,19 @@
 
   // Only ends on explicit user action (your "Coop beenden")
   function reset() {
-    disable();
-    clearSession();
-    setActiveFlag(false);
-
-    S.incident_id = null;
-    S.join_code = null;
-    S.client_id = null;
-    S.role = null;
-    S.token = null;
-    S.since = "";
-    S.lastVersion.clear();
-
-    emit("reset", {});
+    // keep semantics but make it HARD
+    hardReset("user_reset");
   }
 
-  // ✅ UI-friendly status
+  // ✅ UI-friendly status (never lies)
   function getStatus() {
     const sess = loadSession();
+    const sessOk = !!(sess?.incident_id && sess?.token);
+    const runtimeOk = !!(S.incident_id && S.token);
     return {
-      active: (isActiveFlag() || hasSession()),
-      hasSession: hasSession(),
+      // active means: we truly have a session OR runtime session
+      active: sessOk || runtimeOk,
+      hasSession: sessOk,
       incident_id: sess?.incident_id || S.incident_id || "",
       join_code: sess?.join_code || S.join_code || "",
       role: sess?.role || S.role || "",
@@ -372,25 +497,35 @@
     resume,
     disable,
     reset,
+    hardReset, // ✅ expose for emergency button
 
     createIncident,
     joinIncident,
     patchPatient,
 
     pullState,
-    getState: () => ({ ...S, active: (isActiveFlag() || hasSession()) }),
-    getStatus, // ✅ now exists
+    getState: () => ({ ...S, active: hasSession() || (!!S.incident_id && !!S.token) }),
+    getStatus,
   };
 
   // ---------------------------
   // Auto-Resume (every page load)
   // ---------------------------
   function autoResume() {
-    // ✅ if session exists, we consider coop active (even if some script set flag to 0)
     healActiveFlagFromSession();
 
+    // if we only have UI flag but NO session => fix the lie
+    if (isActiveFlag() && !hasSession()) {
+      setActiveFlag(false);
+      emit("need_join", {});
+    }
+
     if (hasSession()) {
-      resume().catch(() => {});
+      resume().catch((e) => {
+        // if resume fails -> hard reset to avoid zombie UI
+        hardReset(`resume_fail_${e?.message || "unknown"}`);
+        emit("need_join", {});
+      });
     }
   }
 
