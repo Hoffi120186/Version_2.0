@@ -87,10 +87,8 @@
       padding:.2rem .55rem; border-radius:999px; box-shadow:0 0 6px rgba(0,0,0,.3);
     }
 
-    /* Coop QR Box */
+    /* Coop */
     #coopQr { background:#fff; padding:10px; border-radius:12px; }
-
-    /* Scanner Video */
     #coopVideo {
       width: 100%;
       border-radius: 12px;
@@ -99,7 +97,6 @@
       aspect-ratio: 3 / 4;
       object-fit: cover;
     }
-
     .btn-secondary { opacity:.95; }
 
     .pill {
@@ -108,9 +105,9 @@
       background:rgba(255,255,255,.12);
       border:1px solid rgba(255,255,255,.18);
       font-weight:700;
+      justify-content:center;
     }
 
-    /* ✅ Coop Statusbar unter Button */
     .coop-bar{
       display:flex;
       flex-wrap:wrap;
@@ -158,11 +155,11 @@
     <!-- ✅ COOP -->
     <button id="coopBtn" class="btn" type="button">🤝 Coop-Modus</button>
 
-    <!-- ✅ Coop Statusbar (läuft + join + connected) -->
+    <!-- ✅ Coop Statusbar (aktiv + code + rolle) -->
     <div class="coop-bar">
       <div class="chip2"><span id="coopDot" class="dot off"></span><span id="coopStateTxt">Coop aus</span></div>
       <div class="chip2">Code: <span id="coopJoinTxt" class="mono">—</span></div>
-      <div class="chip2">Verbunden: <span id="coopConnTxt" class="mono">—</span></div>
+      <div class="chip2">Rolle: <span id="coopRoleTxt" class="mono">—</span></div>
     </div>
 
     <button class="btn" type="button" onclick="safeGo('/qr.html')">QR-Codes Patienten/Szenarien</button>
@@ -235,7 +232,7 @@
       <p class="small muted">Was möchtest du tun?</p>
 
       <div class="row" style="flex-direction:column;">
-        <button id="coopCreateBtn" class="btn" type="button">🧑‍✈️ Übung erstellen (Instruktor)</button>
+        <button id="coopCreateBtn" class="btn" type="button">🧑‍✈️ Übung erstellen (INSTR)</button>
         <button id="coopJoinBtn" class="btn btn-secondary" type="button">🚑 Übung beitreten (RTW/NEF)</button>
       </div>
 
@@ -245,7 +242,7 @@
     </div>
   </div>
 
-  <!-- ✅ Modal 2: QR für Instruktor -->
+  <!-- ✅ Modal 2: QR für INSTR -->
   <div id="coopQrModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal">
       <h3>🧑‍✈️ Coop: Übung erstellt</h3>
@@ -350,9 +347,10 @@
     }
   </script>
 
-  <!-- Push + Nachrichten Badge + Lizenz-Gate (dein Block unverändert) -->
+  <!-- Push + Nachrichten Badge + Lizenz-Gate (dein Original, unverändert) -->
   <script>
     const VAPID_PUBLIC='BGfo_fq3L9NVou1-0HAWd2s1_Crd6BMLLGswUQHulrs1NUINsoBh5ak1pwosrOr8NF55ITsVn6ZCpZd_CDXjRCQ';
+
     async function getLicenseState(){
       try{
         const r = await fetch('/.netlify/functions/license-status?ts='+Date.now(), { cache:'no-store' });
@@ -365,33 +363,45 @@
       const status = (ls('license_status') || ls('lizenz_status') || '').toLowerCase();
       const until  = parseInt(ls('license_valid_until') || '0', 10);
       const now = Date.now();
+
       if (status === 'blocked' || status === 'gesperrt') return { active:false, status:'blocked' };
       if (until && now > until) return { active:false, status:'expired' };
       if (status === 'expired' || status === 'abgelaufen') return { active:false, status:'expired' };
+
       return { active:true, status: status || 'unknown' };
     }
 
     async function loadMsgBadge(){
       const el = document.getElementById('msgBadge');
       const hide = () => { el.textContent=''; el.style.display='none'; };
+
       try{
         const license = await getLicenseState();
         if (!license.active) return hide();
+
         const r = await fetch('/.netlify/functions/messages-list?ts='+Date.now(), { cache:'no-store' });
         if (!r.ok) return hide();
         const j = await r.json();
+
         const itemsRaw = j.items || j.list || j.messages || [];
         const items = Array.isArray(itemsRaw) ? itemsRaw : [];
         if (items.length === 0) return hide();
+
         const seen   = new Set((JSON.parse(localStorage.getItem('inbox_seen_v1')   || '[]')||[]).map(String));
         const hidden = new Set((JSON.parse(localStorage.getItem('inbox_hidden_v1') || '[]')||[]).map(String));
+
         const filtered = items.filter(m => !hidden.has(String(m.id)));
         const unread   = filtered.filter(m => !seen.has(String(m.id))).length;
+
         if (unread > 0){
           el.textContent = String(unread);
           el.style.display = 'inline-flex';
-        } else hide();
-      }catch{ hide(); }
+        } else {
+          hide();
+        }
+      }catch{
+        hide();
+      }
     }
 
     if (navigator.serviceWorker) {
@@ -741,20 +751,19 @@
   </script>
 
   <!-- ✅ COOP + QR + Scanner -->
-  <!-- Cache-Busting ist wichtig in der PWA -->
-  <script src="/coop.js?v=2026-01-14-2"></script>
+  <!-- cache-bust wichtig bei PWA -->
+  <script src="/coop.js?v=2026-01-15-1"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
 
   <script>
   const COOP_API = "https://www.1rettungsmittel.de/api/coop_test";
 
-  const coopBtn   = document.getElementById("coopBtn");
-
+  const coopBtn      = document.getElementById("coopBtn");
   const coopDot      = document.getElementById("coopDot");
   const coopStateTxt = document.getElementById("coopStateTxt");
   const coopJoinTxt  = document.getElementById("coopJoinTxt");
-  const coopConnTxt  = document.getElementById("coopConnTxt");
+  const coopRoleTxt  = document.getElementById("coopRoleTxt");
 
   const choiceModal  = document.getElementById("coopChoiceModal");
   const choiceClose  = document.getElementById("coopChoiceClose");
@@ -779,11 +788,13 @@
   let scanStream = null;
   let scanLoopRunning = false;
 
-  let connTimer = null;
-  let lastConnKnown = null; // number|null
-
   function show(el){ el.style.display = "flex"; }
   function hide(el){ el.style.display = "none"; }
+
+  function setDot(on){
+    coopDot.classList.toggle("on", !!on);
+    coopDot.classList.toggle("off", !on);
+  }
 
   function getStoredSession(){
     try { return JSON.parse(localStorage.getItem("coop_session_v1") || "null"); }
@@ -800,91 +811,36 @@
     const hasSession = !!(sess && sess.token && sess.incident_id);
     return {
       active: hasSession,
-      hasSession,
       join_code: sess?.join_code || "",
       role: sess?.role || "",
       incident_id: sess?.incident_id || "",
-      token: sess?.token || "",
-      enabled: false
+      token: sess?.token || ""
     };
-  }
-
-  function setDot(on){
-    coopDot.classList.toggle("on", !!on);
-    coopDot.classList.toggle("off", !on);
-  }
-
-  function stopConnPolling(){
-    if (connTimer) clearInterval(connTimer);
-    connTimer = null;
-  }
-
-  async function fetchConnectedCount(){
-    const st = getCoopStatus();
-    if (!st.active || !st.incident_id || !st.token) return null;
-
-    const url = `${COOP_API}/clients.php?` + new URLSearchParams({
-      incident_id: st.incident_id,
-      token: st.token
-    }).toString();
-
-    try {
-      const r = await fetch(url, { cache: "no-store" });
-      if (!r.ok) return null;
-      const j = await r.json().catch(()=>null);
-      if (!j) return null;
-
-      if (typeof j.count === "number") return j.count;
-      if (Array.isArray(j.clients)) return j.clients.length;
-      if (typeof j.clients === "number") return j.clients;
-      if (typeof j.connected === "number") return j.connected;
-
-      return null;
-    } catch {
-      return null;
-    }
-  }
-
-  function startConnPolling(){
-    if (connTimer) return;
-    connTimer = setInterval(async () => {
-      const n = await fetchConnectedCount();
-      if (typeof n === "number") {
-        lastConnKnown = n;
-        coopConnTxt.textContent = String(n);
-      }
-    }, 2000);
   }
 
   function renderCoopBar(){
     const st = getCoopStatus();
-
     const active = !!st.active;
+
     setDot(active);
 
     if (!active){
       coopStateTxt.textContent = "Coop aus";
-      coopJoinTxt.textContent = "—";
-      coopConnTxt.textContent = "—";
+      coopJoinTxt.textContent  = "—";
+      coopRoleTxt.textContent  = "—";
       coopBtn.textContent = "🤝 Coop-Modus";
-      stopConnPolling();
       return;
     }
 
-    const role = (st.role || "").toUpperCase();
-    const jc = st.join_code || "—";
+    const role = (st.role || "").toUpperCase() || "—";
+    const jc   = st.join_code || "—";
 
-    coopStateTxt.textContent = role ? `Coop aktiv (${role})` : "Coop aktiv";
+    coopStateTxt.textContent = "Coop aktiv";
     coopJoinTxt.textContent  = jc;
+    coopRoleTxt.textContent  = role;
 
+    // Toggle Button
     coopBtn.textContent = "🛑 Coop beenden";
-
-    if (typeof lastConnKnown === "number") coopConnTxt.textContent = String(lastConnKnown);
-    else coopConnTxt.textContent = "—";
-
-    // ✅ Count polling für INSTR/ORGL (und wenn Rolle leer ist)
-    if (role === "INSTR" || role === "ORGL" || role === "") startConnPolling();
-    else stopConnPolling();
   }
 
   function buildJoinLink(join_code){
@@ -893,13 +849,13 @@
 
   function renderQr(link){
     coopQrEl.innerHTML = "";
+    // eslint-disable-next-line no-undef
     new QRCode(coopQrEl, { text: link, width: 220, height: 220 });
   }
 
   async function forceResumeIfSessionExists(){
     const sess = getStoredSession();
     if (!sess || !sess.token || !sess.incident_id) return;
-
     try{
       window.Coop?.enable?.({ apiBase: COOP_API });
       await window.Coop?.resume?.();
@@ -908,22 +864,19 @@
     }
   }
 
-  // ---- Events vom coop.js
-  const rerender = () => { renderCoopBar(); };
-  window.addEventListener("coop:created",  () => { lastConnKnown = null; rerender(); });
-  window.addEventListener("coop:joined",   () => { lastConnKnown = null; rerender(); });
-  window.addEventListener("coop:restored", () => { rerender(); });
-  window.addEventListener("coop:reset",    () => { lastConnKnown = null; rerender(); });
-  window.addEventListener("coop:disabled", () => { lastConnKnown = null; rerender(); });
-  window.addEventListener("coop:ended",    () => { lastConnKnown = null; rerender(); });
-  window.addEventListener("coop:status",   () => { rerender(); }); // falls coop.js das feuert
-  window.addEventListener("coop:degraded", () => { rerender(); });
+  // Events vom coop.js -> UI neu zeichnen
+  window.addEventListener("coop:created",  renderCoopBar);
+  window.addEventListener("coop:joined",   renderCoopBar);
+  window.addEventListener("coop:restored", renderCoopBar);
+  window.addEventListener("coop:reset",    renderCoopBar);
+  window.addEventListener("coop:disabled", renderCoopBar);
+  window.addEventListener("coop:ended",    renderCoopBar);
+  window.addEventListener("coop:status",   renderCoopBar);
 
   window.addEventListener("load", async () => {
     await forceResumeIfSessionExists();
     renderCoopBar();
   });
-
   document.addEventListener("visibilitychange", async () => {
     if (document.visibilityState === "visible") {
       await forceResumeIfSessionExists();
@@ -931,29 +884,38 @@
     }
   });
 
-  // ✅ Button Toggle:
+  // ✅ COOP BUTTON: Toggle / Open Modal
   coopBtn.addEventListener("click", async () => {
     const st = getCoopStatus();
 
+    // Wenn aktiv -> beenden/verlassen
     if (st.active) {
-      // Toggle OFF: wenn coop.js end/leave kann -> nutzen
+      const r = (st.role || "").toUpperCase();
+      const isHost = (r === "INSTR" || r === "ORGL");
+      const ok = confirm(isHost
+        ? "Übung wirklich beenden? (Alle Geräte sollten rausfliegen)"
+        : "Coop verlassen?"
+      );
+      if (!ok) return;
+
       try {
-        if (window.Coop?.toggle) {
-          await window.Coop.toggle({ reason: "instr_button" });
-        } else if (window.Coop?.end) {
-          await window.Coop.end({ mode: "auto", reason: "instr_button" });
+        if (isHost && window.Coop?.end) {
+          await window.Coop.end({ mode: "end", reason: "instr_button" });
+        } else if (!isHost && window.Coop?.leave) {
+          await window.Coop.leave({ reason: "instr_button" });
         } else {
           window.Coop?.reset?.();
         }
       } catch (e) {
         console.warn(e);
-        try { window.Coop?.reset?.(); } catch {}
+        try { window.Coop?.hardReset?.("instr_button_fail"); } catch {}
       }
-      lastConnKnown = null;
+
       renderCoopBar();
       return;
     }
 
+    // Wenn aus -> Auswahl
     if (!window.Coop) {
       alert("Coop.js nicht geladen.");
       return;
@@ -973,33 +935,38 @@
       coopStatus.textContent = "⏳ Einsatz wird erstellt…";
       show(qrModal);
 
-      // Wichtig: createIncident sollte role INSTR setzen (macht coop.js normalerweise)
       const data = await window.Coop.createIncident({});
       const join_code = data.join_code || data.joinCode || data.code;
       if (!join_code) throw new Error("join_code fehlt");
+
+      // ✅ FALLBACK: wenn create_incident.php noch keinen token liefert -> als INSTR joinen
+      const st = window.Coop?.getStatus?.() || {};
+      if (!st.token || !st.incident_id) {
+        await window.Coop.joinIncident({ join_code, role: "INSTR" });
+      }
 
       const link = buildJoinLink(join_code);
       renderQr(link);
 
       coopStatus.textContent = `✅ Coop aktiv. Join-Code: ${join_code}`;
-
-      lastConnKnown = null;
       renderCoopBar();
 
     } catch (e) {
       console.error(e);
       alert("Coop konnte nicht gestartet werden: " + (e.message || e));
-      try { window.Coop?.reset?.(); } catch {}
+      try { window.Coop?.hardReset?.("create_fail"); } catch {}
       hide(qrModal);
-      lastConnKnown = null;
       renderCoopBar();
     }
   });
 
   qrClose.addEventListener("click", () => hide(qrModal));
 
-  // ✅ Übungsende / Coop beenden (Instruktor)
+  // ✅ Übungsende / Coop beenden
   coopStop.addEventListener("click", async () => {
+    const ok = confirm("Übung wirklich beenden?");
+    if (!ok) return;
+
     try {
       if (window.Coop?.end) {
         await window.Coop.end({ mode: "end", reason: "uebungsende_modal" });
@@ -1008,10 +975,10 @@
       }
     } catch (e) {
       console.warn(e);
-      try { window.Coop?.reset?.(); } catch {}
+      try { window.Coop?.hardReset?.("uebungsende_fail"); } catch {}
     }
+
     hide(qrModal);
-    lastConnKnown = null;
     renderCoopBar();
   });
 
@@ -1088,6 +1055,7 @@
       ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
 
       const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      // eslint-disable-next-line no-undef
       const code = jsQR(img.data, img.width, img.height);
 
       if (code && code.data) {
@@ -1117,7 +1085,6 @@
       await stopScanner();
       hide(scanModal);
 
-      lastConnKnown = null;
       renderCoopBar();
 
     } catch (e) {
