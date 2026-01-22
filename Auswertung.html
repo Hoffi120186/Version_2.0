@@ -10,9 +10,6 @@
   <link rel="stylesheet" href="stylesauswertung.css">
   <link rel="manifest" href="/manifest.json">
 
-  <!-- ✅ Coop früh laden (damit beim Klick garantiert verfügbar) -->
-  <script src="/coop.js"></script>
-
   <!-- jsPDF mit Fallback -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
           crossorigin="anonymous" referrerpolicy="no-referrer"
@@ -45,18 +42,19 @@
   </script>
 
   <style>
-    .btn-action {
+    .btn-action{
       display:block; width:80%; max-width:320px; margin:14px auto;
       padding:18px 28px; font-size:1.2em; font-weight:700; border-radius:40px;
       cursor:pointer; border:none; text-align:center; text-decoration:none; color:#fff;
       box-shadow:0 6px 14px rgba(0,0,0,0.25); transition:transform .15s, box-shadow .2s;
     }
-    .btn-action:hover { transform: translateY(-2px); box-shadow:0 10px 20px rgba(0,0,0,.35); }
-    .btn-action:active { transform: scale(.97); }
-    .btn-blue { background:#2002e0; }
-    .btn-red  { background:#e53935; }
+    .btn-action:hover{ transform: translateY(-2px); box-shadow:0 10px 20px rgba(0,0,0,.35); }
+    .btn-action:active{ transform: scale(.97); }
+    .btn-blue{ background:#2002e0; }
+    .btn-red { background:#e53935; }
   </style>
 </head>
+
 <body>
   <h1>Zeitauswertung</h1>
 
@@ -89,6 +87,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     // ---------- Helpers ----------
     const mmss = (sec)=>`${String(Math.floor(sec/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`;
+
     const pageLabelFromKey = (key, prefix) => {
       let p = key.startsWith(prefix) ? key.slice(prefix.length) : key;
       try { p = p.split('/').pop() || p; } catch {}
@@ -96,11 +95,41 @@
       const m = (p||'').match(/patient(\d+)\.html/i);
       return m ? `Patient ${m[1]}` : p;
     };
+
+    // patient15, patient15.html, /patient15.html, Patient 15 → patient15
+    function normalizePatientId(key){
+      const s = String(key || '').trim().toLowerCase();
+      const m1 = s.match(/patient\s*0*(\d+)/i);
+      if (m1) return 'patient' + String(parseInt(m1[1], 10));
+      const m2 = s.match(/patient[_\- ]*0*(\d+)/i);
+      if (m2) return 'patient' + String(parseInt(m2[1], 10));
+      return null;
+    }
+
+    // Map in ein sauberes patientXX -> value überführen
+    function getSMap(){
+      let raw = {};
+      try{ raw = JSON.parse(localStorage.getItem('sichtungMap')||'{}'); }catch{ raw = {}; }
+      const out = {};
+      for (const [k,v] of Object.entries(raw)){
+        const id = normalizePatientId(k);
+        if(!id) continue;
+        out[id] = v;
+      }
+      return out;
+    }
+
     const normKat = (v)=>{
       v = String(v||'').trim().toLowerCase();
       if (v.includes('grün')) v = v.replace('grün','gruen');
+      // SK1/SK2/... zulassen
+      if (v === 'sk1') return 'rot';
+      if (v === 'sk2') return 'gelb';
+      if (v === 'sk3') return 'gruen';
+      if (v === 'sk4') return 'schwarz';
       return v;
     };
+
     function __readTogglePayload(id){
       let raw=null;
       try { raw = localStorage.getItem("sicht_" + id); } catch {}
@@ -111,14 +140,16 @@
       if (!raw) return {};
       try { return JSON.parse(raw)||{}; } catch { return {}; }
     }
+
     function getSichtungDisplay(id, cat){
       const p = __readTogglePayload(id);
-      if (cat === 'rot')   return 'SK1' + (p.t ? ' · T' : '');
-      if (cat === 'gelb')  return 'SK2';
-      if (cat === 'gruen') return 'SK3' + (p.b ? ' · B' : '');
-      if (cat === 'schwarz') return 'SK4';
+      if (cat === 'rot')      return 'SK1' + (p.t ? ' · T' : '');
+      if (cat === 'gelb')     return 'SK2';
+      if (cat === 'gruen')    return 'SK3' + (p.b ? ' · B' : '');
+      if (cat === 'schwarz')  return 'SK4';
       return '';
     }
+
     function __prio(cat, flags){
       const t=!!flags?.t, b=!!flags?.b;
       if (cat==='rot'   && t) return 0; // SK1 · T
@@ -159,18 +190,19 @@
 
     // ---------- Sichtungen (Anzeige + Sortierung nach Prio) ----------
     function readSichtungenDedup() {
-      let sMap = {};
-      try { sMap = JSON.parse(localStorage.getItem('sichtungMap') || '{}'); } catch {}
+      const sMap = getSMap();
       let ablage = [];
       try { ablage = JSON.parse(localStorage.getItem('ablage.active.v1') || '[]'); } catch {}
 
-      const out = new Map(); // id lc -> { id, sk }
+      const out = new Map(); // id -> { id, sk }
       Object.entries(sMap).forEach(([id, sk])=>{
         if(!id || !sk) return;
         out.set(String(id).toLowerCase(), { id:String(id).toLowerCase(), sk });
       });
+
+      // falls du irgendwann aktiv-einträge mit sk drin hast
       ablage.forEach(r=>{
-        const id = String(r?.id||'').toLowerCase();
+        const id = normalizePatientId(r?.id || '') || String(r?.id||'').toLowerCase();
         const sk = r?.sk;
         if(!id || !sk) return;
         if(!out.has(id)) out.set(id, { id, sk });
@@ -216,21 +248,36 @@
     // ---------- Reset-Funktionen ----------
     function resetAllData() {
       Object.keys(localStorage).forEach(k=>{
-        if (k.startsWith('time_') || k.startsWith('sichtung_')) localStorage.removeItem(k);
+        // Zeiten
+        if (k.startsWith('time_')) localStorage.removeItem(k);
+
+        // Sichtungen (Map + alte Varianten)
+        if (k === 'sichtungMap') localStorage.removeItem(k);
+        if (k.startsWith('sicht_')) localStorage.removeItem(k);       // T/B Payloads pro Patient
+        if (k.startsWith('sichtung_')) localStorage.removeItem(k);    // falls du irgendwo noch so Keys nutzt
+
+        // Ablage
+        if (k === 'ablage.active.v1') localStorage.removeItem(k);
+        if (k === 'ablage.history.v1') localStorage.removeItem(k);
+        if (k === 'ablage.done.v1') localStorage.removeItem(k);
+        if (k === 'ablage.sessionStart.v1') localStorage.removeItem(k);
+        if (k === 'ablage') localStorage.removeItem(k);
+        if (k === 'ablage_ids') localStorage.removeItem(k);
       });
-      localStorage.removeItem('sichtungMap');
-      localStorage.removeItem('ablage.active.v1');
-      localStorage.removeItem('ablage.history.v1');
-      localStorage.removeItem('ablage');
-      localStorage.removeItem('ablage_ids');
+
       localStorage.setItem('resetFlag', 'true');
     }
+
     function resetAuswertungData() {
       Object.keys(localStorage).forEach(k=>{
-        if (k.startsWith('time_') || k.startsWith('sichtung_')) {
-          localStorage.removeItem(k);
-        }
+        // NUR Zeiten + Sichtung (damit Ablage danach sauber startet)
+        if (k.startsWith('time_')) localStorage.removeItem(k);
+
+        if (k === 'sichtungMap') localStorage.removeItem(k);
+        if (k.startsWith('sicht_')) localStorage.removeItem(k);
+        if (k.startsWith('sichtung_')) localStorage.removeItem(k);
       });
+
       localStorage.setItem('resetFlag', 'true');
     }
 
@@ -240,68 +287,15 @@
       window.location.href = "/index.html";
     });
 
-    // ✅ FIX: Beim Klick "Zur Patientenablage" -> (wenn Coop aktiv) Server-Location setzen
-    document.getElementById('toAblage')?.addEventListener('click', async (e)=>{
+    document.getElementById('toAblage')?.addEventListener('click', (e)=>{
       e.preventDefault();
-
-      const link = document.getElementById('toAblage');
-      const oldText = link.textContent;
-      link.textContent = 'Übertrage…';
-      link.style.pointerEvents = 'none';
-      link.style.opacity = '0.85';
-
-      function coopActive(){
-        try{
-          const st = window.Coop?.getState?.();
-          return !!(st && st.enabled && st.incident_id && st.token);
-        }catch{
-          return false;
-        }
-      }
-      function pidFromAny(k){
-        const m = String(k||'').match(/patient\s*0*(\d+)/i) || String(k||'').match(/patient0*(\d+)/i);
-        return m ? parseInt(m[1], 10) : null;
-      }
-      function normTriage(sk){
-        let t = String(sk||'').trim().toLowerCase().replace('grün','gruen');
-        if (t === 'sk1') t='rot';
-        if (t === 'sk2') t='gelb';
-        if (t === 'sk3') t='gruen';
-        if (t === 'sk4') t='schwarz';
-        return ['rot','gelb','gruen','schwarz'].includes(t) ? t : null;
-      }
-
-      let sMap = {};
-      try { sMap = JSON.parse(localStorage.getItem('sichtungMap') || '{}'); } catch {}
-
-      const jobs = [];
-      for (const [k, sk] of Object.entries(sMap)){
-        const pid = pidFromAny(k);
-        const triage = normTriage(sk);
-        if (!pid || !triage) continue;
-        jobs.push({ pid, triage });
-      }
-
-      if (coopActive() && jobs.length){
-        try{
-          const LOCATION = "ABLAGE_1";
-          await Promise.allSettled(
-            jobs.map(j => window.Coop.patchPatient(j.pid, { triage: j.triage, location: LOCATION }))
-          );
-        }catch(err){
-          console.error('[AUSWERTUNG] coop transfer failed', err);
-        }
-      }
-
-      // bisheriges Verhalten beibehalten
+      // WICHTIG: Sichtungen/Zeiten in Auswertung zurücksetzen (wie bisher gewünscht)
       resetAuswertungData();
+
+      // UI leeren
       document.getElementById('gesamtzeit').textContent = '00:00';
       document.getElementById('patientenzeiten').innerHTML = '';
       document.getElementById('patientenfarben').innerHTML = '';
-
-      link.textContent = oldText;
-      link.style.pointerEvents = '';
-      link.style.opacity = '';
 
       window.location.href = "/ablage1.html";
     });
@@ -311,6 +305,7 @@
       const btn = document.getElementById('downloadPDF');
       if (btn.dataset.busy === '1') return;
       btn.dataset.busy = '1'; btn.disabled = true;
+
       try {
         const jsPDF = await getJsPDF();
         const doc = new jsPDF({ orientation:'p', unit:'mm', format:'a4' });
@@ -329,25 +324,11 @@
 
         // Zeiten
         (function(){
-          function collectTimes() {
-            const rows = []; let total = 0;
-            Object.keys(localStorage).forEach(k=>{
-              if (!k.startsWith('time_')) return;
-              const sec = parseInt(localStorage.getItem(k))||0; total += sec;
-              rows.push({ page: pageLabelFromKey(k,'time_'), sec, mm: mmss(sec) });
-            });
-            rows.sort((a,b)=>{
-              const ak = a.page.startsWith('Anfahrt') ? 0 : (parseInt(a.page.replace(/\D/g,''))||9999);
-              const bk = b.page.startsWith('Anfahrt') ? 0 : (parseInt(b.page.replace(/\D/g,''))||9999);
-              return ak - bk;
-            });
-            return { rows, total };
-          }
+          const { rows: timeRows2, total: total2 } = collectTimes();
 
-          const { rows: timeRows, total } = collectTimes();
           ensure(12);
           doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Gesamtzeit', margin, y); y += 8;
-          doc.setFont('helvetica','normal'); doc.setFontSize(12); doc.text(mmss(total), margin, y); y += 10;
+          doc.setFont('helvetica','normal'); doc.setFontSize(12); doc.text(mmss(total2), margin, y); y += 10;
 
           doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Patientenzeiten', margin, y); y += 8;
           doc.setFont('helvetica','bold'); doc.setFontSize(11);
@@ -355,7 +336,7 @@
           doc.text('Zeit (MM:SS)', pageW - margin, y, {align:'right'});
           y += 4; doc.setDrawColor(180); doc.line(margin, y, pageW - margin, y); y += 3;
 
-          timeRows.forEach(r=>{
+          timeRows2.forEach(r=>{
             doc.setFont('helvetica','normal'); doc.setFontSize(10);
             ensure(7);
             doc.text(String(r.page), margin, y);
@@ -369,13 +350,9 @@
           ensure(12);
           doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Sichtungskategorien', margin, y); y += 8;
 
-          const rows = (function readSichtungenDedup(){
-            let sMap = {}; try { sMap = JSON.parse(localStorage.getItem('sichtungMap') || '{}'); } catch {}
-            let ablage = []; try { ablage = JSON.parse(localStorage.getItem('ablage.active.v1') || '[]'); } catch {}
-            const out = new Map();
-            Object.entries(sMap).forEach(([id, sk])=>{ if(id && sk) out.set(String(id).toLowerCase(), { id:String(id).toLowerCase(), sk }); });
-            ablage.forEach(r=>{ const id=String(r?.id||'').toLowerCase(), sk=r?.sk; if(id && sk && !out.has(id)) out.set(id,{id,sk}); });
-            return [...out.values()];
+          const rows = (function(){
+            const items = readSichtungenDedup();
+            return items.map(x => ({ id:x.id, sk:x.sk }));
           })();
 
           rows.sort((a,b)=>{
@@ -426,6 +403,8 @@
   });
   </script>
 
+  <!-- optional: coop/freigabe/warmup/metrics wie bei dir -->
+  <script src="/coop.js"></script>
   <script type="module" src="/freigabe.js?cache=9"></script>
   <script defer src="/warmup.js?v=2025-08-22-1"></script>
   <script src="/metrics.js" defer></script>
