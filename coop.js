@@ -1,4 +1,6 @@
 // /coop.js (ROOT) — FINAL: robust start/stop + toggle button + hard reset + auto-end handling
+// + SYNC: apply incoming changes to localStorage (sichtungMap / ablage.active.v1 / sicht_<id>)
+// + Optimistic local apply on patchPatient
 (() => {
   "use strict";
 
@@ -38,6 +40,105 @@
   function warn(...a) { console.warn("[COOP]", ...a); }
   function emit(name, detail = {}) {
     window.dispatchEvent(new CustomEvent(`coop:${name}`, { detail }));
+  }
+
+  // ---------------------------
+  // Local sync helpers (Ablage/Auswertung arbeiten mit localStorage)
+  // ---------------------------
+  function normId(id) {
+    return String(id || "").trim().toLowerCase();
+  }
+
+  function safeJsonParse(raw, fallback) {
+    try { return raw ? JSON.parse(raw) : fallback; } catch { return fallback; }
+  }
+
+  function upsertSichtungLocal(patient_id, sk, flags = {}, meta = {}) {
+    const id = normId(patient_id);
+    if (!id) return;
+
+    // normalize sk a little (keep your values but unify Grün)
+    let cat = String(sk || "").trim().toLowerCase();
+    if (cat.includes("grün")) cat = cat.replace("grün", "gruen");
+
+    // 1) sichtungMap (Ablage1 liest das!)
+    if (cat) {
+      const map = safeJsonParse(localStorage.getItem("sichtungMap"), {});
+      map[id] = cat;
+      try { localStorage.setItem("sichtungMap", JSON.stringify(map)); } catch {}
+    }
+
+    // 2) ablage.active.v1 (optional, but helpful)
+    if (cat) {
+      let active = safeJsonParse(localStorage.getItem("ablage.active.v1"), []);
+      if (!Array.isArray(active)) active = [];
+
+      const now = Date.now();
+      const found = active.find(x => normId(x?.id) === id);
+      if (!found) {
+        active.push({ id, sk: cat, ts: now });
+      } else {
+        found.sk = cat;
+        found.ts = now;
+      }
+      try { localStorage.setItem("ablage.active.v1", JSON.stringify(active)); } catch {}
+    }
+
+    // 3) Flags payload (T/B) in sicht_<id>
+    // Nur speichern, wenn was übergeben wurde.
+    const hasFlags = !!(flags && (flags.t || flags.b));
+    if (hasFlags) {
+      try {
+        const key = "sicht_" + id;
+        const cur = safeJsonParse(localStorage.getItem(key), {});
+        const next = { ...cur, ...flags };
+        localStorage.setItem(key, JSON.stringify(next));
+      } catch {}
+    }
+
+    // optional: debug info
+    if (meta && meta.source) {
+      // you can inspect meta.source ("poll"|"patch") if needed
+    }
+
+    // UI triggern
+    emit("sichtung", { patient_id: id, sk: cat, flags, meta });
+  }
+
+  // robust mapper for backend row formats
+  function applyRowToLocal(row) {
+    if (!row) return;
+
+    const id =
+      row.patient_id ??
+      row.patientId ??
+      row.id ??
+      row.patient ??
+      row.pid ??
+      "";
+
+    if (!id) return;
+
+    // possible fields for category
+    const sk =
+      row.sk ??
+      row.cat ??
+      row.category ??
+      row.triage ??
+      row.sichtung ??
+      row.color ??
+      (row.patch && (row.patch.sk ?? row.patch.cat ?? row.patch.category ?? row.patch.triage)) ??
+      "";
+
+    // possible flags
+    const flags = {
+      t: !!(row.t ?? row.T ?? (row.flags && row.flags.t) ?? (row.patch && row.patch.t)),
+      b: !!(row.b ?? row.B ?? (row.flags && row.flags.b) ?? (row.patch && row.patch.b)),
+    };
+
+    if (sk || flags.t || flags.b) {
+      upsertSichtungLocal(id, sk, flags, { source: "poll", version: row.version });
+    }
   }
 
   // ---------------------------
@@ -360,7 +461,6 @@
       const changes = Array.isArray(data.changes) ? data.changes : [];
 
       // ✅ Optional: handle "exercise end" via a change row
-      // If one row indicates end, we stop everything
       const endRow = changes.find(r => String(r.type || "").toLowerCase().includes("end"));
       if (endRow) {
         emit("ended", { reason: "server_change", row: endRow });
@@ -387,6 +487,9 @@
       saveSession();
 
       if (filtered.length) {
+        // ✅ NEW: apply to local storage so UI pages see it
+        for (const row of filtered) applyRowToLocal(row);
+
         emit("changes", { changes: filtered, server_time: serverTime });
       }
 
@@ -410,11 +513,22 @@
     if (!S.enabled) throw new Error("coop_not_enabled");
     if (!S.incident_id || !S.token) throw new Error("missing_session");
 
+    const pid = normId(patient_id);
+
+    // ✅ optimistic local apply (instant UI even before poll comes back)
+    // Only if patch contains something relevant
+    const hasSk = patch && (patch.sk || patch.cat || patch.category || patch.triage);
+    const sk = patch.sk ?? patch.cat ?? patch.category ?? patch.triage ?? "";
+    const flags = { t: !!patch.t, b: !!patch.b };
+    if (pid && (hasSk || flags.t || flags.b)) {
+      upsertSichtungLocal(pid, sk, flags, { source: "patch", optimistic: true });
+    }
+
     const url = `${S.apiBase}/patch_patient.php`;
     const body = {
       incident_id: S.incident_id,
       token: S.token,
-      patient_id,
+      patient_id: pid,
       ...patch,
     };
 
@@ -425,11 +539,19 @@
         body: JSON.stringify(body),
       });
 
-      emit("patched", { patient_id, patch, version: data.version });
+      emit("patched", { patient_id: pid, patch, version: data.version });
+
+      // (optional) update lastVersion to reduce duplicates
+      if (pid && data?.version) {
+        const v = Number(data.version || 0);
+        const last = Number(S.lastVersion.get(pid) || 0);
+        if (v > last) S.lastVersion.set(pid, v);
+      }
+
       return data;
     } catch (e) {
       const msg = e?.message || "patch_error";
-      emit("patch_error", { patient_id, error: msg });
+      emit("patch_error", { patient_id: pid, error: msg });
 
       if (isInvalidSessionError(msg)) {
         emit("ended", { reason: `patch_${msg}` });
@@ -444,8 +566,6 @@
   // End/Leave handling (Übungsende / Coop beenden)
   // ---------------------------
   async function endIncidentOnServer() {
-    // If your backend supports it, this ends the whole incident for everyone.
-    // If not available (404 etc.), we still end locally.
     const url = `${S.apiBase}/end_incident.php`;
     return fetchJSON(url, {
       method: "POST",
@@ -455,7 +575,6 @@
   }
 
   async function leaveIncidentOnServer() {
-    // Optional: if your backend supports leaving a session without ending it.
     const url = `${S.apiBase}/leave_incident.php`;
     return fetchJSON(url, {
       method: "POST",
@@ -468,9 +587,6 @@
    * End/Leave coop
    * @param {Object} opts
    * @param {"auto"|"leave"|"end"} opts.mode
-   *    - auto: if role ORGL => end, else leave
-   *    - end: try to end whole incident
-   *    - leave: only leave locally (and optional server leave)
    * @param {string} opts.reason
    */
   async function end(opts = {}) {
@@ -493,7 +609,6 @@
       return true;
     }
 
-    // Try server-side if available, but ALWAYS ensure local clean finish
     try {
       if (finalMode === "end") {
         await endIncidentOnServer();
@@ -501,11 +616,9 @@
         await leaveIncidentOnServer();
       }
     } catch (e) {
-      // If endpoint not there / fails -> ignore, still end locally
       warn("end/leave server call failed (ignored):", e?.message || e);
     }
 
-    // local final
     emit("ended", { mode: finalMode, reason });
     hardReset(`ended_${finalMode}_${reason}`);
     return true;
@@ -570,28 +683,21 @@
     broadcastStatus();
   }
 
-  // "Coop beenden" button should call end() (not just reset)
   function reset() {
-    // keep backwards compatibility: do a safe local reset
     hardReset("user_reset");
   }
 
-  // ✅ Toggle helper for ONE button UX
-  // If active -> end/leave. If not active -> emit need_join (or resume if session exists)
   async function toggle(opts = {}) {
     const st = statusSnapshot();
 
-    // if already active -> end/leave
     if (st.active || st.enabled) {
       return end({ mode: opts.mode || "auto", reason: opts.reason || "toggle_off" });
     }
 
-    // if we have a stored session -> resume
     if (hasSession()) {
       return resume();
     }
 
-    // otherwise UI must show join/create modal
     emit("need_join", {});
     return false;
   }
@@ -610,13 +716,16 @@
 
     // toggle & end
     toggle,
-    end, // end({mode:"auto"|"end"|"leave", reason:"..."})
+    end,
 
     // api
     createIncident,
     joinIncident,
     patchPatient,
     pullState,
+
+    // local apply helper (optional use from UI if you want)
+    _upsertSichtungLocal: upsertSichtungLocal,
 
     // state
     getState: () => ({ ...S, active: statusSnapshot().active }),
@@ -629,7 +738,6 @@
   function autoResume() {
     healActiveFlagFromSession();
 
-    // if only UI flag but NO session -> fix lie
     if (isActiveFlag() && !hasSession()) {
       setActiveFlag(false);
       emit("need_join", {});
