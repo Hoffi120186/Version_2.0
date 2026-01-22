@@ -7,10 +7,11 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <link rel="manifest" href="/manifest.json" />
 
-  <!-- ✅ Coop MUSS vor dem Module-Script geladen sein -->
-  <script src="/coop.js"></script>
-
+  <!-- jsPDF -->
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+
+  <!-- ✅ WICHTIG: ablage.js VOR dem Module-Script -->
+  <script src="/ablage.js?v=8"></script>
 
   <style>
 :root{
@@ -249,173 +250,6 @@ function normGender(g){
   return null;
 }
 
-/* =========================
-   ✅ COOP: OrgL Sync (Ablage)
-   ========================= */
-const COOP_API = "https://www.1rettungsmittel.de/api/coop_test";
-
-/**
- * Welche Patienten sollen in dieser Ablage angezeigt werden?
- * - Wenn du später mehrere Ablagen hast: "ABLAGE_1", "ABLAGE_2", ...
- * - Wenn du alles willst: setze "ABLAGE" und nutze Prefix-Match
- */
-const COOP_LOCATION_PREFIX = "ABLAGE_1";
-
-let coopEnabled = false;
-let coopSince = "";
-let coopTimer = null;
-const coopStateMap = new Map(); // id -> { triage, location, updated_at, version }
-
-function getCoopState(){
-  try{
-    const st = window.Coop?.getState?.();
-    if (st?.incident_id && st?.token) return st;
-  }catch{}
-  try{
-    const raw = localStorage.getItem("coop_state_v1") || localStorage.getItem("coop_state") || "";
-    const st = raw ? JSON.parse(raw) : null;
-    if (st?.incident_id && st?.token) return st;
-  }catch{}
-  return null;
-}
-
-function normTriage(v){
-  if(!v) return null;
-  let x = String(v).trim().toLowerCase().replace('grün','gruen');
-  if (x === 'sk1') return 'rot';
-  if (x === 'sk2') return 'gelb';
-  if (x === 'sk3') return 'gruen';
-  if (x === 'sk4') return 'schwarz';
-  if (['rot','gelb','gruen','schwarz'].includes(x)) return x;
-  return null;
-}
-
-function locationMatches(loc){
-  if(!loc) return false;
-  const x = String(loc).trim().toUpperCase();
-  const want = String(COOP_LOCATION_PREFIX).trim().toUpperCase();
-  return x === want || x.startsWith(want);
-}
-
-async function coopFetchState(since=""){
-  const st = getCoopState();
-  if (!st) return null;
-
-  const url = new URL(COOP_API + "/state.php");
-  url.searchParams.set("incident_id", st.incident_id);
-  url.searchParams.set("token", st.token);
-  if (since) url.searchParams.set("since", since);
-
-  const r = await fetch(url.toString(), { cache:"no-store" });
-  const j = await r.json();
-  if (!j?.ok) throw new Error(j?.error || "coop_state_failed");
-  return j;
-}
-
-function coopApplyChanges(changes){
-  for (const ch of (changes || [])){
-    const pid = Number(ch.patient_id);
-    if (!pid || pid < 1) continue;
-
-    const id = "patient" + pid;
-    const triage = normTriage(ch.triage);
-    const location = ch.location ? String(ch.location) : "";
-
-    coopStateMap.set(id, {
-      triage,
-      location,
-      updated_at: ch.updated_at || "",
-      version: Number(ch.version || 0)
-    });
-  }
-}
-
-function coopSichtungFor(id){
-  const s = coopStateMap.get(id);
-  if (!s) return null;
-  if (!locationMatches(s.location)) return null;
-  return s.triage || null;
-}
-
-function coopSightedIds(){
-  const out = [];
-  for (const [id, s] of coopStateMap.entries()){
-    if (locationMatches(s.location) && s.triage) out.push(id);
-  }
-  out.sort((a,b)=> parseInt(a.replace(/\D/g,'')) - parseInt(b.replace(/\D/g,'')));
-  return out;
-}
-
-async function coopTick(){
-  const res = await coopFetchState(coopSince);
-  if (!res) return;
-
-  coopSince = res.server_time || coopSince;
-
-  const changes = Array.isArray(res.changes) ? res.changes : [];
-  if (changes.length === 0) return;
-
-  coopApplyChanges(changes);
-
-  // UI inkrementell updaten
-  updateStats();
-
-  const done = getDoneSet();
-  const want = new Set(coopSightedIds().filter(id => !done.has(id)));
-  const have = new Set([...document.querySelectorAll('.card[data-id]')].map(el=>el.dataset.id));
-
-  for(const id of have){
-    if(!want.has(id)) removeCard(id);
-  }
-
-  for(const id of want){
-    if(!have.has(id)){
-      const num=id.replace('patient','');
-      const entry={ id, label: `Patient ${num}`, url: `patient${num}.html` };
-      fetchPatientData(entry).then(p=>{
-        (window.__PAT_DATA__ = (window.__PAT_DATA__||[])).push(p);
-        upsertCard(p);
-        allowAutostart();
-
-        if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
-          window.Ablage.hydrateCards({
-            containerSelector: '#list',
-            cardSelector: '.card',
-            placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
-            placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
-          });
-          highlightAssignButtons();
-        }
-      });
-    }else{
-      const existing = (window.__PAT_DATA__||[]).find(x=>x.id===id);
-      if(existing) upsertCard(existing);
-    }
-  }
-}
-
-async function startCoop(){
-  const st = getCoopState();
-  if (!st) return false;
-
-  try{ window.Coop?.enable?.({ apiBase: COOP_API }); }catch{}
-  coopEnabled = true;
-
-  coopSince = "";
-  const first = await coopFetchState("");
-  if (first){
-    coopSince = first.server_time || "";
-    coopApplyChanges(first.changes || []);
-  }
-
-  // initial render (nutzt dann coopSightedIds)
-  await load();
-
-  if (coopTimer) clearInterval(coopTimer);
-  coopTimer = setInterval(()=> coopTick().catch(console.error), 1200);
-  return true;
-}
-
 /* ===== Datenquellen ===== */
 function getPatMeta(){ try { return JSON.parse(localStorage.getItem('patMeta') || '{}'); } catch { return {}; } }
 function getPatientsData(){ try { return JSON.parse(localStorage.getItem('patientsData') || '[]'); } catch { return []; } }
@@ -437,17 +271,51 @@ function overlayFromJson(info){
 }
 
 /* ===== Sichtungen & Flags ===== */
-function getSMap(){ try{ return JSON.parse(localStorage.getItem('sichtungMap')||'{}'); }catch{ return {}; } }
+function normalizePatientId(key){
+  const s = String(key || '').trim().toLowerCase();
 
+  const m1 = s.match(/patient\s*0*(\d+)/i);
+  if (m1) return 'patient' + String(parseInt(m1[1], 10));
+
+  const m2 = s.match(/patient[_\- ]*0*(\d+)/i);
+  if (m2) return 'patient' + String(parseInt(m2[1], 10));
+
+  return null;
+}
+
+function getSMap(){
+  let raw = {};
+  try{ raw = JSON.parse(localStorage.getItem('sichtungMap')||'{}'); }catch{ raw = {}; }
+
+  const out = {};
+  for (const [k, v] of Object.entries(raw)){
+    const id = normalizePatientId(k);
+    if (!id) continue;
+    out[id] = v;
+  }
+  return out;
+}
+
+/* ✅ FIX: SK1..SK4 UND rot/gelb/gruen/schwarz */
 function sichtungFor(id){
-  if (coopEnabled) return coopSichtungFor(id);
-  const k = (getSMap()[id]||'').toString().toLowerCase().replace('grün','gruen');
-  return ['rot','gelb','gruen','schwarz'].includes(k) ? k : null;
+  let k = (getSMap()[id]||'').toString().trim().toLowerCase();
+  if (!k) return null;
+
+  k = k.replace('grün','gruen');
+
+  if (k === 'sk1') return 'rot';
+  if (k === 'sk2') return 'gelb';
+  if (k === 'sk3') return 'gruen';
+  if (k === 'sk4') return 'schwarz';
+
+  if (['rot','gelb','gruen','schwarz'].includes(k)) return k;
+
+  return null;
 }
 
 function sightedIds(){
-  if (coopEnabled) return coopSightedIds();
-  return Object.keys(getSMap())
+  const sm = getSMap();
+  return Object.keys(sm)
     .filter(k => /^patient\d+$/i.test(k))
     .sort((a,b)=> parseInt(a.replace(/\D/g,'')) - parseInt(b.replace(/\D/g,'')));
 }
@@ -462,6 +330,7 @@ function __readTogglePayload(id){
   if (!raw) return {};
   try { return JSON.parse(raw)||{}; } catch { return {}; }
 }
+
 function __labelFromCat(cat){
   const c = String(cat||'').toLowerCase();
   if (c === 'rot')     return 'SK1';
@@ -759,6 +628,7 @@ function upsertCard(p){
   if(img) observeImage(img);
 }
 
+/* Entfernen */
 function removeCard(id){
   const el = listEl.querySelector(`.card[data-id="${id}"]`);
   if(el) el.remove();
@@ -877,10 +747,6 @@ async function load(){
 
   allowAutostart();
 
-  if (window.Ablage && typeof window.Ablage.startAllOnEnter === 'function') {
-    window.Ablage.startAllOnEnter();
-  }
-
   if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
     window.Ablage.hydrateCards({
       containerSelector: '#list',
@@ -891,14 +757,9 @@ async function load(){
     highlightAssignButtons();
   }
 }
+load();
 
-/* ✅ Start: Coop wenn vorhanden, sonst normal */
-(async ()=>{
-  const started = await startCoop().catch(()=>false);
-  if (!started) load();
-})();
-
-/* Live-Updates (Sichtung/T/B/DONE) – lokal bleibt (z.B. DONE/Klinik) */
+/* Live-Updates (Sichtung/T/B/DONE) */
 window.addEventListener('storage', (e)=>{
   if(!e || !e.key) return;
   if(e.key==='sichtungMap' || e.key==='ablage.done.v1' || e.key.startsWith('sicht_')){
@@ -995,18 +856,10 @@ function imageToDataURL(src){
   });
 }
 
-function cleanText(html){
-  return html.replace(/<br\s*\/?\s*>/gi,' ')
-    .replace(/<[^>]+>/g,' ')
-    .replace(/\s+/g,' ')
-    .trim();
-}
-
 /* Beim Verlassen Autostart verbieten */
 window.addEventListener('beforeunload', () => { denyAutostart(); });
 </script>
 
 <script src="/metrics.js" defer></script>
-<script src="/ablage.js?v=8"></script>
 </body>
 </html>
