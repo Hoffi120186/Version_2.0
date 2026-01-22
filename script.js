@@ -134,8 +134,6 @@ const SKWriter = (() => {
     return !!(st && st.incident_id && st.token);
   };
 
-  const pidNum = (id) => parseInt(String(id||"").replace(/\D/g,""), 10) || 0;
-
   // kleines Debounce pro Patient, damit nicht bei Doppeltap 10 Requests rausgehen
   const coopLastSend = new Map();
   const COOP_MIN_MS = 250;
@@ -145,16 +143,17 @@ const SKWriter = (() => {
       if (!coopEnabled()) return;
       if (!window.Coop || typeof window.Coop.patchPatient !== "function") return;
 
-      const p = pidNum(id);
-      if (!p) return;
+      // ✅ WICHTIG: patient_id als STRING wie "patient12" (passt zu sichtungMap/ablage)
+      const pid = String(id || "").toLowerCase();
+      if (!pid) return;
 
       const t = Date.now();
-      const last = coopLastSend.get(id) || 0;
+      const last = coopLastSend.get(pid) || 0;
       if (t - last < COOP_MIN_MS) return;
-      coopLastSend.set(id, t);
+      coopLastSend.set(pid, t);
 
-      window.Coop.patchPatient({
-        patient_id: p,
+      // ✅ richtige Signatur: patchPatient(patient_id, patch)
+      window.Coop.patchPatient(pid, {
         triage: kat,
         location: COOP_LOC_ABLAGE
       }).catch(err => console.warn("[COOP] patch failed", err));
@@ -795,31 +794,27 @@ document.addEventListener("DOMContentLoaded", () => {
       e.preventDefault();
       e.stopPropagation();
 
-      // Alte T/B Frage weg, wird bei SK1/SK3 wieder gezeigt
       hideTB();
 
       const raw = btn.dataset.sichtung || btn.getAttribute("data-sichtung") || btn.textContent;
-      const cat = SKWriter.normKat(raw); // 'rot','gelb','gruen','schwarz'
+      const cat = SKWriter.normKat(raw);
       if (!cat) return;
 
       pendingCat = cat;
 
-      // ✅ Sofort SK speichern (ohne Flags) -> Ablage ist direkt korrekt
       if (pid) SKWriter.setSK(pid, cat, { force:true });
 
-      if (cat === "rot") {                 // SK1 -> T fragen
+      if (cat === "rot") {
         showT();
-      } else if (cat === "gruen") {        // SK3 -> B fragen
+      } else if (cat === "gruen") {
         showB();
       } else {
-        // ✅ SK2 / SK4: keine Zusatzfrage + Flags resetten
         savePayload(cat, { t:false, b:false });
         hideTB();
       }
     });
   });
 
-  // T (für SK1)
   document.getElementById("t-yes")?.addEventListener("click", (e) => {
     e.preventDefault(); e.stopPropagation();
     savePayload(pendingCat || "rot", { t:true, b:false });
@@ -831,7 +826,6 @@ document.addEventListener("DOMContentLoaded", () => {
     hideTB();
   });
 
-  // B (für SK3)
   document.getElementById("b-yes")?.addEventListener("click", (e) => {
     e.preventDefault(); e.stopPropagation();
     savePayload(pendingCat || "gruen", { t:false, b:true });
@@ -842,8 +836,6 @@ document.addEventListener("DOMContentLoaded", () => {
     savePayload(pendingCat || "gruen", { t:false, b:false });
     hideTB();
   });
-
-  // ✅ Wenn Seite mit bestehender SK geladen wird: T/B NICHT automatisch anzeigen (so gewünscht)
 });
 
 // === Anzeige-Helfer für Auswertung/Ablage/Klinik ====
