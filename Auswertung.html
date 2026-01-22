@@ -10,6 +10,9 @@
   <link rel="stylesheet" href="stylesauswertung.css">
   <link rel="manifest" href="/manifest.json">
 
+  <!-- ✅ Coop früh laden (damit beim Klick garantiert verfügbar) -->
+  <script src="/coop.js"></script>
+
   <!-- jsPDF mit Fallback -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
           crossorigin="anonymous" referrerpolicy="no-referrer"
@@ -237,12 +240,69 @@
       window.location.href = "/index.html";
     });
 
-    document.getElementById('toAblage')?.addEventListener('click', (e)=>{
+    // ✅ FIX: Beim Klick "Zur Patientenablage" -> (wenn Coop aktiv) Server-Location setzen
+    document.getElementById('toAblage')?.addEventListener('click', async (e)=>{
       e.preventDefault();
+
+      const link = document.getElementById('toAblage');
+      const oldText = link.textContent;
+      link.textContent = 'Übertrage…';
+      link.style.pointerEvents = 'none';
+      link.style.opacity = '0.85';
+
+      function coopActive(){
+        try{
+          const st = window.Coop?.getState?.();
+          return !!(st && st.enabled && st.incident_id && st.token);
+        }catch{
+          return false;
+        }
+      }
+      function pidFromAny(k){
+        const m = String(k||'').match(/patient\s*0*(\d+)/i) || String(k||'').match(/patient0*(\d+)/i);
+        return m ? parseInt(m[1], 10) : null;
+      }
+      function normTriage(sk){
+        let t = String(sk||'').trim().toLowerCase().replace('grün','gruen');
+        if (t === 'sk1') t='rot';
+        if (t === 'sk2') t='gelb';
+        if (t === 'sk3') t='gruen';
+        if (t === 'sk4') t='schwarz';
+        return ['rot','gelb','gruen','schwarz'].includes(t) ? t : null;
+      }
+
+      let sMap = {};
+      try { sMap = JSON.parse(localStorage.getItem('sichtungMap') || '{}'); } catch {}
+
+      const jobs = [];
+      for (const [k, sk] of Object.entries(sMap)){
+        const pid = pidFromAny(k);
+        const triage = normTriage(sk);
+        if (!pid || !triage) continue;
+        jobs.push({ pid, triage });
+      }
+
+      if (coopActive() && jobs.length){
+        try{
+          const LOCATION = "ABLAGE_1";
+          await Promise.allSettled(
+            jobs.map(j => window.Coop.patchPatient(j.pid, { triage: j.triage, location: LOCATION }))
+          );
+        }catch(err){
+          console.error('[AUSWERTUNG] coop transfer failed', err);
+        }
+      }
+
+      // bisheriges Verhalten beibehalten
       resetAuswertungData();
       document.getElementById('gesamtzeit').textContent = '00:00';
       document.getElementById('patientenzeiten').innerHTML = '';
       document.getElementById('patientenfarben').innerHTML = '';
+
+      link.textContent = oldText;
+      link.style.pointerEvents = '';
+      link.style.opacity = '';
+
       window.location.href = "/ablage1.html";
     });
 
@@ -365,10 +425,9 @@
     });
   });
   </script>
-<script src="/coop.js"></script>
+
   <script type="module" src="/freigabe.js?cache=9"></script>
   <script defer src="/warmup.js?v=2025-08-22-1"></script>
   <script src="/metrics.js" defer></script>
 </body>
 </html>
-
