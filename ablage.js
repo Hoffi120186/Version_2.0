@@ -1,5 +1,5 @@
 /* =========================================================
-   1Rettungsmittel · ablage.js  (v11: Coop Klinik-Patch + Outbox)
+   1Rettungsmittel · ablage.js  (v11.1: Coop Patch FIX + Outbox)
    ========================================================= */
 (function () {
   'use strict';
@@ -136,21 +136,30 @@
     coopOutboxSet(list);
   }
 
+  // ✅ FIX: coopPatch korrekt (Signatur + Endpoint)
   async function coopPatch(payload){
-    // Wenn coop.js verfügbar ist, nutzen wir dessen Wrapper
+    // payload erwartet: { patient_id, ...fields }
+    var pid = Number(payload && payload.patient_id);
+    if(!pid) throw new Error('missing_patient_id');
+
+    // Patch-Felder ohne patient_id
+    var patch = Object.assign({}, payload);
+    delete patch.patient_id;
+
+    // Wenn coop.js verfügbar ist: korrekte Signatur nutzen
     if (window.Coop && typeof window.Coop.patchPatient === 'function'){
-      return window.Coop.patchPatient(payload);
+      return window.Coop.patchPatient(pid, patch);
     }
 
     // Fallback: direkt fetchen (nur wenn coop state existiert)
     var st = coopGetState();
     if(!st) throw new Error('coop_not_active');
 
-    // ⚠️ API Base musst du bei Bedarf anpassen
     var API = (st.apiBase) || 'https://www.1rettungsmittel.de/api/coop_test';
-    var url = API.replace(/\/$/,'') + '/patch.php';
+    var url = API.replace(/\/$/,'') + '/patch_patient.php';
 
-    var body = Object.assign({}, payload, {
+    var body = Object.assign({}, patch, {
+      patient_id: pid,
       incident_id: st.incident_id,
       token: st.token
     });
@@ -178,7 +187,6 @@
       try{
         await coopPatch(job.payload);
       }catch(e){
-        // wenn Fehler: behalten
         keep.push(job);
       }
     }
@@ -233,7 +241,6 @@
     var d = getDone(); d.push(p.id); setDone(d);
 
     // ✅ COOP: Klinikzuweisung patchen (wenn aktiv)
-    // -> OrgL klickt "Klinik zuweisen" und alle Geräte sehen es
     try{
       if (coopEnabled()){
         startOutboxPump();
@@ -246,7 +253,6 @@
             clinic_status: 'assigned'
           };
 
-          // Optimistisch senden – bei Fehler in Outbox
           coopPatch(payload).catch(function(err){
             coopOutboxPush({
               ts: Date.now(),
@@ -398,7 +404,6 @@
   } else {
     document.addEventListener('DOMContentLoaded', autoInit, { once:true });
   }
-  // iOS bfcache: beim „Zurück“-Navigieren erneut auslösen
   window.addEventListener('pageshow', autoInit);
 
 })();
