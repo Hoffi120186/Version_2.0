@@ -1,9 +1,6 @@
-// /coop.js (ROOT) — FINAL: robust start/stop + toggle + hard reset + auto-resume
-// + SYNC: writes incoming state.php changes into your existing localStorage system:
-//    - sichtungMap
-//    - ablage.active.v1
-//    - emits coop:sichtung so UI pages can refresh
-
+// /coop.js (ROOT) — 2026-01-22-2
+// FINAL: robust session + start/stop + auto-resume
+// + IMPORTANT FIX: incoming state changes are written into local app storage
 (() => {
   "use strict";
 
@@ -46,71 +43,6 @@
   }
 
   // ---------------------------
-  // Local Sync: adapt coop -> EXISTING system
-  // ---------------------------
-  function normId(id) {
-    return String(id || "").trim().toLowerCase();
-  }
-
-  function normTriage(v) {
-    let s = String(v || "").trim().toLowerCase();
-    // allow german umlaut values from some UI parts
-    if (s.includes("grün")) s = s.replace("grün", "gruen");
-    // optional safety: SK1/SK2… (falls mal so kommt)
-    if (s === "sk1") s = "rot";
-    if (s === "sk2") s = "gelb";
-    if (s === "sk3") s = "gruen";
-    if (s === "sk4") s = "schwarz";
-    return s;
-  }
-
-  function safeParseJSON(raw, fallback) {
-    try { return raw ? JSON.parse(raw) : fallback; } catch { return fallback; }
-  }
-
-  // ✅ This is the key adapter:
-  // Row {patient_id, triage, ...} -> your localStorage keys
-  function upsertSichtungLocal(patient_id, triage, meta = {}) {
-    const id = normId(patient_id);
-    const sk = normTriage(triage);
-    if (!id || !sk) return;
-
-    // 1) sichtungMap (Ablage1 liest das!)
-    const map = safeParseJSON(localStorage.getItem("sichtungMap"), {});
-    map[id] = sk;
-    try { localStorage.setItem("sichtungMap", JSON.stringify(map)); } catch {}
-
-    // 2) ablage.active.v1 (optional, but helps if Ablage uses it too)
-    let active = safeParseJSON(localStorage.getItem("ablage.active.v1"), []);
-    if (!Array.isArray(active)) active = [];
-    const now = Date.now();
-
-    const found = active.find(x => normId(x?.id) === id);
-    if (!found) {
-      active.push({ id, sk, ts: now });
-    } else {
-      found.sk = sk;
-      found.ts = now;
-    }
-
-    try { localStorage.setItem("ablage.active.v1", JSON.stringify(active)); } catch {}
-
-    // 3) Fire UI event so pages can refresh without reload
-    emit("sichtung", { id, sk, meta });
-  }
-
-  // Applies one row from state.php to local storage
-  function applyRowToLocal(row) {
-    if (!row) return;
-    // your state.php returns: patient_id, triage, location, clinic_target, clinic_status, updated_at, updated_by, version
-    const id = row.patient_id;
-    const triage = row.triage;
-    if (id && triage) {
-      upsertSichtungLocal(id, triage, { source: "poll", version: row.version, updated_at: row.updated_at, by: row.updated_by });
-    }
-  }
-
-  // ---------------------------
   // Storage helpers (truth = session)
   // ---------------------------
   function saveSession() {
@@ -125,6 +57,20 @@
       t: Date.now(),
     };
     try { localStorage.setItem(DEFAULTS.storageKey, JSON.stringify(payload)); } catch {}
+
+    // ✅ Keep a simple "state" mirror for older code that reads coop_state_v1
+    try {
+      localStorage.setItem("coop_state_v1", JSON.stringify({
+        apiBase: S.apiBase,
+        incident_id: S.incident_id,
+        join_code: S.join_code,
+        client_id: S.client_id,
+        role: S.role,
+        token: S.token,
+        since: S.since,
+        t: Date.now(),
+      }));
+    } catch {}
   }
 
   function loadSession() {
@@ -140,6 +86,7 @@
 
   function clearSession() {
     try { localStorage.removeItem(DEFAULTS.storageKey); } catch {}
+    try { localStorage.removeItem("coop_state_v1"); } catch {}
   }
 
   function setActiveFlag(on) {
@@ -273,12 +220,103 @@
     }
   }
 
+  // =========================================================
+  // ✅ APPLY REMOTE CHANGES → LOCAL APP STORAGE
+  // This is THE missing part for “patient shows up on all devices”.
+  // =========================================================
+  const LS_SICHTUNG_MAP = "sichtungMap";
+  const LS_ABL_ACTIVE   = "ablage.active.v1";
+
+  function safeJSONParse(s, fallback) { try { return JSON.parse(s); } catch { return fallback; } }
+  function lsGetObj(key, fallback) {
+    try { return safeJSONParse(localStorage.getItem(key), fallback); } catch { return fallback; }
+  }
+  function lsSetObj(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+  }
+
+  function normKat(v){
+    if (!v) return null;
+    let x = String(v).trim().toLowerCase();
+    const map = {
+      "sk1":"rot","sk 1":"rot","1":"rot","r":"rot","rot":"rot",
+      "sk2":"gelb","sk 2":"gelb","2":"gelb","y":"gelb","gelb":"gelb",
+      "sk3":"gruen","sk 3":"gruen","3":"gruen","g":"gruen",
+      "gruen":"gruen","grün":"gruen",
+      "sk0":"schwarz","sk 0":"schwarz","0":"schwarz","b":"schwarz",
+      "schwarz":"schwarz","sk":"schwarz"
+    };
+    if (map[x]) return map[x];
+    if (x.includes("grün")) x = x.replace("grün","gruen");
+    return ["rot","gelb","gruen","schwarz"].includes(x) ? x : null;
+  }
+
+  function upsertAblageActive(patientIdLc, kat){
+    const now = Date.now();
+    const list = Array.isArray(lsGetObj(LS_ABL_ACTIVE, [])) ? lsGetObj(LS_ABL_ACTIVE, []) : [];
+    const idx  = list.findIndex(e => e && String(e.id).toLowerCase() === patientIdLc);
+
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], id: patientIdLc, sk: kat, lastUpdate: now, start: list[idx].start ?? now };
+    } else {
+      list.push({ id: patientIdLc, sk: kat, start: now, lastUpdate: now });
+    }
+
+    lsSetObj(LS_ABL_ACTIVE, list);
+
+    // legacy mirrors (bei dir teilweise noch genutzt)
+    try { localStorage.setItem("ablage", JSON.stringify(list)); } catch {}
+    try { localStorage.setItem("ablage_ids", JSON.stringify(list.map(x => x.id))); } catch {}
+    try { localStorage.setItem("ablage_patient_" + patientIdLc, kat); } catch {}
+
+    // optional: BroadcastChannel für Tabs (gleiches Gerät)
+    try { new BroadcastChannel("ablage").postMessage({ type:"upsert", id: patientIdLc, sk: kat }); } catch {}
+  }
+
+  function applyRemoteRowsToLocal(rows){
+    if (!rows || !rows.length) return;
+
+    // sichtungMap laden
+    const map = lsGetObj(LS_SICHTUNG_MAP, {}) || {};
+    let changedMap = false;
+
+    for (const r of rows){
+      const pidNum = parseInt(String(r.patient_id || "").replace(/\D/g,""), 10);
+      if (!pidNum) continue;
+
+      const id = ("patient" + pidNum).toLowerCase();
+
+      // triage vom Server übernehmen
+      const kat = normKat(r.triage);
+      if (kat){
+        if (map[id] !== kat){
+          map[id] = kat;
+          changedMap = true;
+        }
+
+        // kompatible Keys
+        try { localStorage.setItem("sichtung_" + id, kat); } catch {}
+        // Ablage automatisch füllen (damit Ablage1.html den Patienten sieht)
+        upsertAblageActive(id, kat);
+      }
+
+      // (Optional) Wenn du Location strikt steuern willst:
+      // Wenn location leer ist, lassen wir es.
+      // Wenn location auf "ABLAGE_1" zeigt aber triage fehlt, könntest du trotzdem upserten – macht aber ohne SK wenig Sinn.
+    }
+
+    if (changedMap){
+      lsSetObj(LS_SICHTUNG_MAP, map);
+    }
+  }
+
   // ---------------------------
   // Timers
   // ---------------------------
   function start() {
     stop();
 
+    // if enabled but no session -> do not pretend
     if (S.enabled && (!S.incident_id || !S.token)) {
       setActiveFlag(false);
       emit("need_join", {});
@@ -424,6 +462,7 @@
       const serverTime = data.server_time;
       const changes = Array.isArray(data.changes) ? data.changes : [];
 
+      // Optional "end" detection
       const endRow = changes.find(r => String(r.type || "").toLowerCase().includes("end"));
       if (endRow) {
         emit("ended", { reason: "server_change", row: endRow });
@@ -434,7 +473,7 @@
 
       const filtered = [];
       for (const row of changes) {
-        const pid = String(row.patient_id || "");
+        const pid = String(row.patient_id);
         const ver = Number(row.version || 0);
         const last = Number(S.lastVersion.get(pid) || 0);
         if (ver > last) {
@@ -449,9 +488,10 @@
 
       saveSession();
 
-      // ✅ KEY PART: write incoming changes into your existing local system
       if (filtered.length) {
-        for (const row of filtered) applyRowToLocal(row);
+        // ✅ THIS is the missing glue:
+        applyRemoteRowsToLocal(filtered);
+
         emit("changes", { changes: filtered, server_time: serverTime });
       }
 
@@ -475,20 +515,12 @@
     if (!S.enabled) throw new Error("coop_not_enabled");
     if (!S.incident_id || !S.token) throw new Error("missing_session");
 
-    const pid = normId(patient_id);
-
-    // ✅ Optimistic local apply (instant UI on sending device)
-    // If patch contains triage, apply to existing local store immediately.
-    if (pid && patch && patch.triage) {
-      upsertSichtungLocal(pid, patch.triage, { source: "patch", optimistic: true });
-    }
-
     const url = `${S.apiBase}/patch_patient.php`;
     const body = {
       incident_id: S.incident_id,
       token: S.token,
-      patient_id: pid,
-      ...patch, // MUST include triage for your backend
+      patient_id,
+      ...patch,
     };
 
     try {
@@ -498,19 +530,11 @@
         body: JSON.stringify(body),
       });
 
-      emit("patched", { patient_id: pid, patch, version: data.version });
-
-      // keep lastVersion updated if server returns it
-      if (pid && data?.version) {
-        const v = Number(data.version || 0);
-        const last = Number(S.lastVersion.get(pid) || 0);
-        if (v > last) S.lastVersion.set(pid, v);
-      }
-
+      emit("patched", { patient_id, patch, version: data.version });
       return data;
     } catch (e) {
       const msg = e?.message || "patch_error";
-      emit("patch_error", { patient_id: pid, error: msg });
+      emit("patch_error", { patient_id, error: msg });
 
       if (isInvalidSessionError(msg)) {
         emit("ended", { reason: `patch_${msg}` });
@@ -562,8 +586,11 @@
     }
 
     try {
-      if (finalMode === "end") await endIncidentOnServer();
-      else await leaveIncidentOnServer();
+      if (finalMode === "end") {
+        await endIncidentOnServer();
+      } else {
+        await leaveIncidentOnServer();
+      }
     } catch (e) {
       warn("end/leave server call failed (ignored):", e?.message || e);
     }
@@ -663,15 +690,10 @@
     hardReset,
     toggle,
     end,
-
     createIncident,
     joinIncident,
     patchPatient,
     pullState,
-
-    // optional helper (debug)
-    _upsertSichtungLocal: upsertSichtungLocal,
-
     getState: () => ({ ...S, active: statusSnapshot().active }),
     getStatus,
   };
