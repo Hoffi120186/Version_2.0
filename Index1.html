@@ -299,9 +299,47 @@
     </div>
   </div>
 
+  <!-- ✅ Vorsound (robust: relativ zur index1.html) -->
+  <script>
+    // Lädt status1_pre.mp3 aus dem gleichen Ordner wie index1.html
+    const PRE_URL = new URL('status1_pre.mp3', location.href).href;
+    const audioPre = new Audio(PRE_URL);
+    audioPre.preload = 'auto';
+
+    console.log('[pre] audioPre src =', audioPre.src);
+    // Debug: zeigt dir 200/404 + content-type in der Konsole
+    fetch(audioPre.src, { cache: 'no-store' })
+      .then(r => console.log('[pre] fetch', r.status, r.headers.get('content-type')))
+      .catch(e => console.log('[pre] fetch failed', e));
+
+    function playPreSoundThen(nextFn){
+      audioPre.onended = null;
+      audioPre.onerror = null;
+
+      const done = () => {
+        audioPre.onended = null;
+        audioPre.onerror = null;
+        try { nextFn && nextFn(); } catch(e){ console.warn(e); }
+      };
+
+      audioPre.onended = done;
+      audioPre.onerror = done;
+
+      try{
+        audioPre.pause();
+        audioPre.currentTime = 0;
+      } catch {}
+
+      audioPre.play().catch((err) => {
+        console.warn('[pre-audio] play blocked/failed', err);
+        done(); // damit es nicht hängt
+      });
+    }
+  </script>
+
   <!-- Status 1 + Ripple -->
   <script>
-    const audio = new Audio('/Alarmton2.mp3');
+    const audio = new Audio('/Alarmton2.mp3'); // Hauptsound (wie bisher)
     const startButton = document.getElementById("startButton");
     const alarmImage  = document.getElementById("alarmImage");
 
@@ -326,11 +364,15 @@
       if (saved) alarmImage.src = saved;
     });
 
+    // ✅ Klick -> Vorsound -> dann Bild + Hauptsound
     startButton.addEventListener("click", function () {
       resetAuswertungOnly();
-      startButton.style.display = "none";
-      alarmImage.style.display = "block";
-      audio.play().catch(console.error);
+
+      playPreSoundThen(() => {
+        startButton.style.display = "none";
+        alarmImage.style.display = "block";
+        audio.play().catch(console.error);
+      });
     });
 
     alarmImage.addEventListener("click", function () {
@@ -526,14 +568,18 @@
       try { const st = history.state; if (st && st.scan) history.back(); } catch {}
     }
 
-    startBtn.addEventListener('click', async (e) => {
+    // ✅ Status 4: Klick -> Vorsound -> dann Scanner
+    startBtn.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
 
       resetClinicAndAssignmentsLikeEnd();
-      await whenServiceWorkerReady();
-      await new Promise(r => setTimeout(r, 300));
-      openScanner();
+
+      playPreSoundThen(async () => {
+        await whenServiceWorkerReady();
+        await new Promise(r => setTimeout(r, 300));
+        openScanner();
+      });
     }, { passive: false });
 
     closeBtn.addEventListener('click', closeScanner, { passive: true });
@@ -555,9 +601,8 @@
         .catch(console.error);
     }
   </script>
-<script src="/coop.js"></script>
-  <!-- Metrics -->
+
+  <script src="/coop.js"></script>
   <script src="/metrics.js" defer></script>
 </body>
 </html>
-
