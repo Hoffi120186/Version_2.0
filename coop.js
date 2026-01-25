@@ -405,33 +405,49 @@
   }
 
   async function ping() {
-    if (!S.enabled) return;
-    if (!requireValidRuntimeSessionOrReset("ping")) return;
+  if (!S.enabled) return;
+  if (!requireValidRuntimeSessionOrReset("ping")) return;
 
-    try {
-      const url = `${S.apiBase}/ping.php`;
-      await fetchJSON(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ incident_id: S.incident_id, token: S.token }),
-      });
+  try {
+    // ✅ ping.php will FORM-encoded, not JSON
+    const body = new URLSearchParams({
+      incident_id: S.incident_id || "",
+      token: S.token || "",
+      client_id: S.client_id || ""
+    });
 
-      S.hbErrStreak = 0;
-      emit("heartbeat", { ok: true });
-    } catch (e) {
-      const msg = e?.message || "heartbeat_error";
-      S.hbErrStreak++;
+    const res = await fetch(`${S.apiBase}/ping.php`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body
+    });
 
-      emit("heartbeat", { ok: false, error: msg });
-      warn("heartbeat fail:", msg);
+    const txt = await res.text();
+    let data = {};
+    try { data = JSON.parse(txt || "{}"); } catch {}
 
-      if (isInvalidSessionError(msg) || S.hbErrStreak >= DEFAULTS.maxConsecutiveHbErrors) {
-        emit("ended", { reason: `heartbeat_${msg}` });
-        hardReset(`heartbeat_invalid_${msg}`);
-        emit("need_join", {});
-      }
+    if (!res.ok || data?.ok === false) {
+      const msg = data?.error || `HTTP_${res.status}`;
+      throw new Error(msg);
+    }
+
+    S.hbErrStreak = 0;
+    emit("heartbeat", { ok: true, server_time: data.server_time });
+  } catch (e) {
+    const msg = e?.message || "heartbeat_error";
+    S.hbErrStreak++;
+
+    emit("heartbeat", { ok: false, error: msg });
+    warn("heartbeat fail:", msg);
+
+    if (isInvalidSessionError(msg) || S.hbErrStreak >= DEFAULTS.maxConsecutiveHbErrors) {
+      emit("ended", { reason: `heartbeat_${msg}` });
+      hardReset(`heartbeat_invalid_${msg}`);
+      emit("need_join", {});
     }
   }
+}
+
 
   async function pullState() {
     if (!S.enabled) return;
@@ -725,3 +741,4 @@
   });
 
 })();
+
