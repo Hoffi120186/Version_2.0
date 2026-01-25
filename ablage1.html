@@ -12,7 +12,7 @@
 
   <!-- ✅ WICHTIG: ablage.js VOR dem Module-Script -->
   <script src="/ablage.js?v=8"></script>
-<script src="/coop.js?v=2026-01-25-1" defer></script>
+  <script src="/coop.js?v=2026-01-25-1" defer></script>
 
   <style>
 :root{
@@ -271,6 +271,62 @@ function overlayFromJson(info){
   if(!info.img && j.photo) info.img = abs(j.photo, info.url);
 }
 
+/* =========================================================
+   ✅ COOP: Serverliste als Quelle (list_patients.php)
+   ========================================================= */
+let __COOP_TRIAGE = {}; // "patient15" -> "rot/gelb/gruen/schwarz"
+let __COOP_OPEN_IDS = []; // ["patient1","patient2",...]
+
+function coopState(){
+  try { return (window.Coop && typeof Coop.getState === 'function') ? Coop.getState() : null; } catch { return null; }
+}
+function coopActive(){
+  const st = coopState();
+  return !!(st && st.enabled && st.incident_id && st.token && st.apiBase);
+}
+function mapTriageToKat(v){
+  let k = String(v||'').trim().toLowerCase();
+  k = k.replace('grün','gruen');
+  if (k === 'sk1') return 'rot';
+  if (k === 'sk2') return 'gelb';
+  if (k === 'sk3') return 'gruen';
+  if (k === 'sk4') return 'schwarz';
+  if (['rot','gelb','gruen','schwarz'].includes(k)) return k;
+  return null;
+}
+async function coopSyncOpenPatients(){
+  if(!coopActive()) return [];
+
+  const st = coopState();
+  const base = String(st.apiBase).replace(/\/$/,'');
+  const url  = base + '/list_patients.php?open_only=1'
+    + '&incident_id=' + encodeURIComponent(st.incident_id)
+    + '&token=' + encodeURIComponent(st.token);
+
+  const r = await fetch(url, { cache:'no-store' });
+  const j = await r.json().catch(()=>null);
+  if(!j || !j.ok) return [];
+
+  const triMap = {};
+  const ids = [];
+
+  for(const row of (j.patients || [])){
+    const pid = Number(row.patient_id);
+    if(!pid) continue;
+
+    const id = 'patient' + pid;
+    const kat = mapTriageToKat(row.triage);
+    if(kat) triMap[id] = kat;
+
+    ids.push(id);
+  }
+
+  ids.sort((a,b)=>__numFromId(a)-__numFromId(b));
+  __COOP_TRIAGE = triMap;
+  __COOP_OPEN_IDS = ids;
+  return ids;
+}
+
 /* ===== Sichtungen & Flags ===== */
 function normalizePatientId(key){
   const s = String(key || '').trim().toLowerCase();
@@ -297,8 +353,12 @@ function getSMap(){
   return out;
 }
 
-/* ✅ FIX: SK1..SK4 UND rot/gelb/gruen/schwarz */
+/* ✅ FIX: SK1..SK4 UND rot/gelb/gruen/schwarz
+   ✅ + COOP hat Priorität für Farben (Server ist Truth)
+*/
 function sichtungFor(id){
+  if (coopActive() && __COOP_TRIAGE && __COOP_TRIAGE[id]) return __COOP_TRIAGE[id];
+
   let k = (getSMap()[id]||'').toString().trim().toLowerCase();
   if (!k) return null;
 
@@ -371,20 +431,24 @@ function getDoneSet(){
 }
 
 /* ===== Stats ===== */
-function updateStats(){
+function updateStatsFromIds(ids){
   const done = getDoneSet();
-  const ids = sightedIds().filter(id => !done.has(id));
+  const open = (ids || []).filter(id => !done.has(id));
   let rot=0,gelb=0,gruen=0,schwarz=0;
-  for(const id of ids){
+  for(const id of open){
     const k = sichtungFor(id);
     if(k==='rot') rot++;
     else if(k==='gelb') gelb++;
     else if(k==='gruen') gruen++;
     else if(k==='schwarz') schwarz++;
   }
-  const total = ids.length;
+  const total = open.length;
   const set = (sel,val)=>{ const el=document.getElementById(sel); if(el) el.textContent=String(val); };
   set('cnt-rot',rot); set('cnt-gelb',gelb); set('cnt-gruen',gruen); set('cnt-schwarz',schwarz); set('cnt-total',total);
+}
+function updateStats(){
+  // fallback: lokal
+  updateStatsFromIds(sightedIds());
 }
 
 /* ===== NUR OPTIK: Klinik zuweisen Button stylen ===== */
@@ -707,9 +771,20 @@ function observeImage(img){
 }
 
 /* ===== Laden & Sortiertes Rendern ===== */
-async function load(){
+async function getOpenIds(){
   const done = getDoneSet();
-  const ids = sightedIds().filter(id => !done.has(id));
+  if (coopActive()){
+    const ids = await coopSyncOpenPatients();
+    updateStatsFromIds(ids);
+    return ids.filter(id => !done.has(id));
+  }
+  const ids = sightedIds();
+  updateStatsFromIds(ids);
+  return ids.filter(id => !done.has(id));
+}
+
+async function load(){
+  const ids = await getOpenIds();
 
   if(ids.length===0){
     listEl.innerHTML = `
@@ -717,7 +792,6 @@ async function load(){
         <h2>Keine offenen Patienten in der Ablage</h2>
         <p>Gesichtete und noch nicht zugewiesene Patienten erscheinen hier automatisch.</p>
       </div>`;
-    updateStats();
     allowAutostart();
     return;
   }
@@ -744,7 +818,6 @@ async function load(){
   listEl.innerHTML = '';
   data.forEach(upsertCard);
   window.__PAT_DATA__ = data;
-  updateStats();
 
   allowAutostart();
 
@@ -758,46 +831,67 @@ async function load(){
     highlightAssignButtons();
   }
 }
-load();
+await load();
 
-/* Live-Updates (Sichtung/T/B/DONE) */
+/* Live-Updates: lokal weiterhin (nur same-device), Coop über Polling */
 window.addEventListener('storage', (e)=>{
   if(!e || !e.key) return;
   if(e.key==='sichtungMap' || e.key==='ablage.done.v1' || e.key.startsWith('sicht_')){
-    updateStats();
-
-    const done = getDoneSet();
-    const want = new Set(sightedIds().filter(id => !done.has(id)));
-    const have = new Set([...document.querySelectorAll('.card[data-id]')].map(el=>el.dataset.id));
-
-    for(const id of have){
-      if(!want.has(id)) removeCard(id);
-    }
-
-    for(const id of want){
-      if(!have.has(id)){
-        const num=id.replace('patient','');
-        const entry={ id, label: `Patient ${num}`, url: `patient${num}.html` };
-
-        fetchPatientData(entry).then(p=>{
-          (window.__PAT_DATA__ = (window.__PAT_DATA__||[])).push(p);
-          upsertCard(p);
-          allowAutostart();
-
-          if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
-            window.Ablage.hydrateCards({
-              containerSelector: '#list',
-              cardSelector: '.card',
-              placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
-              placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
-            });
-            highlightAssignButtons();
-          }
-        });
-      }
+    // nur sinnvoll im Non-Coop (oder same device)
+    if (!coopActive()){
+      load().catch(()=>{});
     }
   }
 });
+
+/* ✅ COOP Polling: alle Geräte ziehen automatisch nach */
+let __poll = 0;
+function sameList(a,b){
+  if(a.length!==b.length) return false;
+  for(let i=0;i<a.length;i++) if(a[i]!==b[i]) return false;
+  return true;
+}
+async function coopPoll(){
+  if(!coopActive()) return;
+  try{
+    const ids = await coopSyncOpenPatients();
+    const done = getDoneSet();
+    const open = ids.filter(id=>!done.has(id));
+
+    // wenn sich Liste ändert -> neu rendern
+    const have = [...document.querySelectorAll('.card[data-id]')].map(el=>el.dataset.id).sort((x,y)=>__numFromId(x)-__numFromId(y));
+    const want = open.slice().sort((x,y)=>__numFromId(x)-__numFromId(y));
+
+    updateStatsFromIds(ids);
+
+    if(!sameList(have, want)){
+      await load();
+    }else{
+      // nur Farben/Badges refresh (triage könnte sich geändert haben)
+      for(const id of want){
+        const p=(window.__PAT_DATA__||[]).find(x=>x.id===id);
+        if(p) upsertCard(p);
+      }
+      if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
+        window.Ablage.hydrateCards({
+          containerSelector: '#list',
+          cardSelector: '.card',
+          placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
+          placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
+        });
+        highlightAssignButtons();
+      }
+    }
+  }catch(_){}
+}
+
+if (coopActive()){
+  __poll = setInterval(()=>{ coopPoll(); }, 2500);
+  window.addEventListener('online', ()=>{ coopPoll(); });
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState==='visible') coopPoll();
+  });
+}
 
 /* === PDF: Einzelkarte (inkl. SKx · T/B) === */
 function ensureJsPDF(){ return window.jspdf && window.jspdf.jsPDF; }
@@ -864,4 +958,3 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 <script src="/metrics.js" defer></script>
 </body>
 </html>
-
