@@ -317,10 +317,14 @@ function coopTriageToCat(triage){
   return null;
 }
 function pidToLocalId(pid){
-  const n = parseInt(String(pid||'').replace(/\D/g,''),10);
-  if(!isFinite(n) || n<=0) return null;
+  const s = String(pid ?? '').trim().toLowerCase();
+  // erlaubt: 1, "1", "patient1", "patient01", "pat_1"
+  const m = s.match(/(\d+)/);
+  const n = m ? parseInt(m[1], 10) : NaN;
+  if(!Number.isFinite(n) || n <= 0) return null;
   return 'patient' + String(n);
 }
+
 
 /* ===== Anzeige-Helpers ===== */
 function __readTogglePayload(id){
@@ -724,13 +728,15 @@ async function getOpenPatientIds(){
     // baue map pid->triage
     const triageMap = {};
     const ids = [];
-    for(const row of arr){
-      const id = pidToLocalId(row.patient_id);
-      if(!id) continue;
-      if(done.has(id)) continue;
-      ids.push(id);
-      triageMap[id] = coopTriageToCat(row.triage);
-    }
+  for(const row of arr){
+  const id = pidToLocalId(row.patient_id);
+  if(!id) continue;
+  if(done.has(id)) continue;
+  ids.push(id);
+  triageMap[id] = coopTriageToCat(row.triage);
+  console.log('[ABLAGE][COOP] row=', row, '-> id=', id, 'triage=', triageMap[id]);
+}
+
 
     // Cat-Funktion für Render (aus Coop)
     window.__CAT_FN__ = (pid)=> triageMap[String(pid)] || null;
@@ -899,3 +905,4 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 <script src="/metrics.js" defer></script>
 </body>
 </html>
+
