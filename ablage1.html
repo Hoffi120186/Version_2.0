@@ -11,7 +11,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 
   <!-- ✅ WICHTIG: ablage.js VOR dem Module-Script -->
-  <script src="/ablage.js?v=8"></script>
+  <script src="/ablage.js?v=11.1"></script>
   <script src="/coop.js?v=2026-01-25-1" defer></script>
 
   <style>
@@ -231,7 +231,7 @@ document.addEventListener('visibilitychange', () => {
 allowAutostart();
 
 /* ===== Setups & Helpers ===== */
-const VERSION = 'v-0901-06';
+const VERSION = 'v-COOP-LIST-1';
 function abs(href, base){
   try{
     const b = base ? new URL(base, location.href).href : location.href;
@@ -251,11 +251,10 @@ function normGender(g){
   return null;
 }
 
-/* ===== Datenquellen ===== */
+/* ===== Datenquellen (für Alter/Geschlecht/Fotos) ===== */
 function getPatMeta(){ try { return JSON.parse(localStorage.getItem('patMeta') || '{}'); } catch { return {}; } }
 function getPatientsData(){ try { return JSON.parse(localStorage.getItem('patientsData') || '[]'); } catch { return []; } }
 
-/* Overlays */
 function overlayFromPatMeta(info){
   const meta = getPatMeta()[info.id] || {};
   if(meta.age)    info.age = String(meta.age);
@@ -271,127 +270,13 @@ function overlayFromJson(info){
   if(!info.img && j.photo) info.img = abs(j.photo, info.url);
 }
 
-/* =========================================================
-   ✅ COOP: Serverliste als Quelle (list_patients.php)
-   ========================================================= */
-let __COOP_TRIAGE = {}; // "patient15" -> "rot/gelb/gruen/schwarz"
-let __COOP_OPEN_IDS = []; // ["patient1","patient2",...]
-
-function coopState(){
-  try { return (window.Coop && typeof Coop.getState === 'function') ? Coop.getState() : null; } catch { return null; }
-}
-function coopActive(){
-  const st = coopState();
-  return !!(st && st.enabled && st.incident_id && st.token && st.apiBase);
-}
-function mapTriageToKat(v){
-  let k = String(v||'').trim().toLowerCase();
-  k = k.replace('grün','gruen');
-  if (k === 'sk1') return 'rot';
-  if (k === 'sk2') return 'gelb';
-  if (k === 'sk3') return 'gruen';
-  if (k === 'sk4') return 'schwarz';
-  if (['rot','gelb','gruen','schwarz'].includes(k)) return k;
-  return null;
-}
-async function coopSyncOpenPatients(){
-  if(!coopActive()) return [];
-
-  const st = coopState();
-  const base = String(st.apiBase).replace(/\/$/,'');
-  const url  = base + '/list_patients.php?open_only=1'
-    + '&incident_id=' + encodeURIComponent(st.incident_id)
-    + '&token=' + encodeURIComponent(st.token);
-
-  const r = await fetch(url, { cache:'no-store' });
-  const j = await r.json().catch(()=>null);
-  if(!j || !j.ok) return [];
-
-  const triMap = {};
-  const ids = [];
-
-  for(const row of (j.patients || [])){
-    const pid = Number(row.patient_id);
-    if(!pid) continue;
-
-    const id = 'patient' + pid;
-    const kat = mapTriageToKat(row.triage);
-    if(kat) triMap[id] = kat;
-
-    ids.push(id);
-  }
-
-  ids.sort((a,b)=>__numFromId(a)-__numFromId(b));
-  __COOP_TRIAGE = triMap;
-  __COOP_OPEN_IDS = ids;
-  return ids;
-}
-
-/* ===== Sichtungen & Flags ===== */
-function normalizePatientId(key){
-  const s = String(key || '').trim().toLowerCase();
-
-  const m1 = s.match(/patient\s*0*(\d+)/i);
-  if (m1) return 'patient' + String(parseInt(m1[1], 10));
-
-  const m2 = s.match(/patient[_\- ]*0*(\d+)/i);
-  if (m2) return 'patient' + String(parseInt(m2[1], 10));
-
-  return null;
-}
-
-function getSMap(){
-  let raw = {};
-  try{ raw = JSON.parse(localStorage.getItem('sichtungMap')||'{}'); }catch{ raw = {}; }
-
-  const out = {};
-  for (const [k, v] of Object.entries(raw)){
-    const id = normalizePatientId(k);
-    if (!id) continue;
-    out[id] = v;
-  }
-  return out;
-}
-
-/* ✅ FIX: SK1..SK4 UND rot/gelb/gruen/schwarz
-   ✅ + COOP hat Priorität für Farben (Server ist Truth)
-*/
-function sichtungFor(id){
-  if (coopActive() && __COOP_TRIAGE && __COOP_TRIAGE[id]) return __COOP_TRIAGE[id];
-
-  let k = (getSMap()[id]||'').toString().trim().toLowerCase();
-  if (!k) return null;
-
-  k = k.replace('grün','gruen');
-
-  if (k === 'sk1') return 'rot';
-  if (k === 'sk2') return 'gelb';
-  if (k === 'sk3') return 'gruen';
-  if (k === 'sk4') return 'schwarz';
-
-  if (['rot','gelb','gruen','schwarz'].includes(k)) return k;
-
-  return null;
-}
-
-function sightedIds(){
-  const sm = getSMap();
-  return Object.keys(sm)
-    .filter(k => /^patient\d+$/i.test(k))
-    .sort((a,b)=> parseInt(a.replace(/\D/g,'')) - parseInt(b.replace(/\D/g,'')));
-}
-
+/* ===== Flags (T/B) weiter lokal wie gehabt ===== */
 function __readTogglePayload(id){
   let raw=null;
   try { raw = localStorage.getItem("sicht_" + id); } catch {}
-  if (!raw) {
-    const pathKey = "sicht_" + (location.pathname.split("/").pop() || "unknown");
-    try { raw = localStorage.getItem(pathKey); } catch {}
-  }
   if (!raw) return {};
   try { return JSON.parse(raw)||{}; } catch { return {}; }
 }
-
 function __labelFromCat(cat){
   const c = String(cat||'').toLowerCase();
   if (c === 'rot')     return 'SK1';
@@ -409,7 +294,7 @@ function getSichtungDisplay(id, cat){
   return '—';
 }
 
-/* ===== Priorität (Sortierung) ===== */
+/* ===== Prio ===== */
 function __prio(cat, flags){
   const t=!!flags?.t, b=!!flags?.b;
   if (cat==='rot'   && t) return 0;
@@ -430,25 +315,81 @@ function getDoneSet(){
   }catch{ return new Set(); }
 }
 
+/* ===== COOP: Server-Liste holen ===== */
+function coopGetStateSafe(){
+  try{
+    if (window.Coop && typeof window.Coop.getState === 'function'){
+      const st = window.Coop.getState();
+      if (st && st.enabled && st.apiBase && st.incident_id && st.token) return st;
+    }
+  }catch(_){}
+  // fallback LS
+  try{
+    const raw = localStorage.getItem('coop_state_v1') || localStorage.getItem('coop_state') || '';
+    if(!raw) return null;
+    const st2 = JSON.parse(raw);
+    if (st2 && st2.apiBase && st2.incident_id && st2.token) return Object.assign({enabled:true}, st2);
+  }catch(_){}
+  return null;
+}
+
+function coopEnabled(){
+  const st = coopGetStateSafe();
+  return !!(st && st.apiBase && st.incident_id && st.token);
+}
+
+function triageNorm(v){
+  let s = String(v||'').trim().toLowerCase();
+  if (s.includes('grün')) s = s.replace('grün','gruen');
+  if (s === 'sk1') return 'rot';
+  if (s === 'sk2') return 'gelb';
+  if (s === 'sk3') return 'gruen';
+  if (s === 'sk4') return 'schwarz';
+  if (['rot','gelb','gruen','schwarz'].includes(s)) return s;
+  return null;
+}
+
+async function coopListOpenPatients(){
+  const st = coopGetStateSafe();
+  if(!st) return [];
+
+  const base = st.apiBase.replace(/\/$/,'');
+  const url = base + '/list_patients.php?open_only=1'
+    + '&incident_id=' + encodeURIComponent(st.incident_id)
+    + '&token=' + encodeURIComponent(st.token)
+    + '&_t=' + Date.now();
+
+  const r = await fetch(url, { cache:'no-store' });
+  const j = await r.json().catch(()=>null);
+  if(!j || !j.ok) throw new Error((j && j.error) ? j.error : 'list_failed');
+
+  const rows = Array.isArray(j.patients) ? j.patients : [];
+  // Server -> interne IDs "patientX"
+  return rows
+    .map(p => ({
+      patient_id: Number(p.patient_id),
+      id: 'patient' + String(p.patient_id),
+      triage: triageNorm(p.triage),
+      clinic_status: p.clinic_status ?? null,
+      clinic_target: p.clinic_target ?? null,
+      location: p.location ?? null
+    }))
+    .filter(x => x.patient_id > 0);
+}
+
 /* ===== Stats ===== */
-function updateStatsFromIds(ids){
-  const done = getDoneSet();
-  const open = (ids || []).filter(id => !done.has(id));
+function updateStatsFromIds(ids, triageById){
   let rot=0,gelb=0,gruen=0,schwarz=0;
-  for(const id of open){
-    const k = sichtungFor(id);
+  for(const id of ids){
+    const k = triageById[id] || null;
     if(k==='rot') rot++;
     else if(k==='gelb') gelb++;
     else if(k==='gruen') gruen++;
     else if(k==='schwarz') schwarz++;
   }
-  const total = open.length;
+  const total = ids.length;
   const set = (sel,val)=>{ const el=document.getElementById(sel); if(el) el.textContent=String(val); };
   set('cnt-rot',rot); set('cnt-gelb',gelb); set('cnt-gruen',gruen); set('cnt-schwarz',schwarz); set('cnt-total',total);
-}
-function updateStats(){
-  // fallback: lokal
-  updateStatsFromIds(sightedIds());
 }
 
 /* ===== NUR OPTIK: Klinik zuweisen Button stylen ===== */
@@ -497,7 +438,7 @@ function probeImage(url){
   });
 }
 
-/* ===== Cache + Fetch der Patientenseiten ===== */
+/* ===== Cache + Fetch der Patientenseiten (Details) ===== */
 const listEl = document.getElementById('list');
 const CACHE_KEY = `pat-cache-${VERSION}`;
 function readCache(){ try{ return JSON.parse(sessionStorage.getItem(CACHE_KEY)||'{}'); }catch{return{};} }
@@ -630,8 +571,8 @@ function renderSkeletons(ids){
   }
 }
 
-function upsertCard(p){
-  const kat = sichtungFor(p.id);
+function upsertCard(p, triageById){
+  const kat = triageById[p.id] || null;
   const flags = __readTogglePayload(p.id) || {};
   const label = kat ? __labelFromCat(kat) : '—';
   const flagChar = (kat==='rot'   && flags.t) ? 'T'
@@ -706,19 +647,12 @@ document.addEventListener('input', e=>{
   const all=(window.__PAT_DATA__||[]);
   listEl.innerHTML='';
 
+  const triageById = window.__TRIAGE_BY_ID__ || {};
   (q ? all.filter(p =>
     `${p.id} ${p.label} ${p.age||''} ${p.gender||''} ${p.injury||''} ${p.vitals||''}`.toLowerCase().includes(q)
-  ) : all).forEach(upsertCard);
+  ) : all).forEach(p => upsertCard(p, triageById));
 
-  if (window.Ablage) {
-    window.Ablage.hydrateCards({
-      containerSelector: '#list',
-      cardSelector: '.card',
-      placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
-      placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
-    });
-    highlightAssignButtons();
-  }
+  hydrateAblageUI();
 });
 
 /* Clicks (Lightbox & PDF) */
@@ -770,21 +704,95 @@ function observeImage(img){
   else img.src=img.dataset.src;
 }
 
-/* ===== Laden & Sortiertes Rendern ===== */
-async function getOpenIds(){
-  const done = getDoneSet();
-  if (coopActive()){
-    const ids = await coopSyncOpenPatients();
-    updateStatsFromIds(ids);
-    return ids.filter(id => !done.has(id));
+/* ===== Ablage.js UI hydration ===== */
+function hydrateAblageUI(){
+  if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
+    window.Ablage.hydrateCards({
+      containerSelector: '#list',
+      cardSelector: '.card',
+      placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
+      placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
+    });
+    highlightAssignButtons();
   }
-  const ids = sightedIds();
-  updateStatsFromIds(ids);
-  return ids.filter(id => !done.has(id));
 }
 
-async function load(){
-  const ids = await getOpenIds();
+/* ===== Haupt-Laden: COOP bevorzugt, sonst lokal ===== */
+async function loadFromLocal(){
+  // fallback: alte Logik über sichtungMap (nur wenn coop nicht aktiv)
+  let raw = {};
+  try{ raw = JSON.parse(localStorage.getItem('sichtungMap')||'{}'); }catch{ raw = {}; }
+  const ids = Object.keys(raw)
+    .map(k => String(k||'').toLowerCase().trim())
+    .map(k => (k.match(/patient\s*0*(\d+)/i) ? ('patient'+String(parseInt(RegExp.$1,10))) : null))
+    .filter(Boolean)
+    .sort((a,b)=> (__numFromId(a) - __numFromId(b)));
+
+  const triageById = {};
+  for (const id of ids){
+    const v = String(raw[id] ?? raw[id.toUpperCase()] ?? raw[id.toLowerCase()] ?? '').trim();
+    triageById[id] = triageNorm(v);
+  }
+
+  const done = getDoneSet();
+  const openIds = ids.filter(id => !done.has(id));
+  window.__TRIAGE_BY_ID__ = triageById;
+
+  if(openIds.length===0){
+    listEl.innerHTML = `
+      <div class="empty">
+        <h2>Keine offenen Patienten in der Ablage</h2>
+        <p>Gesichtete und noch nicht zugewiesene Patienten erscheinen hier automatisch.</p>
+      </div>`;
+    updateStatsFromIds([], triageById);
+    allowAutostart();
+    return;
+  }
+
+  renderSkeletons(openIds);
+
+  const data=[];
+  for(const id of openIds){
+    const num = id.replace('patient','');
+    const entry = { id, label: `Patient ${num}`, url: `patient${num}.html` };
+    const p = await fetchPatientData(entry);
+    data.push(p);
+  }
+
+  data.sort((a,b)=>{
+    const aCat = triageById[a.id] || '';
+    const bCat = triageById[b.id] || '';
+    const pa = __readTogglePayload(a.id) || {};
+    const pb = __readTogglePayload(b.id) || {};
+    const d  = __prio(aCat, pa) - __prio(bCat, pb);
+    return d !== 0 ? d : (__numFromId(a.id) - __numFromId(b.id));
+  });
+
+  listEl.innerHTML = '';
+  data.forEach(p => upsertCard(p, triageById));
+  window.__PAT_DATA__ = data;
+
+  updateStatsFromIds(openIds, triageById);
+  allowAutostart();
+  hydrateAblageUI();
+}
+
+async function loadFromCoop(){
+  const done = getDoneSet();
+
+  const rows = await coopListOpenPatients(); // [{id:'patient1', triage:'rot', ...}]
+  const triageById = {};
+  const ids = [];
+
+  for(const r of rows){
+    const id = r.id;
+    if(!id) continue;
+    if(done.has(id)) continue; // lokal zugewiesen -> raus
+    triageById[id] = r.triage || null;
+    ids.push(id);
+  }
+
+  window.__TRIAGE_BY_ID__ = triageById;
 
   if(ids.length===0){
     listEl.innerHTML = `
@@ -792,6 +800,7 @@ async function load(){
         <h2>Keine offenen Patienten in der Ablage</h2>
         <p>Gesichtete und noch nicht zugewiesene Patienten erscheinen hier automatisch.</p>
       </div>`;
+    updateStatsFromIds([], triageById);
     allowAutostart();
     return;
   }
@@ -807,8 +816,8 @@ async function load(){
   }
 
   data.sort((a,b)=>{
-    const aCat = sichtungFor(a.id) || '';
-    const bCat = sichtungFor(b.id) || '';
+    const aCat = triageById[a.id] || '';
+    const bCat = triageById[b.id] || '';
     const pa = __readTogglePayload(a.id) || {};
     const pb = __readTogglePayload(b.id) || {};
     const d  = __prio(aCat, pa) - __prio(bCat, pb);
@@ -816,84 +825,51 @@ async function load(){
   });
 
   listEl.innerHTML = '';
-  data.forEach(upsertCard);
+  data.forEach(p => upsertCard(p, triageById));
   window.__PAT_DATA__ = data;
 
+  updateStatsFromIds(ids, triageById);
   allowAutostart();
+  hydrateAblageUI();
+}
 
-  if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
-    window.Ablage.hydrateCards({
-      containerSelector: '#list',
-      cardSelector: '.card',
-      placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
-      placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
-    });
-    highlightAssignButtons();
+async function load(){
+  try{
+    if (coopEnabled()){
+      await loadFromCoop();
+    } else {
+      await loadFromLocal();
+    }
+  }catch(e){
+    console.warn('[ablage1] load error -> fallback local', e);
+    await loadFromLocal();
   }
 }
 await load();
 
-/* Live-Updates: lokal weiterhin (nur same-device), Coop über Polling */
-window.addEventListener('storage', (e)=>{
-  if(!e || !e.key) return;
-  if(e.key==='sichtungMap' || e.key==='ablage.done.v1' || e.key.startsWith('sicht_')){
-    // nur sinnvoll im Non-Coop (oder same device)
-    if (!coopActive()){
-      load().catch(()=>{});
-    }
-  }
-});
-
-/* ✅ COOP Polling: alle Geräte ziehen automatisch nach */
-let __poll = 0;
-function sameList(a,b){
-  if(a.length!==b.length) return false;
-  for(let i=0;i<a.length;i++) if(a[i]!==b[i]) return false;
-  return true;
-}
-async function coopPoll(){
-  if(!coopActive()) return;
+/* ===== COOP Live-Poll (alle Geräte gleich) ===== */
+let __pollTimer = 0;
+async function poll(){
+  if(!coopEnabled()) return;
+  if(document.visibilityState !== 'visible') return;
   try{
-    const ids = await coopSyncOpenPatients();
-    const done = getDoneSet();
-    const open = ids.filter(id=>!done.has(id));
-
-    // wenn sich Liste ändert -> neu rendern
-    const have = [...document.querySelectorAll('.card[data-id]')].map(el=>el.dataset.id).sort((x,y)=>__numFromId(x)-__numFromId(y));
-    const want = open.slice().sort((x,y)=>__numFromId(x)-__numFromId(y));
-
-    updateStatsFromIds(ids);
-
-    if(!sameList(have, want)){
-      await load();
-    }else{
-      // nur Farben/Badges refresh (triage könnte sich geändert haben)
-      for(const id of want){
-        const p=(window.__PAT_DATA__||[]).find(x=>x.id===id);
-        if(p) upsertCard(p);
-      }
-      if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
-        window.Ablage.hydrateCards({
-          containerSelector: '#list',
-          cardSelector: '.card',
-          placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
-          placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
-        });
-        highlightAssignButtons();
-      }
-    }
-  }catch(_){}
+    await loadFromCoop();
+  }catch(e){
+    console.warn('[ablage1] poll failed', e);
+  }
 }
 
-if (coopActive()){
-  __poll = setInterval(()=>{ coopPoll(); }, 2500);
-  window.addEventListener('online', ()=>{ coopPoll(); });
-  document.addEventListener('visibilitychange', ()=>{
-    if(document.visibilityState==='visible') coopPoll();
+function startPoll(){
+  if(__pollTimer) return;
+  __pollTimer = setInterval(poll, 2500);
+  window.addEventListener('online', poll);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') poll();
   });
 }
+if (coopEnabled()) startPoll();
 
-/* === PDF: Einzelkarte (inkl. SKx · T/B) === */
+/* PDF */
 function ensureJsPDF(){ return window.jspdf && window.jspdf.jsPDF; }
 
 async function pdfSingle(p){
@@ -902,7 +878,8 @@ async function pdfSingle(p){
   const W=doc.internal.pageSize.getWidth();
   let y=20;
 
-  const kat = sichtungFor(p.id);
+  const triageById = window.__TRIAGE_BY_ID__ || {};
+  const kat = triageById[p.id] || null;
   const display = kat ? getSichtungDisplay(p.id, kat) : '—';
 
   doc.setFontSize(16);
@@ -953,6 +930,7 @@ function imageToDataURL(src){
 
 /* Beim Verlassen Autostart verbieten */
 window.addEventListener('beforeunload', () => { denyAutostart(); });
+
 </script>
 
 <script src="/metrics.js" defer></script>
