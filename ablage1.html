@@ -11,7 +11,9 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 
   <!-- ✅ WICHTIG: ablage.js VOR dem Module-Script -->
-  <script src="/ablage.js?v=11.1"></script>
+  <script src="/ablage.js?v=8"></script>
+
+  <!-- COOP -->
   <script src="/coop.js?v=2026-01-25-1" defer></script>
 
   <style>
@@ -231,7 +233,7 @@ document.addEventListener('visibilitychange', () => {
 allowAutostart();
 
 /* ===== Setups & Helpers ===== */
-const VERSION = 'v-COOP-LIST-1';
+const VERSION = 'v-COOP-2026-01-29-1';
 function abs(href, base){
   try{
     const b = base ? new URL(base, location.href).href : location.href;
@@ -250,11 +252,21 @@ function normGender(g){
   if (x === 'd' || /divers|non[-\s]?binary/.test(x))                                   return 'divers';
   return null;
 }
+function normCat(v){
+  v = String(v||'').trim().toLowerCase();
+  if (v.includes('grün')) v = v.replace('grün','gruen');
+  if (v === 'sk1') return 'rot';
+  if (v === 'sk2') return 'gelb';
+  if (v === 'sk3') return 'gruen';
+  if (v === 'sk4') return 'schwarz';
+  return v;
+}
 
-/* ===== Datenquellen (für Alter/Geschlecht/Fotos) ===== */
+/* ===== Datenquellen (lokal) ===== */
 function getPatMeta(){ try { return JSON.parse(localStorage.getItem('patMeta') || '{}'); } catch { return {}; } }
 function getPatientsData(){ try { return JSON.parse(localStorage.getItem('patientsData') || '[]'); } catch { return []; } }
 
+/* Overlays */
 function overlayFromPatMeta(info){
   const meta = getPatMeta()[info.id] || {};
   if(meta.age)    info.age = String(meta.age);
@@ -270,13 +282,14 @@ function overlayFromJson(info){
   if(!info.img && j.photo) info.img = abs(j.photo, info.url);
 }
 
-/* ===== Flags (T/B) weiter lokal wie gehabt ===== */
+/* ===== Sichtungen/Flags für Anzeige (lokal + coop) ===== */
 function __readTogglePayload(id){
   let raw=null;
   try { raw = localStorage.getItem("sicht_" + id); } catch {}
   if (!raw) return {};
   try { return JSON.parse(raw)||{}; } catch { return {}; }
 }
+
 function __labelFromCat(cat){
   const c = String(cat||'').toLowerCase();
   if (c === 'rot')     return 'SK1';
@@ -294,7 +307,7 @@ function getSichtungDisplay(id, cat){
   return '—';
 }
 
-/* ===== Prio ===== */
+/* ===== Priorität (Sortierung) ===== */
 function __prio(cat, flags){
   const t=!!flags?.t, b=!!flags?.b;
   if (cat==='rot'   && t) return 0;
@@ -315,77 +328,15 @@ function getDoneSet(){
   }catch{ return new Set(); }
 }
 
-/* ===== COOP: Server-Liste holen ===== */
-function coopGetStateSafe(){
-  try{
-    if (window.Coop && typeof window.Coop.getState === 'function'){
-      const st = window.Coop.getState();
-      if (st && st.enabled && st.apiBase && st.incident_id && st.token) return st;
-    }
-  }catch(_){}
-  // fallback LS
-  try{
-    const raw = localStorage.getItem('coop_state_v1') || localStorage.getItem('coop_state') || '';
-    if(!raw) return null;
-    const st2 = JSON.parse(raw);
-    if (st2 && st2.apiBase && st2.incident_id && st2.token) return Object.assign({enabled:true}, st2);
-  }catch(_){}
-  return null;
-}
-
-function coopEnabled(){
-  const st = coopGetStateSafe();
-  return !!(st && st.apiBase && st.incident_id && st.token);
-}
-
-function triageNorm(v){
-  let s = String(v||'').trim().toLowerCase();
-  if (s.includes('grün')) s = s.replace('grün','gruen');
-  if (s === 'sk1') return 'rot';
-  if (s === 'sk2') return 'gelb';
-  if (s === 'sk3') return 'gruen';
-  if (s === 'sk4') return 'schwarz';
-  if (['rot','gelb','gruen','schwarz'].includes(s)) return s;
-  return null;
-}
-
-async function coopListOpenPatients(){
-  const st = coopGetStateSafe();
-  if(!st) return [];
-
-  const base = st.apiBase.replace(/\/$/,'');
-  const url = base + '/list_patients.php?open_only=1'
-    + '&incident_id=' + encodeURIComponent(st.incident_id)
-    + '&token=' + encodeURIComponent(st.token)
-    + '&_t=' + Date.now();
-
-  const r = await fetch(url, { cache:'no-store' });
-  const j = await r.json().catch(()=>null);
-  if(!j || !j.ok) throw new Error((j && j.error) ? j.error : 'list_failed');
-
-  const rows = Array.isArray(j.patients) ? j.patients : [];
-  // Server -> interne IDs "patientX"
-  return rows
-    .map(p => ({
-      patient_id: Number(p.patient_id),
-      id: 'patient' + String(p.patient_id),
-      triage: triageNorm(p.triage),
-      clinic_status: p.clinic_status ?? null,
-      clinic_target: p.clinic_target ?? null,
-      location: p.location ?? null
-    }))
-    .filter(x => x.patient_id > 0);
-}
-
 /* ===== Stats ===== */
-function updateStatsFromIds(ids, triageById){
+function updateStatsFromIds(ids, triageMap){
   let rot=0,gelb=0,gruen=0,schwarz=0;
   for(const id of ids){
-    const k = triageById[id] || null;
-    if(k==='rot') rot++;
-    else if(k==='gelb') gelb++;
-    else if(k==='gruen') gruen++;
-    else if(k==='schwarz') schwarz++;
+    const cat = normCat(triageMap[id] || '');
+    if(cat==='rot') rot++;
+    else if(cat==='gelb') gelb++;
+    else if(cat==='gruen') gruen++;
+    else if(cat==='schwarz') schwarz++;
   }
   const total = ids.length;
   const set = (sel,val)=>{ const el=document.getElementById(sel); if(el) el.textContent=String(val); };
@@ -438,7 +389,7 @@ function probeImage(url){
   });
 }
 
-/* ===== Cache + Fetch der Patientenseiten (Details) ===== */
+/* ===== Cache + Fetch der Patientenseiten ===== */
 const listEl = document.getElementById('list');
 const CACHE_KEY = `pat-cache-${VERSION}`;
 function readCache(){ try{ return JSON.parse(sessionStorage.getItem(CACHE_KEY)||'{}'); }catch{return{};} }
@@ -571,21 +522,21 @@ function renderSkeletons(ids){
   }
 }
 
-function upsertCard(p, triageById){
-  const kat = triageById[p.id] || null;
+function upsertCard(p, triageMap){
+  const cat = normCat(triageMap[p.id] || '');
   const flags = __readTogglePayload(p.id) || {};
-  const label = kat ? __labelFromCat(kat) : '—';
-  const flagChar = (kat==='rot'   && flags.t) ? 'T'
-                 : (kat==='gruen' && flags.b) ? 'B'
+  const label = cat ? __labelFromCat(cat) : '—';
+  const flagChar = (cat==='rot'   && flags.t) ? 'T'
+                 : (cat==='gruen' && flags.b) ? 'B'
                  : '';
-  const katBadgeClass = kat ? `badge-${kat}` : '';
+  const catBadgeClass = cat ? `badge-${cat}` : '';
 
   let injText = p.injury ?? '—';
   if(p.vitals && !/af\s*\d+|puls\s*\d+/i.test((injText||'').toLowerCase())){
     injText += ` — ${p.vitals}`;
   }
 
-  const badge = `<span class="badge ${katBadgeClass}">
+  const badge = `<span class="badge ${catBadgeClass}">
                    <span class="sk">${label}</span>
                    ${flagChar ? `<span class="flag">${flagChar}</span>` : ''}
                  </span>`;
@@ -609,14 +560,14 @@ function upsertCard(p, triageById){
     </div>`;
 
   let card = listEl.querySelector(`.card[data-id="${p.id}"]`);
-  const cls = kat ? ('k-'+kat) : '';
+  const cls = cat ? ('k-'+cat) : '';
 
   if(card){
     card.classList.remove('k-rot','k-gelb','k-gruen','k-schwarz');
     if(cls) card.classList.add(cls);
     card.setAttribute('data-patient-id', p.id);
     card.setAttribute('data-name', p.label || p.id);
-    card.setAttribute('data-prio', kat || '');
+    card.setAttribute('data-prio', cat || '');
     card.innerHTML = html;
   }else{
     card=document.createElement('div');
@@ -624,7 +575,7 @@ function upsertCard(p, triageById){
     card.dataset.id=p.id;
     card.setAttribute('data-patient-id', p.id);
     card.setAttribute('data-name', p.label || p.id);
-    card.setAttribute('data-prio', kat || '');
+    card.setAttribute('data-prio', cat || '');
     card.dataset.open=withV(p.url);
     card.innerHTML=html;
     listEl.appendChild(card);
@@ -634,10 +585,145 @@ function upsertCard(p, triageById){
   if(img) observeImage(img);
 }
 
-/* Entfernen */
 function removeCard(id){
   const el = listEl.querySelector(`.card[data-id="${id}"]`);
   if(el) el.remove();
+}
+
+/* Lazy Images */
+const rootEl=document.querySelector('.viewport')||null;
+const io='IntersectionObserver' in window ? new IntersectionObserver((entries,obs)=>{
+  for(const ent of entries){
+    if(ent.isIntersecting){
+      const img=ent.target;
+      img.src=img.dataset.src;
+      img.removeAttribute('data-src');
+      obs.unobserve(img);
+    }
+  }
+},{ root:rootEl, rootMargin:'200px 0px' }) : null;
+
+function observeImage(img){
+  if(io) io.observe(img);
+  else img.src=img.dataset.src;
+}
+
+/* ===== COOP: Liste laden ===== */
+async function coopFetchOpenPatients(){
+  if(!window.Coop || typeof window.Coop.getState!=='function') return null;
+  const st = window.Coop.getState();
+  if(!st?.enabled || !st?.incident_id || !st?.token || !st?.apiBase) return null;
+
+  const base = st.apiBase.replace(/\/$/,'');
+  const url = base + '/list_patients.php?open_only=1&incident_id='
+    + encodeURIComponent(st.incident_id)
+    + '&token=' + encodeURIComponent(st.token)
+    + '&_t=' + Date.now();
+
+  const res = await fetch(url, { cache:'no-store' });
+  if(!res.ok) throw new Error('COOP list_patients HTTP ' + res.status);
+  const j = await res.json();
+  if(!j?.ok) throw new Error('COOP list_patients not ok');
+  return j.patients || [];
+}
+
+function makeIdsFromCoopRows(rows){
+  // rows: [{patient_id:1, triage:'rot', clinic_status:null, ...}]
+  const done = getDoneSet();
+
+  const ids = [];
+  const triageMap = {};
+  for(const r of rows){
+    const pid = Number(r.patient_id)||0;
+    if(!pid) continue;
+    const id = 'patient' + pid;
+    if(done.has(id)) continue;
+    ids.push(id);
+    triageMap[id] = normCat(r.triage || '');
+  }
+  ids.sort((a,b)=>__numFromId(a)-__numFromId(b));
+  return { ids, triageMap };
+}
+
+/* ===== Lokale IDs (Fallback wie bisher) ===== */
+function normalizePatientId(key){
+  const s = String(key || '').trim().toLowerCase();
+  const m1 = s.match(/patient\s*0*(\d+)/i);
+  if (m1) return 'patient' + String(parseInt(m1[1], 10));
+  const m2 = s.match(/patient[_\- ]*0*(\d+)/i);
+  if (m2) return 'patient' + String(parseInt(m2[1], 10));
+  return null;
+}
+function getSMap(){
+  let raw = {};
+  try{ raw = JSON.parse(localStorage.getItem('sichtungMap')||'{}'); }catch{ raw = {}; }
+  const out = {};
+  for (const [k, v] of Object.entries(raw)){
+    const id = normalizePatientId(k);
+    if (!id) continue;
+    out[id] = normCat(v);
+  }
+  return out;
+}
+function localSightedIdsAndMap(){
+  const sm = getSMap();
+  const done = getDoneSet();
+  const ids = Object.keys(sm)
+    .filter(k => /^patient\d+$/i.test(k))
+    .filter(id => !done.has(id))
+    .sort((a,b)=> __numFromId(a) - __numFromId(b));
+  return { ids, triageMap: sm };
+}
+
+/* ===== Render-Pipeline ===== */
+async function renderFromIds(ids, triageMap){
+  if(ids.length===0){
+    listEl.innerHTML = `
+      <div class="empty">
+        <h2>Keine offenen Patienten in der Ablage</h2>
+        <p>Gesichtete und noch nicht zugewiesene Patienten erscheinen hier automatisch.</p>
+      </div>`;
+    updateStatsFromIds([], {});
+    allowAutostart();
+    return;
+  }
+
+  renderSkeletons(ids);
+
+  const data=[];
+  for(const id of ids){
+    const num = id.replace('patient','');
+    const entry = { id, label: `Patient ${num}`, url: `patient${num}.html` };
+    const p = await fetchPatientData(entry);
+    data.push(p);
+  }
+
+  data.sort((a,b)=>{
+    const aCat = normCat(triageMap[a.id] || '');
+    const bCat = normCat(triageMap[b.id] || '');
+    const pa = __readTogglePayload(a.id) || {};
+    const pb = __readTogglePayload(b.id) || {};
+    const d  = __prio(aCat, pa) - __prio(bCat, pb);
+    return d !== 0 ? d : (__numFromId(a.id) - __numFromId(b.id));
+  });
+
+  listEl.innerHTML = '';
+  data.forEach(p=>upsertCard(p, triageMap));
+  window.__PAT_DATA__ = data;
+  window.__TRIAGE_MAP__ = triageMap;
+
+  updateStatsFromIds(ids, triageMap);
+  allowAutostart();
+
+  if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
+    window.Ablage.hydrateCards({
+      containerSelector: '#list',
+      cardSelector: '.card',
+      placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
+      placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
+    });
+    highlightAssignButtons();
+  }
 }
 
 /* Suche */
@@ -645,14 +731,22 @@ document.addEventListener('input', e=>{
   if(e.target.id!=='search') return;
   const q=e.target.value.toLowerCase();
   const all=(window.__PAT_DATA__||[]);
-  listEl.innerHTML='';
+  const triageMap = window.__TRIAGE_MAP__ || {};
 
-  const triageById = window.__TRIAGE_BY_ID__ || {};
+  listEl.innerHTML='';
   (q ? all.filter(p =>
     `${p.id} ${p.label} ${p.age||''} ${p.gender||''} ${p.injury||''} ${p.vitals||''}`.toLowerCase().includes(q)
-  ) : all).forEach(p => upsertCard(p, triageById));
+  ) : all).forEach(p=>upsertCard(p, triageMap));
 
-  hydrateAblageUI();
+  if (window.Ablage) {
+    window.Ablage.hydrateCards({
+      containerSelector: '#list',
+      cardSelector: '.card',
+      placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
+      placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
+    });
+    highlightAssignButtons();
+  }
 });
 
 /* Clicks (Lightbox & PDF) */
@@ -674,7 +768,7 @@ document.addEventListener('click', async e=>{
   if(idBtn){
     const id=idBtn.getAttribute('data-id');
     const p=(window.__PAT_DATA__||[]).find(x=>x.id===id);
-    if(p) await pdfSingle(p);
+    if(p) await pdfSingle(p, window.__TRIAGE_MAP__ || {});
     e.stopPropagation();
     return;
   }
@@ -686,201 +780,17 @@ document.addEventListener('click', async e=>{
   }
 });
 
-/* Lazy Images */
-const rootEl=document.querySelector('.viewport')||null;
-const io='IntersectionObserver' in window ? new IntersectionObserver((entries,obs)=>{
-  for(const ent of entries){
-    if(ent.isIntersecting){
-      const img=ent.target;
-      img.src=img.dataset.src;
-      img.removeAttribute('data-src');
-      obs.unobserve(img);
-    }
-  }
-},{ root:rootEl, rootMargin:'200px 0px' }) : null;
-
-function observeImage(img){
-  if(io) io.observe(img);
-  else img.src=img.dataset.src;
-}
-
-/* ===== Ablage.js UI hydration ===== */
-function hydrateAblageUI(){
-  if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
-    window.Ablage.hydrateCards({
-      containerSelector: '#list',
-      cardSelector: '.card',
-      placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
-      placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
-    });
-    highlightAssignButtons();
-  }
-}
-
-/* ===== Haupt-Laden: COOP bevorzugt, sonst lokal ===== */
-async function loadFromLocal(){
-  // fallback: alte Logik über sichtungMap (nur wenn coop nicht aktiv)
-  let raw = {};
-  try{ raw = JSON.parse(localStorage.getItem('sichtungMap')||'{}'); }catch{ raw = {}; }
-  const ids = Object.keys(raw)
-    .map(k => String(k||'').toLowerCase().trim())
-    .map(k => (k.match(/patient\s*0*(\d+)/i) ? ('patient'+String(parseInt(RegExp.$1,10))) : null))
-    .filter(Boolean)
-    .sort((a,b)=> (__numFromId(a) - __numFromId(b)));
-
-  const triageById = {};
-  for (const id of ids){
-    const v = String(raw[id] ?? raw[id.toUpperCase()] ?? raw[id.toLowerCase()] ?? '').trim();
-    triageById[id] = triageNorm(v);
-  }
-
-  const done = getDoneSet();
-  const openIds = ids.filter(id => !done.has(id));
-  window.__TRIAGE_BY_ID__ = triageById;
-
-  if(openIds.length===0){
-    listEl.innerHTML = `
-      <div class="empty">
-        <h2>Keine offenen Patienten in der Ablage</h2>
-        <p>Gesichtete und noch nicht zugewiesene Patienten erscheinen hier automatisch.</p>
-      </div>`;
-    updateStatsFromIds([], triageById);
-    allowAutostart();
-    return;
-  }
-
-  renderSkeletons(openIds);
-
-  const data=[];
-  for(const id of openIds){
-    const num = id.replace('patient','');
-    const entry = { id, label: `Patient ${num}`, url: `patient${num}.html` };
-    const p = await fetchPatientData(entry);
-    data.push(p);
-  }
-
-  data.sort((a,b)=>{
-    const aCat = triageById[a.id] || '';
-    const bCat = triageById[b.id] || '';
-    const pa = __readTogglePayload(a.id) || {};
-    const pb = __readTogglePayload(b.id) || {};
-    const d  = __prio(aCat, pa) - __prio(bCat, pb);
-    return d !== 0 ? d : (__numFromId(a.id) - __numFromId(b.id));
-  });
-
-  listEl.innerHTML = '';
-  data.forEach(p => upsertCard(p, triageById));
-  window.__PAT_DATA__ = data;
-
-  updateStatsFromIds(openIds, triageById);
-  allowAutostart();
-  hydrateAblageUI();
-}
-
-async function loadFromCoop(){
-  const done = getDoneSet();
-
-  const rows = await coopListOpenPatients(); // [{id:'patient1', triage:'rot', ...}]
-  const triageById = {};
-  const ids = [];
-
-  for(const r of rows){
-    const id = r.id;
-    if(!id) continue;
-    if(done.has(id)) continue; // lokal zugewiesen -> raus
-    triageById[id] = r.triage || null;
-    ids.push(id);
-  }
-
-  window.__TRIAGE_BY_ID__ = triageById;
-
-  if(ids.length===0){
-    listEl.innerHTML = `
-      <div class="empty">
-        <h2>Keine offenen Patienten in der Ablage</h2>
-        <p>Gesichtete und noch nicht zugewiesene Patienten erscheinen hier automatisch.</p>
-      </div>`;
-    updateStatsFromIds([], triageById);
-    allowAutostart();
-    return;
-  }
-
-  renderSkeletons(ids);
-
-  const data=[];
-  for(const id of ids){
-    const num = id.replace('patient','');
-    const entry = { id, label: `Patient ${num}`, url: `patient${num}.html` };
-    const p = await fetchPatientData(entry);
-    data.push(p);
-  }
-
-  data.sort((a,b)=>{
-    const aCat = triageById[a.id] || '';
-    const bCat = triageById[b.id] || '';
-    const pa = __readTogglePayload(a.id) || {};
-    const pb = __readTogglePayload(b.id) || {};
-    const d  = __prio(aCat, pa) - __prio(bCat, pb);
-    return d !== 0 ? d : (__numFromId(a.id) - __numFromId(b.id));
-  });
-
-  listEl.innerHTML = '';
-  data.forEach(p => upsertCard(p, triageById));
-  window.__PAT_DATA__ = data;
-
-  updateStatsFromIds(ids, triageById);
-  allowAutostart();
-  hydrateAblageUI();
-}
-
-async function load(){
-  try{
-    if (coopEnabled()){
-      await loadFromCoop();
-    } else {
-      await loadFromLocal();
-    }
-  }catch(e){
-    console.warn('[ablage1] load error -> fallback local', e);
-    await loadFromLocal();
-  }
-}
-await load();
-
-/* ===== COOP Live-Poll (alle Geräte gleich) ===== */
-let __pollTimer = 0;
-async function poll(){
-  if(!coopEnabled()) return;
-  if(document.visibilityState !== 'visible') return;
-  try{
-    await loadFromCoop();
-  }catch(e){
-    console.warn('[ablage1] poll failed', e);
-  }
-}
-
-function startPoll(){
-  if(__pollTimer) return;
-  __pollTimer = setInterval(poll, 2500);
-  window.addEventListener('online', poll);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') poll();
-  });
-}
-if (coopEnabled()) startPoll();
-
-/* PDF */
+/* === PDF: Einzelkarte (inkl. SKx · T/B) === */
 function ensureJsPDF(){ return window.jspdf && window.jspdf.jsPDF; }
 
-async function pdfSingle(p){
+async function pdfSingle(p, triageMap){
   const jsPDF=ensureJsPDF(); if(!jsPDF) return;
   const doc=new jsPDF({unit:'mm', format:'a4', orientation:'portrait'});
   const W=doc.internal.pageSize.getWidth();
   let y=20;
 
-  const triageById = window.__TRIAGE_BY_ID__ || {};
-  const kat = triageById[p.id] || null;
-  const display = kat ? getSichtungDisplay(p.id, kat) : '—';
+  const cat = normCat(triageMap[p.id] || '');
+  const display = cat ? getSichtungDisplay(p.id, cat) : '—';
 
   doc.setFontSize(16);
   doc.text(p.label + (p.code ? ` [${p.code}]` : ''), W/2, y, { align:'center' });
@@ -927,6 +837,56 @@ function imageToDataURL(src){
     img.src=withV(abs(src));
   });
 }
+
+/* ===== Initial + Live COOP Poll ===== */
+let __lastIdsKey = '';
+async function tick(){
+  try{
+    // wenn coop enabled -> server nutzen
+    const rows = await coopFetchOpenPatients();
+    if(rows){
+      const { ids, triageMap } = makeIdsFromCoopRows(rows);
+      const key = ids.join('|') + '::' + JSON.stringify(triageMap);
+      if(key !== __lastIdsKey){
+        __lastIdsKey = key;
+        await renderFromIds(ids, triageMap);
+      }else{
+        // stats trotzdem sauber halten
+        updateStatsFromIds(ids, triageMap);
+      }
+      return;
+    }
+
+    // fallback lokal
+    const local = localSightedIdsAndMap();
+    const key2 = local.ids.join('|') + '::' + JSON.stringify(local.triageMap);
+    if(key2 !== __lastIdsKey){
+      __lastIdsKey = key2;
+      await renderFromIds(local.ids, local.triageMap);
+    }else{
+      updateStatsFromIds(local.ids, local.triageMap);
+    }
+  } catch (e){
+    console.warn('[ABLAGE] tick error', e);
+  }
+}
+
+async function start(){
+  await tick();
+  // Polling nur wenn Coop enabled – ansonsten reicht storage-event wie früher
+  setInterval(tick, 2000);
+}
+start();
+
+/* Live-Updates (lokal) */
+window.addEventListener('storage', (e)=>{
+  if(!e || !e.key) return;
+  if(e.key==='sichtungMap' || e.key==='ablage.done.v1' || e.key.startsWith('sicht_')){
+    // im coop-mode kommt alles über polling,
+    // aber lokal weiterhin reagieren
+    tick();
+  }
+});
 
 /* Beim Verlassen Autostart verbieten */
 window.addEventListener('beforeunload', () => { denyAutostart(); });
