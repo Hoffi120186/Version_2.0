@@ -230,7 +230,7 @@ document.addEventListener('visibilitychange', () => {
 allowAutostart();
 
 /* ===== Helpers ===== */
-const VERSION = 'v-COOP-ABLAGE-STABLE-01';
+const VERSION = 'v-COOP-ABLAGE-STABLE-02';
 function abs(href, base){
   try{
     const b = base ? new URL(base, location.href).href : location.href;
@@ -241,7 +241,8 @@ function abs(href, base){
 }
 const withV = (u)=> u + (u.includes('?') ? '&' : '?') + VERSION;
 
-/* ===== COOP helpers ===== */
+const listEl = document.getElementById('list');
+
 function coopEnabled(){
   try{
     const st = window.Coop?.getState?.();
@@ -267,7 +268,7 @@ function pidToLocalId(pid){
   return 'patient' + n;
 }
 
-/* ===== local flags (T/B) bleiben wie gehabt (nur Anzeige) ===== */
+/* ===== local flags (T/B) ===== */
 function __readTogglePayload(id){
   let raw=null;
   try { raw = localStorage.getItem("sicht_" + id); } catch {}
@@ -326,14 +327,47 @@ function updateStatsFromIds(ids, catOf){
 }
 
 /* ===== NUR OPTIK: Klinik zuweisen Button stylen ===== */
-function highlightAssignButtons(){
-  document.querySelectorAll('.card button').forEach(btn=>{
+function highlightAssignButtons(scope=document){
+  scope.querySelectorAll('.card button').forEach(btn=>{
     const t = (btn.textContent || '').trim().toLowerCase();
     if(t === 'klinik zuweisen') btn.classList.add('btn-assign-clinic');
   });
 }
 
-/* ===== Bildsuche & Patient HTML Fetch (unverändert, aber gecacht) ===== */
+/* ===== Empty UI ===== */
+function ensureEmptyHidden(){
+  const empty = document.getElementById('__empty__');
+  if(empty) empty.remove();
+}
+function showEmpty(){
+  if(document.getElementById('__empty__')) return;
+  const div = document.createElement('div');
+  div.id='__empty__';
+  div.className='empty';
+  div.innerHTML = `
+    <h2>Keine offenen Patienten in der Ablage</h2>
+    <p>Gesichtete und noch nicht zugewiesene Patienten erscheinen hier automatisch.</p>`;
+  listEl.appendChild(div);
+}
+
+/* ===== Lazy Images ===== */
+const rootEl=document.querySelector('.viewport')||null;
+const io='IntersectionObserver' in window ? new IntersectionObserver((entries,obs)=>{
+  for(const ent of entries){
+    if(ent.isIntersecting){
+      const img=ent.target;
+      img.src=img.dataset.src;
+      img.removeAttribute('data-src');
+      obs.unobserve(img);
+    }
+  }
+},{ root:rootEl, rootMargin:'200px 0px' }) : null;
+function observeImage(img){
+  if(io) io.observe(img);
+  else img.src=img.dataset.src;
+}
+
+/* ===== Patient HTML Fetch: gecached in sessionStorage ===== */
 function normGender(g){
   if(!g) return null;
   const x = String(g).trim().toLowerCase();
@@ -358,6 +392,7 @@ function overlayFromJson(info){
   if(!info.gender && j.gender) info.gender = normGender(j.gender) || j.gender;
   if(!info.img && j.photo) info.img = abs(j.photo, info.url);
 }
+
 const SUFFIXES = ['', 'messer', 'kopf', 'arm', 'bein', 'bauch', 'brust', 'foto', '_1', '_a'];
 async function findPhoto({ html, baseUrl, index }){
   const im = html.match(/<img[^>]*id=["']patient-photo["'][^>]*src=["']([^"']+)["']/i);
@@ -368,10 +403,6 @@ async function findPhoto({ html, baseUrl, index }){
   if(og) return abs(og[1], baseUrl);
 
   const EXT = ['jpg','jpeg','png','webp','JPG','JPEG','PNG','WEBP'];
-  const rx = new RegExp(`(^|\\/)(pat(?:ient)?${index})[^\\/]*\\.(${EXT.join('|')})$`, 'i');
-  const allImgs = [...html.matchAll(/<img[^>]*src=["']([^"']+)["'][^>]*>/ig)];
-  for(const m of allImgs){ const url = abs(m[1], baseUrl); if(rx.test(url)) return url; }
-
   for(const suf of SUFFIXES){
     for(const ex of EXT){
       const url = `${location.origin}/pat${index}${suf ? suf : ''}.${ex}`;
@@ -402,12 +433,9 @@ function extractMainInjuryFromButtonHTML(rawHtml){
   const bold = rawHtml.match(/<(?:b|strong)>([^<]+)<\/(?:b|strong)>/i);
   if (bold) return bold[1].trim();
   let t = cleanText(rawHtml);
-  const hv = t.match(/Hauptverletzung\s*:?\s*(.+)$/i);
-  let base = hv ? hv[1] : t;
-  base = base.replace(/^[\s\-\|•·–—]+/, '').split(/[\|—–\-•·]/)[0].trim();
-  const p = base.indexOf('.');
-  if (p>0 && p<80) base = base.slice(0,p).trim();
-  return base || '—';
+  const p = t.indexOf('.');
+  if (p>0 && p<80) t = t.slice(0,p).trim();
+  return t || '—';
 }
 function extractVitalsFromText(t){
   if(!t) return null;
@@ -421,7 +449,6 @@ function extractVitalsFromText(t){
   return `Puls ${hr}/min`;
 }
 
-const listEl = document.getElementById('list');
 const CACHE_KEY = `pat-cache-${VERSION}`;
 function readCache(){ try{ return JSON.parse(sessionStorage.getItem(CACHE_KEY)||'{}'); }catch{return{};} }
 function writeCache(map){ try{ sessionStorage.setItem(CACHE_KEY, JSON.stringify(map)); }catch{} }
@@ -437,7 +464,7 @@ async function fetchPatientData(entry){
     const res = await fetch(withV(entry.url), { cache:'no-store' });
     if(!res.ok){
       info.error = 'HTTP '+res.status;
-      const c=readCache(); c[entry.id]=info; writeCache(c);
+      cache[entry.id]=info; writeCache(cache);
       return info;
     }
     const html = await res.text();
@@ -458,21 +485,10 @@ async function fetchPatientData(entry){
     const btn1 = html.match(/<button[^>]*id=["']btn1["'][^>]*>([\s\S]*?)<\/button>/i);
     if(btn1){
       const raw = btn1[1];
-      const text = cleanText(raw);
       if(info.injury==='—') info.injury = extractMainInjuryFromButtonHTML(raw);
       if(!info.vitals){
-        const vit = extractVitalsFromText(text);
+        const vit = extractVitalsFromText(cleanText(raw));
         if(vit) info.vitals = vit;
-      }
-    }
-    const btn2 = html.match(/<button[^>]*id=["']btn2["'][^>]*>([\s\S]*?)<\/button>/i);
-    if(btn2){
-      const raw2 = btn2[1];
-      const inj2 = extractMainInjuryFromButtonHTML(raw2);
-      if((!info.injury || info.injury==='—') && inj2 && inj2 !== '—') info.injury = inj2;
-      if(!info.vitals){
-        const vit2 = extractVitalsFromText(cleanText(raw2));
-        if(vit2) info.vitals = vit2;
       }
     }
 
@@ -487,7 +503,7 @@ async function fetchPatientData(entry){
   overlayFromPatMeta(info);
   overlayFromJson(info);
 
-  const c2 = readCache(); c2[entry.id]=info; writeCache(c2);
+  cache[entry.id]=info; writeCache(cache);
   return info;
 }
 
@@ -522,25 +538,7 @@ document.addEventListener('click', async e=>{
   }
 });
 
-/* Lazy Images */
-const rootEl=document.querySelector('.viewport')||null;
-const io='IntersectionObserver' in window ? new IntersectionObserver((entries,obs)=>{
-  for(const ent of entries){
-    if(ent.isIntersecting){
-      const img=ent.target;
-      img.src=img.dataset.src;
-      img.removeAttribute('data-src');
-      obs.unobserve(img);
-    }
-  }
-},{ root:rootEl, rootMargin:'200px 0px' }) : null;
-
-function observeImage(img){
-  if(io) io.observe(img);
-  else img.src=img.dataset.src;
-}
-
-/* ===== Render helpers ===== */
+/* ===== Skeleton/Card Rendering ===== */
 function renderSkeleton(id){
   const skel=document.createElement('div');
   skel.className='card';
@@ -558,21 +556,6 @@ function renderSkeleton(id){
   listEl.appendChild(skel);
 }
 
-function ensureEmptyHidden(){
-  const empty = document.getElementById('__empty__');
-  if(empty) empty.remove();
-}
-function showEmpty(){
-  if(document.getElementById('__empty__')) return;
-  const div = document.createElement('div');
-  div.id='__empty__';
-  div.className='empty';
-  div.innerHTML = `
-    <h2>Keine offenen Patienten in der Ablage</h2>
-    <p>Gesichtete und noch nicht zugewiesene Patienten erscheinen hier automatisch.</p>`;
-  listEl.appendChild(div);
-}
-
 /* Badge & Farbe updaten, ohne Card neu zu bauen */
 function applyTriageToExistingCard(id, cat){
   const card = listEl.querySelector(`.card[data-id="${id}"]`);
@@ -585,6 +568,7 @@ function applyTriageToExistingCard(id, cat){
   if(badge){
     badge.classList.remove('badge-rot','badge-gelb','badge-gruen','badge-schwarz');
     if(cat) badge.classList.add('badge-'+cat);
+
     const sk = __labelFromCat(cat) || '—';
     const flags = __readTogglePayload(id) || {};
     const flagChar = (cat==='rot' && flags.t) ? 'T' : (cat==='gruen' && flags.b) ? 'B' : '';
@@ -592,7 +576,7 @@ function applyTriageToExistingCard(id, cat){
   }
 }
 
-function upsertCard(p, catFn){
+function buildCardHTML(p, catFn){
   const kat = catFn(p.id);
   const flags = __readTogglePayload(p.id) || {};
   const label = kat ? __labelFromCat(kat) : '—';
@@ -615,7 +599,7 @@ function upsertCard(p, catFn){
     ? `<img data-src="${withV(abs(p.img))}" alt="${p.label}" loading="lazy">`
     : `<span>${p.label}<br>Kein Foto</span>`;
 
-  const html = `
+  return `
     <div class="thumb" ${p.img ? `data-view="${withV(abs(p.img))}"` : ''} title="${p.img ? 'Foto ansehen' : ''}">
       ${imgBlock}
     </div>
@@ -628,66 +612,64 @@ function upsertCard(p, catFn){
     <div class="actions">
       <button class="btn" data-id="${p.id}">Als PDF</button>
     </div>`;
+}
 
+function upsertNewCardOnly(p, catFn){
+  // Wichtig: NICHT überschreiben, wenn schon da → sonst Timer/Select kaputt.
   let card = listEl.querySelector(`.card[data-id="${p.id}"]`);
+  if(card) return;
+
+  const kat = catFn(p.id);
   const cls = kat ? ('k-'+kat) : '';
 
-  if(card){
-    // ❗wichtig: NICHT neu bauen (Timer etc.)
-    applyTriageToExistingCard(p.id, kat);
-    return;
-  }
-
-  // neu hinzufügen
-  card=document.createElement('div');
+  card = document.createElement('div');
   card.className='card '+cls;
   card.dataset.id=p.id;
   card.setAttribute('data-patient-id', p.id);
   card.setAttribute('data-name', p.label || p.id);
   card.setAttribute('data-prio', kat || '');
   card.dataset.open=withV(p.url);
-  card.innerHTML=html;
+  card.innerHTML = buildCardHTML(p, catFn);
   listEl.appendChild(card);
 
   const img=card.querySelector('img[data-src]');
   if(img) observeImage(img);
+
+  return card;
 }
 
-/* ===== Suche bleibt wie gehabt ===== */
-document.addEventListener('input', e=>{
-  if(e.target.id!=='search') return;
-  const q=e.target.value.toLowerCase();
-  const all=(window.__PAT_DATA__||[]);
-  const catFn = window.__CAT_FN__ || (()=>null);
+/* ===== Hydration: nur einmal pro Karte! ===== */
+function hydrateIfNeeded(){
+  if (!window.Ablage || typeof window.Ablage.hydrateCards !== 'function') return;
 
-  listEl.innerHTML='';
-  if(!all.length){ showEmpty(); return; }
-
-  (q ? all.filter(p =>
-    `${p.id} ${p.label} ${p.age||''} ${p.gender||''} ${p.injury||''} ${p.vitals||''}`.toLowerCase().includes(q)
-  ) : all).forEach(p=> {
-    // Suchansicht: hier dürfen wir neu rendern (aber ohne Timer-Anspruch)
-    const wrap = document.createElement('div');
-    wrap.className='card';
-    wrap.dataset.id=p.id;
-    listEl.appendChild(wrap);
-    // “upsertCard” erkennt card existiert und macht nur apply triage; daher: mini trick:
-    wrap.remove();
-    upsertCard(p, catFn);
+  // Wir sorgen dafür, dass placeTimer/placeActions NUR anhängen, wenn noch nicht vorhanden.
+  window.Ablage.hydrateCards({
+    containerSelector: '#list',
+    cardSelector: '.card',
+    placeTimer(card, timerEl){
+      // schon da? dann nix anfassen (wichtig!)
+      if (card.querySelector('.ablage-timer, [data-ablage-timer], .timer-el')) return;
+      (card.querySelector('h2')||card).appendChild(timerEl);
+    },
+    placeActions(card, actionsEl){
+      // schon da? dann nix anfassen
+      if (card.querySelector('.ablage-actions, [data-ablage-actions]')) return;
+      (card.querySelector('.actions')||card).appendChild(actionsEl);
+    }
   });
 
-  if (window.Ablage) {
-    window.Ablage.hydrateCards({
-      containerSelector: '#list',
-      cardSelector: '.card',
-      placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
-      placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
-    });
-    highlightAssignButtons();
-  }
-});
+  highlightAssignButtons();
+}
 
-/* ===== COOP Fetch: offene Patienten + triageMap ===== */
+/* ===== Fokus-Schutz: wenn User gerade interagiert, nicht sortieren ===== */
+function userIsEditing(){
+  const a = document.activeElement;
+  if(!a) return false;
+  if(a.tagName === 'INPUT' || a.tagName === 'SELECT' || a.tagName === 'TEXTAREA') return true;
+  return false;
+}
+
+/* ===== COOP Fetch ===== */
 async function fetchOpenFromCoop(){
   const st = coopState();
   const url = st.apiBase.replace(/\/$/,'') + '/list_patients.php'
@@ -716,54 +698,55 @@ async function fetchOpenFromCoop(){
   return ids.sort((a,b)=> __numFromId(a)-__numFromId(b));
 }
 
-/* ===== Stable Sync (nur neue hinzufügen / bestehende nur Badge updaten) ===== */
-let __seen = new Set();           // welche IDs sind schon in DOM
-let __triageMap = {};             // letztes triage pro ID (für badge-update)
+/* ===== Stable Sync ===== */
+let __seen = new Set();
+let __triageMap = {};
+window.__PAT_DATA__ = window.__PAT_DATA__ || [];
 
 async function syncOnce(){
-  let ids = [];
-
-  if(coopEnabled()){
-    ids = await fetchOpenFromCoop();
-  } else {
-    // fallback: lokal (wie früher)
-    showEmpty();
+  if(!coopEnabled()){
+    // Wenn COOP nicht aktiv ist, zeigen wir zumindest leer – aber ohne dauernd zu zerschießen
+    if(!listEl.querySelector('.card[data-id]')){
+      listEl.innerHTML='';
+      showEmpty();
+    }
     return;
   }
 
+  const ids = await fetchOpenFromCoop();
   const catFn = window.__CAT_FN__ || (()=>null);
 
   if(!ids.length){
-    listEl.innerHTML = '';
+    listEl.innerHTML='';
     showEmpty();
     updateStatsFromIds([], catFn);
     __seen = new Set();
     __triageMap = {};
+    window.__PAT_DATA__ = [];
     return;
   }
 
   ensureEmptyHidden();
-
-  // Stats sofort
   updateStatsFromIds(ids, catFn);
 
-  // 1) bestehende Cards NICHT löschen
-  // 2) nur neue hinzufügen + triage updates
+  // 1) Badge-Updates für bestehende (ohne rebuild)
   for(const id of ids){
     const cat = catFn(id) || null;
-
-    // badge update für bestehende (ohne rebuild)
     if(__seen.has(id)){
       if(__triageMap[id] !== cat){
         __triageMap[id] = cat;
         applyTriageToExistingCard(id, cat);
       }
-      continue;
     }
+  }
 
-    // neu
+  // 2) Neue Patienten hinzufügen
+  let added = 0;
+  for(const id of ids){
+    if(__seen.has(id)) continue;
+
     __seen.add(id);
-    __triageMap[id] = cat;
+    __triageMap[id] = catFn(id) || null;
 
     renderSkeleton(id);
 
@@ -771,40 +754,67 @@ async function syncOnce(){
     const entry = { id, label: `Patient ${num}`, url: `patient${num}.html` };
     const p = await fetchPatientData(entry);
 
-    // Skeleton ersetzen (ohne andere Cards zu killen)
+    // Skeleton raus
     const skel = listEl.querySelector(`.card[data-id="${id}"]`);
     if(skel) skel.remove();
-    upsertCard(p, catFn);
 
-    (window.__PAT_DATA__ = (window.__PAT_DATA__||[])).push(p);
-
-    // Ablage UI (Timer/Actions) nur für neue Karten hydraten
-    if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
-      window.Ablage.hydrateCards({
-        containerSelector: '#list',
-        cardSelector: '.card',
-        placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
-        placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
-      });
-      highlightAssignButtons();
+    const card = upsertNewCardOnly(p, catFn);
+    if(card){
+      window.__PAT_DATA__.push(p);
+      added++;
     }
   }
 
-  // Optional: Karten sortieren, ohne innerHTML zu killen
-  const cards = [...listEl.querySelectorAll('.card[data-id]')];
-  cards.sort((a,b)=>{
-    const ida=a.dataset.id, idb=b.dataset.id;
-    const ca = (window.__CAT_FN__?.(ida) || '');
-    const cb = (window.__CAT_FN__?.(idb) || '');
-    const pa = __readTogglePayload(ida) || {};
-    const pb = __readTogglePayload(idb) || {};
-    const d = __prio(ca, pa) - __prio(cb, pb);
-    return d !== 0 ? d : (__numFromId(ida) - __numFromId(idb));
-  });
-  for(const el of cards) listEl.appendChild(el);
+  // 3) Hydrate nur wenn wirklich neue Karten dazu kamen
+  if(added > 0) hydrateIfNeeded();
+
+  // 4) Sortieren NUR wenn User nicht gerade in Select/Input ist
+  if(!userIsEditing()){
+    const cards = [...listEl.querySelectorAll('.card[data-id]')];
+    cards.sort((a,b)=>{
+      const ida=a.dataset.id, idb=b.dataset.id;
+      const ca = (window.__CAT_FN__?.(ida) || '');
+      const cb = (window.__CAT_FN__?.(idb) || '');
+      const pa = __readTogglePayload(ida) || {};
+      const pb = __readTogglePayload(idb) || {};
+      const d = __prio(ca, pa) - __prio(cb, pb);
+      return d !== 0 ? d : (__numFromId(ida) - __numFromId(idb));
+    });
+    for(const el of cards) listEl.appendChild(el);
+  }
 }
 
-/* Polling */
+/* ===== Suche ===== */
+document.addEventListener('input', e=>{
+  if(e.target.id!=='search') return;
+  const q=e.target.value.toLowerCase();
+  const all=(window.__PAT_DATA__||[]);
+  const catFn = window.__CAT_FN__ || (()=>null);
+
+  // Suchansicht: ja, hier rendern wir neu (ist ok)
+  listEl.innerHTML='';
+  if(!all.length){ showEmpty(); return; }
+
+  const show = q ? all.filter(p =>
+    `${p.id} ${p.label} ${p.age||''} ${p.gender||''} ${p.injury||''} ${p.vitals||''}`.toLowerCase().includes(q)
+  ) : all;
+
+  for(const p of show){
+    renderSkeleton(p.id);
+    const skel = listEl.querySelector(`.card[data-id="${p.id}"]`);
+    if(skel){
+      skel.innerHTML = buildCardHTML(p, catFn);
+      const kat = catFn(p.id);
+      skel.classList.remove('k-rot','k-gelb','k-gruen','k-schwarz');
+      if(kat) skel.classList.add('k-'+kat);
+      const img=skel.querySelector('img[data-src]'); if(img) observeImage(img);
+    }
+  }
+
+  hydrateIfNeeded();
+});
+
+/* ===== Polling ===== */
 let __poll = 0;
 function startPolling(){
   if(__poll) return;
@@ -823,7 +833,7 @@ function startPolling(){
 syncOnce().catch(()=>{});
 startPolling();
 
-/* === PDF: Einzelkarte (Badge bleibt wie gehabt) === */
+/* === PDF: Einzelkarte === */
 function ensureJsPDF(){ return window.jspdf && window.jspdf.jsPDF; }
 
 async function pdfSingle(p){
@@ -852,41 +862,15 @@ async function pdfSingle(p){
   doc.text('Hauptverletzung:', 20, y); y+=6;
   const txt=doc.splitTextToSize(inj, W-40);
   doc.text(txt, 20, y);
-  y+=txt.length*6+10;
-
-  const hidePhotos=document.getElementById('cbHidePhotos').checked;
-  if(p.img && !hidePhotos){
-    try{
-      const dataUrl=await imageToDataURL(p.img);
-      doc.addImage(dataUrl,'JPEG',20,y,80,60);
-    }catch{}
-  }
   doc.save(`${p.id}.pdf`);
 }
 
-function imageToDataURL(src){
-  return new Promise((resolve,reject)=>{
-    const img=new Image();
-    img.crossOrigin='anonymous';
-    img.onload=()=>{
-      try{
-        const c=document.createElement('canvas');
-        c.width=img.naturalWidth;
-        c.height=img.naturalHeight;
-        c.getContext('2d').drawImage(img,0,0);
-        resolve(c.toDataURL('image/jpeg',0.9));
-      }catch(e){ reject(e); }
-    };
-    img.onerror=reject;
-    img.src=withV(abs(src));
-  });
-}
-
-/* Beim Verlassen Autostart verbieten */
 window.addEventListener('beforeunload', () => { denyAutostart(); });
 </script>
+
 
 <!-- metrics optional (kannst du auf Netlify testweise entfernen) -->
 <script src="/metrics.js" defer></script>
 </body>
 </html>
+
