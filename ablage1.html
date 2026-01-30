@@ -228,7 +228,7 @@ document.addEventListener('visibilitychange', () => {
 allowAutostart();
 
 /* ===== Helpers ===== */
-const VERSION = 'v-COOP-ABLAGE-STABLE-03';
+const VERSION = 'v-COOP-ABLAGE-STABLE-04';
 function abs(href, base){
   try{
     const b = base ? new URL(base, location.href).href : location.href;
@@ -324,7 +324,7 @@ function getLocalOpenIds(){
       if (Array.isArray(arr)) return arr.map(String);
     }
 
-    // Fallback: häufige LocalStorage Keys (falls deine ablage.js so speichert)
+    // Fallback: häufige LocalStorage Keys
     const candidates = ['ablage_open', 'ablageOpen', 'ablage', 'AblageOpen', 'Ablage'];
     for (const k of candidates){
       const raw = localStorage.getItem(k);
@@ -394,12 +394,7 @@ function overlayFromJson(info){
   if(!info.img && j.photo) info.img = abs(j.photo, info.url);
 }
 
-/* 🚀 Performance: KEIN 100x 404-Probing mehr
-   -> wir nehmen nur:
-   1) <img id="patient-photo">
-   2) data-photo / og:image
-   3) falls nix: NULL (Kein Foto)
-*/
+/* 🚀 Performance: KEIN 404-Probing mehr */
 async function findPhotoFast({ html, baseUrl }){
   const im = html.match(/<img[^>]*id=["']patient-photo["'][^>]*src=["']([^"']+)["']/i);
   if(im) return abs(im[1], baseUrl);
@@ -410,7 +405,6 @@ async function findPhotoFast({ html, baseUrl }){
   const og = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i);
   if(og) return abs(og[1], baseUrl);
 
-  // sonst: kein Foto (verhindert 404-Orgie)
   return null;
 }
 
@@ -562,22 +556,6 @@ function observeImage(img){
 }
 
 /* ===== Render helpers ===== */
-function renderSkeleton(id){
-  const skel=document.createElement('div');
-  skel.className='card';
-  skel.dataset.id=id;
-  skel.innerHTML=`
-    <div class="thumb skeleton"></div>
-    <div>
-      <div class="title-skel skeleton"></div>
-      <div class="line-skel skeleton" style="width:50%"></div>
-      <div class="injury-skel skeleton"></div>
-    </div>
-    <div class="actions">
-      <button class="btn" disabled>Als PDF</button>
-    </div>`;
-  listEl.appendChild(skel);
-}
 function ensureEmptyHidden(){
   const empty = document.getElementById('__empty__');
   if(empty) empty.remove();
@@ -595,7 +573,7 @@ function showEmpty(){
 
 /* Badge & Farbe updaten, ohne Card neu zu bauen */
 function applyTriageToExistingCard(id, cat){
-  const card = listEl.querySelector(\`.card[data-id="\${id}"]\`);
+  const card = listEl.querySelector(`.card[data-id="${id}"]`);
   if(!card) return;
 
   card.classList.remove('k-rot','k-gelb','k-gruen','k-schwarz');
@@ -608,7 +586,9 @@ function applyTriageToExistingCard(id, cat){
     const sk = __labelFromCat(cat) || '—';
     const flags = __readTogglePayload(id) || {};
     const flagChar = (cat==='rot' && flags.t) ? 'T' : (cat==='gruen' && flags.b) ? 'B' : '';
-    badge.innerHTML = \`<span class="sk">\${sk}</span>\${flagChar ? \`<span class="flag">\${flagChar}</span>\` : ''}\`;
+    badge.innerHTML = `<span class="sk">${sk}</span>${
+      flagChar ? `<span class="flag">${flagChar}</span>` : ''
+    }`;
   }
 }
 
@@ -619,51 +599,52 @@ function upsertCard(p, catFn){
   const flagChar = (kat==='rot'   && flags.t) ? 'T'
                  : (kat==='gruen' && flags.b) ? 'B'
                  : '';
-  const katBadgeClass = kat ? \`badge-\${kat}\` : '';
+  const katBadgeClass = kat ? `badge-${kat}` : '';
 
   let injText = p.injury ?? '—';
   if(p.vitals && !/af\s*\d+|puls\s*\d+/i.test((injText||'').toLowerCase())){
-    injText += \` — \${p.vitals}\`;
+    injText += ` — ${p.vitals}`;
   }
 
-  const badge = \`<span class="badge \${katBadgeClass}">
-                   <span class="sk">\${label}</span>
-                   \${flagChar ? \`<span class="flag">\${flagChar}</span>\` : ''}
-                 </span>\`;
+  const badge = `<span class="badge ${katBadgeClass}">
+                   <span class="sk">${label}</span>
+                   ${flagChar ? `<span class="flag">${flagChar}</span>` : ''}
+                 </span>`;
 
   const imgBlock = p.img
-    ? \`<img data-src="\${withV(abs(p.img))}" alt="\${p.label}" loading="lazy">\`
-    : \`<span>\${p.label}<br>Kein Foto</span>\`;
+    ? `<img data-src="${withV(abs(p.img))}" alt="${p.label}" loading="lazy">`
+    : `<span>${p.label}<br>Kein Foto</span>`;
 
-  const html = \`
-    <div class="thumb" \${p.img ? \`data-view="\${withV(abs(p.img))}"\` : ''} title="\${p.img ? 'Foto ansehen' : ''}">
-      \${imgBlock}
+  const html = `
+    <div class="thumb" ${p.img ? `data-view="${withV(abs(p.img))}"` : ''} title="${p.img ? 'Foto ansehen' : ''}">
+      ${imgBlock}
     </div>
     <div>
-      <h2>\${p.label} \${badge}</h2>
-      <div class="meta">Alter: \${p.age ?? '—'} | Geschlecht: \${p.gender ?? '—'}</div>
-      <div class="injury"><b>Hauptverletzung:</b> \${injText}</div>
-      \${p.error ? \`<div style="color:#ffd2d2;margin-top:6px;font-size:12px;">⚠ \${p.error}</div>\` : ''}
+      <h2>${p.label} ${badge}</h2>
+      <div class="meta">Alter: ${p.age ?? '—'} | Geschlecht: ${p.gender ?? '—'}</div>
+      <div class="injury"><b>Hauptverletzung:</b> ${injText}</div>
+      ${p.error ? `<div style="color:#ffd2d2;margin-top:6px;font-size:12px;">⚠ ${p.error}</div>` : ''}
     </div>
     <div class="actions">
-      <button class="btn" data-id="\${p.id}">Als PDF</button>
-    </div>\`;
+      <button class="btn" data-id="${p.id}">Als PDF</button>
+    </div>`;
 
-  let card = listEl.querySelector(\`.card[data-id="\${p.id}"]\`);
+  let card = listEl.querySelector(`.card[data-id="${p.id}"]`);
   const cls = kat ? ('k-'+kat) : '';
 
   if(card){
-    // ❗wichtig: NICHT neu bauen
     applyTriageToExistingCard(p.id, kat);
-    // aber Inhalte dürfen wir ergänzen, ohne Timer/Actions zu zerstören
+
     const meta = card.querySelector('.meta');
-    if(meta) meta.textContent = \`Alter: \${p.age ?? '—'} | Geschlecht: \${p.gender ?? '—'}\`;
+    if(meta) meta.textContent = `Alter: ${p.age ?? '—'} | Geschlecht: ${p.gender ?? '—'}`;
+
     const inj = card.querySelector('.injury');
     if(inj){
       let t = p.injury ?? '—';
-      if(p.vitals && !/af\s*\d+|puls\s*\d+/i.test((t||'').toLowerCase())) t += \` — \${p.vitals}\`;
-      inj.innerHTML = \`<b>Hauptverletzung:</b> \${t}\`;
+      if(p.vitals && !/af\s*\d+|puls\s*\d+/i.test((t||'').toLowerCase())) t += ` — ${p.vitals}`;
+      inj.innerHTML = `<b>Hauptverletzung:</b> ${t}`;
     }
+
     const img = card.querySelector('img');
     if(img && p.img){
       img.dataset.src = withV(abs(p.img));
@@ -674,7 +655,6 @@ function upsertCard(p, catFn){
     return;
   }
 
-  // neu hinzufügen
   card=document.createElement('div');
   card.className='card '+cls;
   card.dataset.id=p.id;
@@ -700,9 +680,8 @@ document.addEventListener('input', e=>{
   if(!all.length){ showEmpty(); return; }
 
   (q ? all.filter(p =>
-    \`\${p.id} \${p.label} \${p.age||''} \${p.gender||''} \${p.injury||''} \${p.vitals||''}\`.toLowerCase().includes(q)
+    `${p.id} ${p.label} ${p.age||''} ${p.gender||''} ${p.injury||''} ${p.vitals||''}`.toLowerCase().includes(q)
   ) : all).forEach(p=> {
-    // Suchansicht darf neu rendern
     const wrap = document.createElement('div');
     wrap.className='card';
     wrap.dataset.id=p.id;
@@ -723,18 +702,16 @@ document.addEventListener('input', e=>{
 });
 
 /* ===== Stable Sync: UNION (lokal + COOP) ===== */
-let __seen = new Set();     // IDs im DOM
-let __triageMap = {};       // letztes cat pro ID (für Badge-Update)
+let __seen = new Set();
+let __triageMap = {};
 
 async function syncOnce(){
   const done = getDoneSet();
 
-  // 1) lokal ist Basis
   const localIds = getLocalOpenIds().map(String).filter(Boolean).filter(id => !done.has(id));
 
-  // 2) coop als Zusatz
   let coopIds = [];
-  let coopMap = {}; // id -> cat
+  let coopMap = {};
 
   if (coopEnabled()){
     const st = coopState();
@@ -759,15 +736,12 @@ async function syncOnce(){
     }catch{}
   }
 
-  // 3) UNION
   const allIds = Array.from(new Set([...localIds, ...coopIds]))
     .sort((a,b)=> __numFromId(a)-__numFromId(b));
 
-  // catFn: coop hat Vorrang, sonst lokal
-  const catFn = (id)=> coopMap[id] ?? localCatOf(id);
+  const catFn = (id)=> (id in coopMap) ? coopMap[id] : localCatOf(id);
   window.__CAT_FN__ = catFn;
 
-  // 4) empty
   if(!allIds.length){
     listEl.innerHTML = '';
     showEmpty();
@@ -781,7 +755,6 @@ async function syncOnce(){
   ensureEmptyHidden();
   updateStatsFromIds(allIds, catFn);
 
-  // 5) entferne Karten, die nicht mehr offen sind (ohne alles zu killen)
   const keep = new Set(allIds);
   for (const id of Array.from(__seen)){
     if (!keep.has(id)){
@@ -795,7 +768,6 @@ async function syncOnce(){
     }
   }
 
-  // 6) upsert (nur neue / badge-update bei bestehenden)
   for(const id of allIds){
     const cat = catFn(id) || null;
 
@@ -810,7 +782,6 @@ async function syncOnce(){
     __seen.add(id);
     __triageMap[id] = cat;
 
-    // Karte sofort erstellen (damit Ablage-Buttons/Timer sofort da sind)
     const num = id.replace('patient','');
     const entry = { id, label: `Patient ${num}`, url: `patient${num}.html` };
 
@@ -826,10 +797,9 @@ async function syncOnce(){
       highlightAssignButtons();
     }
 
-    // Details async nachziehen (ohne Rebuild)
     fetchPatientData(entry).then(p=>{
       (window.__PAT_DATA__ = (window.__PAT_DATA__||[])).push(p);
-      upsertCard(p, catFn); // upsert ergänzt nur Inhalte + badge-update
+      upsertCard(p, catFn);
       if (window.Ablage?.hydrateCards) {
         window.Ablage.hydrateCards({
           containerSelector:'#list',
@@ -842,7 +812,6 @@ async function syncOnce(){
     }).catch(()=>{});
   }
 
-  // 7) Sortierung ohne innerHTML reset
   const cards = [...listEl.querySelectorAll('.card[data-id]')];
   cards.sort((a,b)=>{
     const ida=a.dataset.id, idb=b.dataset.id;
@@ -934,9 +903,7 @@ function imageToDataURL(src){
   });
 }
 
-/* Beim Verlassen Autostart verbieten */
 window.addEventListener('beforeunload', () => { denyAutostart(); });
-
 </script>
 
 <!-- ✅ metrics auf Netlify testweise AUS (CORS auf 1rettungsmittel.de) -->
