@@ -27,7 +27,7 @@ const Coop = {
     });
     const data = await r.json();
 
-    // Dein System nutzt token in coop_test_members – wir erwarten "token" oder fallback-Felder
+    // dein System hat token in coop_test_members -> wir sind tolerant
     const token = data.token || data.member_token || data.client_token || data.client_id;
     const incident_id = data.incident_id;
 
@@ -43,9 +43,8 @@ const Coop = {
     return data;
   },
 
-  // Sichtung senden: nutzt patch_patient.php (dein Backend)
-  // Wir senden BEIDES: triage (rot/gelb/...) und sk (SK1/...) – patch_patient kann nehmen was es kennt.
-  async sendSighting({ patient_id, sk, triage, location='', clinic_target='', clinic_status='' }) {
+  // Das ist exakt auf patch_patient.php gemappt
+  async sendTriage({ patient_id, triage, location=null, clinic_target=null, clinic_status=null }) {
     const s = this.getSession();
     if (!s?.token) return { ok:false, error:'no_session' };
 
@@ -56,8 +55,7 @@ const Coop = {
         incident_id: s.incident_id,
         token: s.token,
         patient_id,
-        sk,
-        triage,
+        triage,            // rot/gelb/gruen/schwarz
         location,
         clinic_target,
         clinic_status
@@ -66,12 +64,16 @@ const Coop = {
     return r.json();
   },
 
-  // State holen: passt zu deinem state.php (changes + since-string)
+  // state.php erwartet since als "YYYY-mm-dd HH:ii:ss"
   async getState({ since = '' } = {}) {
     const s = this.getSession();
     if (!s?.token) return { ok:false, error:'no_session' };
 
-    const url = `${COOP_API_BASE}/state.php?incident_id=${encodeURIComponent(s.incident_id)}&token=${encodeURIComponent(s.token)}&since=${encodeURIComponent(since || '')}`;
+    const url =
+      `${COOP_API_BASE}/state.php?incident_id=${encodeURIComponent(s.incident_id)}` +
+      `&token=${encodeURIComponent(s.token)}` +
+      `&since=${encodeURIComponent(since || '')}`;
+
     const r = await fetch(url, { cache:'no-store' });
     return r.json();
   }
