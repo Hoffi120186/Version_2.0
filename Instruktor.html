@@ -750,14 +750,14 @@
     });
   </script>
 
-  <!-- ✅ COOP CORE -->
-  <script src="/coop.js?v=2026-01-31-a"></script>
+  <!-- ✅ COOP-CLIENT (NEU) -->
+  <script src="/coop-client.js?v=2026-01-31-1"></script>
 
   <!-- QR + Scanner libs -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
 
-  <!-- ✅ COOP UI (Instruktor) – nutzt coop.js -->
+  <!-- ✅ COOP UI (Instruktor) – nutzt coop-client.js -->
   <script>
   // >>>>>> HIER NUR BASIS-KONFIG <<<<<<
   const COOP_API = "https://www.1rettungsmittel.de/api/coop_test"; // dein IONOS Pfad
@@ -843,7 +843,7 @@
     }
   }
 
-  // Events vom coop.js
+  // Events vom coop-client.js
   window.addEventListener("coop:created",  renderCoopBar);
   window.addEventListener("coop:joined",   renderCoopBar);
   window.addEventListener("coop:restored", renderCoopBar);
@@ -878,13 +878,8 @@
       if (!ok) return;
 
       try {
-        if (isHost) {
-          // INSTR/ORGL soll wirklich beenden -> mode:'end'
-          await window.Coop.end({ mode:"end", reason:"instr_button" });
-        } else {
-          // RTW/NEF soll nur verlassen -> mode:'leave'
-          await window.Coop.end({ mode:"leave", reason:"instr_button" });
-        }
+        if (isHost) await window.Coop.end({ reason:"instr_button" });
+        else        await window.Coop.leave({ reason:"instr_button" });
       } catch (e) {
         console.warn(e);
         try { window.Coop.hardReset("instr_button_fail"); } catch {}
@@ -900,36 +895,33 @@
   choiceClose.addEventListener("click", () => hide(choiceModal));
 
   // INSTR erstellen
-  createBtn.addEventListener("click", async () => {
-    hide(choiceModal);
+  window.Coop.enable({ apiBase: COOP_API });
 
-    try {
-      window.Coop.enable({ apiBase: COOP_API });
+coopStatus.textContent = "⏳ TEST: create_incident.php wird direkt gefetcht…";
+show(qrModal);
 
-      coopStatus.textContent = "⏳ Einsatz wird erstellt…";
-      show(qrModal);
-
-      const data = await window.Coop.createIncident({});
-      const join_code = data.join_code || data.joinCode || data.code;
-      if (!join_code) throw new Error("join_code fehlt");
-
-      // als INSTR joinen (wichtig: token/incident_id sicher da)
-      await window.Coop.joinIncident({ join_code, role: "INSTR" });
-
-      const link = buildJoinLink(join_code);
-      renderQr(link);
-
-      coopStatus.textContent = `✅ Coop aktiv. Join-Code: ${join_code}`;
-      renderCoopBar();
-
-    } catch (e) {
-      console.error(e);
-      alert("Coop konnte nicht gestartet werden: " + (e.message || e));
-      try { window.Coop.hardReset("create_fail"); } catch {}
-      hide(qrModal);
-      renderCoopBar();
-    }
+try {
+  const url = COOP_API.replace(/\/$/,'') + "/create_incident.php?ts=" + Date.now();
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type":"application/json" },
+    body: JSON.stringify({ expires_hours: 12 }),
+    cache: "no-store"
   });
+
+  const txt = await res.text(); // <- WICHTIG: text, nicht json!
+  coopStatus.textContent =
+    "HTTP " + res.status + "\n" +
+    "Antwort (erste 500 Zeichen):\n" +
+    txt.slice(0, 500);
+
+} catch (e) {
+  coopStatus.textContent =
+    "FETCH FEHLER:\n" +
+    (e?.message || String(e)) +
+    "\n\nDas ist fast immer CORS/Preflight oder falsche URL.";
+}
+
 
   qrClose.addEventListener("click", () => hide(qrModal));
 
@@ -938,7 +930,7 @@
     if (!ok) return;
 
     try {
-      await window.Coop.end({ mode:"end", reason:"uebungsende_modal" });
+      await window.Coop.end({ reason:"uebungsende_modal" });
     } catch (e) {
       console.warn(e);
       try { window.Coop.hardReset("uebungsende_fail"); } catch {}
