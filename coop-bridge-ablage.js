@@ -1,87 +1,103 @@
-// /coop-bridge-ablage.js
-(() => {
-  const SINCE_KEY = 'coop_since_ablage1_dt_v1'; // speichert datetime-string
+// /coop-bridge-ablage.js  (v2: robust active-check + poll loop)
+// Zweck: Holt Coop-Änderungen regelmäßig vom Server (über coop.js poll)
+//        und feuert "coop:changes", damit script.js / SKWriter das in localStorage/Ablage schreibt.
 
-  function safeParse(s, f){ try{ return JSON.parse(s); }catch{ return f; } }
-  function loadObj(k,f){ return safeParse(localStorage.getItem(k), f); }
-  function saveObj(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+(function () {
+  'use strict';
 
-  function normCat(t){
-    t = String(t||'').trim().toLowerCase();
-    t = t.replace('grün','gruen');
-    return ['rot','gelb','gruen','schwarz'].includes(t) ? t : null;
-  }
-  function patientKey(id){
-    const n = Number(id);
-    if(!Number.isFinite(n) || n < 1) return null;
-    return `patient${n}`;
-  }
+  const VER = 'coop-bridge-ablage-v2';
+  if (window.__COOP_BRIDGE_VER__ === VER) return;
+  window.__COOP_BRIDGE_VER__ = VER;
 
-  // löst deinen bestehenden storage-listener aus (im selben Tab)
-  function emitStorage(key, newValue){
-    try{
-      window.dispatchEvent(new StorageEvent('storage', { key, newValue }));
-    }catch{
-      window.dispatchEvent(new Event('storage'));
-    }
+  const DEBUG = true;
+
+  function log(...a){ if (DEBUG) console.log('[COOP-BRIDGE]', ...a); }
+  function warn(...a){ console.warn('[COOP-BRIDGE]', ...a); }
+
+  function getSession(){
+    try { return JSON.parse(localStorage.getItem('coop_session_v1') || 'null'); }
+    catch { return null; }
   }
 
-  function apply(changes){
-    const map = loadObj('sichtungMap', {});
-    let changed = false;
-
-    for(const row of (changes || [])){
-      const k = patientKey(row.patient_id);
-      if(!k) continue;
-
-      const cat = normCat(row.triage);
-      if(!cat) continue;
-
-      if(String(map[k] || '') !== cat){
-        map[k] = cat;
-        changed = true;
+  function isCoopActive(){
+    try {
+      if (window.Coop && typeof window.Coop.getStatus === 'function') {
+        const st = window.Coop.getStatus();
+        return !!(st && st.active && st.incident_id && st.token);
       }
-    }
+    } catch {}
 
-    if(changed){
-      saveObj('sichtungMap', map);
-      emitStorage('sichtungMap', JSON.stringify(map));
+    // fallback: session vorhanden
+    const s = getSession();
+    return !!(s && s.incident_id && s.token);
+  }
+
+  async function doPoll(){
+    if (!window.Coop || typeof window.Coop.poll !== 'function') {
+      // coop.js noch nicht da oder ohne poll
+      return null;
+    }
+    try {
+      const res = await window.Coop.poll();
+      return res || null;
+    } catch (e) {
+      warn('poll failed', e);
+      return null;
     }
   }
 
+  function fireChanges(changes){
+    try {
+      window.dispatchEvent(new CustomEvent('coop:changes', { detail: { changes } }));
+      log('dispatched coop:changes', changes);
+    } catch (e) {
+      warn('dispatch failed', e);
+    }
+  }
+
+  // Poll-Loop
+  let timer = null;
   async function tick(){
-    if(!window.Coop?.isActive()) return;
+    if (!isCoopActive()) return;
 
-    const since = localStorage.getItem(SINCE_KEY) || '';
-    const data = await Coop.getState({ since });
-    if(!data.ok) return;
+    const out = await doPoll();
 
-    const changes = data.changes || [];
-    if(!changes.length) return;
+    // coop.js kann entweder {changes:[...]} zurückgeben oder direkt array
+    const changes = Array.isArray(out) ? out : (out && Array.isArray(out.changes) ? out.changes : []);
 
-    apply(changes);
-
-    // since = updated_at der letzten Änderung (ASC sortiert in deinem state.php)
-    const last = changes[changes.length - 1];
-    if(last?.updated_at){
-      localStorage.setItem(SINCE_KEY, String(last.updated_at));
-    }
-
-    // optional: direkt hydrate (falls du "instant" willst)
-    if(window.Ablage?.hydrateCards){
-      window.Ablage.hydrateCards({
-        containerSelector: '#list',
-        cardSelector: '.card',
-        placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
-        placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
-      });
-    }
+    if (changes && changes.length) fireChanges(changes);
   }
 
-  setInterval(tick, 3000);
-  tick();
+  function start(){
+    if (timer) return;
+    log('start');
+    timer = setInterval(tick, 1500); // 1.5s reicht
+    tick();
+  }
 
+  function stop(){
+    if (!timer) return;
+    clearInterval(timer);
+    timer = null;
+    log('stop');
+  }
+
+  // automatisch starten wenn coop aktiv ist
+  window.addEventListener('load', start);
   document.addEventListener('visibilitychange', () => {
-    if(!document.hidden) tick();
+    if (document.visibilityState === 'visible') start();
   });
+  window.addEventListener('online', start);
+
+  // falls coop.js Events feuert, sofort starten
+  window.addEventListener('coop:created', start);
+  window.addEventListener('coop:joined', start);
+  window.addEventListener('coop:restored', start);
+
+  // bei reset/ended stoppen
+  window.addEventListener('coop:reset', stop);
+  window.addEventListener('coop:ended', stop);
+  window.addEventListener('coop:disabled', stop);
+
+  start();
 })();
