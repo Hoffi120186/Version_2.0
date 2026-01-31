@@ -1,34 +1,24 @@
 // /coop-bridge-ablage.js
 (() => {
-  const SINCE_KEY = 'coop_since_ablage1_v2'; // speichert "YYYY-mm-dd HH:ii:ss"
+  const SINCE_KEY = 'coop_since_ablage1_dt_v1'; // speichert datetime-string
 
   function safeParse(s, f){ try{ return JSON.parse(s); }catch{ return f; } }
   function loadObj(k,f){ return safeParse(localStorage.getItem(k), f); }
   function saveObj(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
 
-  function skToCat(sk){
-    sk = String(sk||'').toUpperCase();
-    if(sk==='SK1') return 'rot';
-    if(sk==='SK2') return 'gelb';
-    if(sk==='SK3') return 'gruen';
-    if(sk==='SK4') return 'schwarz';
-    return null;
-  }
-  function triageToCat(t){
+  function normCat(t){
     t = String(t||'').trim().toLowerCase();
     t = t.replace('grün','gruen');
-    if(['rot','gelb','gruen','schwarz'].includes(t)) return t;
-    if(/^sk[1-4]$/.test(t.toUpperCase())) return skToCat(t.toUpperCase());
-    return null;
+    return ['rot','gelb','gruen','schwarz'].includes(t) ? t : null;
   }
-  function patientKeyFromId(n){
-    const id = Number(n);
-    if(!Number.isFinite(id) || id<1) return null;
-    return `patient${id}`;
+  function patientKey(id){
+    const n = Number(id);
+    if(!Number.isFinite(n) || n < 1) return null;
+    return `patient${n}`;
   }
 
-  function emitStorageLike(key, newValue){
-    // storage feuert normalerweise nur in anderen Tabs – wir simulieren es
+  // löst deinen bestehenden storage-listener aus (im selben Tab)
+  function emitStorage(key, newValue){
     try{
       window.dispatchEvent(new StorageEvent('storage', { key, newValue }));
     }catch{
@@ -36,30 +26,26 @@
     }
   }
 
-  function applyChangesToLocal(changes){
+  function apply(changes){
     const map = loadObj('sichtungMap', {});
     let changed = false;
 
     for(const row of (changes || [])){
-      const pKey = patientKeyFromId(row.patient_id);
-      if(!pKey) continue;
+      const k = patientKey(row.patient_id);
+      if(!k) continue;
 
-      const cat = triageToCat(row.triage) || skToCat(row.sk);
+      const cat = normCat(row.triage);
       if(!cat) continue;
 
-      if(String(map[pKey] || '') !== cat){
-        map[pKey] = cat;
+      if(String(map[k] || '') !== cat){
+        map[k] = cat;
         changed = true;
       }
-
-      // Optional: T/B Flags — dein Ablage1 liest sicht_patientX payloads (t/b)
-      // Dein Backend liefert dafür aktuell nichts -> wir lassen es weg (bleibt lokal).
-      // Wenn du später location/clinic_status nutzen willst, können wir hier auch schreiben.
     }
 
     if(changed){
       saveObj('sichtungMap', map);
-      emitStorageLike('sichtungMap', JSON.stringify(map));
+      emitStorage('sichtungMap', JSON.stringify(map));
     }
   }
 
@@ -73,16 +59,15 @@
     const changes = data.changes || [];
     if(!changes.length) return;
 
-    // anwenden -> deine bestehende Ablage1 reagiert darauf
-    applyChangesToLocal(changes);
+    apply(changes);
 
-    // since auf letztes updated_at setzen (dein state sortiert ASC)
+    // since = updated_at der letzten Änderung (ASC sortiert in deinem state.php)
     const last = changes[changes.length - 1];
-    if(last && last.updated_at) {
+    if(last?.updated_at){
       localStorage.setItem(SINCE_KEY, String(last.updated_at));
     }
 
-    // UI "snappy": hydrate nochmal sicher (dein storage-handler macht es i.d.R. auch)
+    // optional: direkt hydrate (falls du "instant" willst)
     if(window.Ablage?.hydrateCards){
       window.Ablage.hydrateCards({
         containerSelector: '#list',
