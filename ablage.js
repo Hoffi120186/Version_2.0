@@ -1,5 +1,7 @@
 /* =========================================================
-   1Rettungsmittel · ablage.js  (v11.1: Coop Patch FIX + Outbox)
+   1Rettungsmittel · ablage.js  (v11.2: Coop Patch SAFE + Outbox)
+   - FIX: coop:changes überschreibt NICHT mehr das Schema von `ablage.active.v1`
+   - FIX: coop:changes pflegt `sichtungMap` + optional Queue-Eintrag im richtigen Format
    ========================================================= */
 (function () {
   'use strict';
@@ -59,6 +61,7 @@
         it.startAt = it.startedAt; delete it.startedAt; changed = true;
       }
       if (typeof it.offset !== 'number') { it.offset = 0; changed = true; }
+      // optional: sk Feld beibehalten
     }
     return changed;
   }
@@ -146,7 +149,7 @@
     var patch = Object.assign({}, payload);
     delete patch.patient_id;
 
-    // Wenn coop.js verfügbar ist: korrekte Signatur nutzen
+    // Wenn coop-client.js verfügbar ist: korrekte Signatur nutzen
     if (window.Coop && typeof window.Coop.patchPatient === 'function'){
       return window.Coop.patchPatient(pid, patch);
     }
@@ -384,8 +387,12 @@
 
   // ---------- Public API ----------
   window.Ablage = {
-    hydrateCards, stopPatient, resetAll,
-    _getActive:getActive, _getHistory:getHistory, _getDone:getDone
+    hydrateCards: hydrateCards,
+    stopPatient: stopPatient,
+    resetAll: resetAll,
+    _getActive:getActive,
+    _getHistory:getHistory,
+    _getDone:getDone
   };
 
   // ----- Auto-Init: Start nur beim Betreten
@@ -407,63 +414,101 @@
   window.addEventListener('pageshow', autoInit);
 
 })();
-// === COOP: Änderungen -> localStorage Ablage updaten + UI refresh ===
+
+/* =========================================================
+   COOP: Änderungen -> localStorage Sichtung/Ablage updaten + UI refresh
+   FIX: überschreibt NICHT mehr `ablage.active.v1` im falschen Schema!
+   ========================================================= */
 (function(){
   function normKat(v){
     if (!v) return null;
-    let x = String(v).trim().toLowerCase();
-    if (x.includes("grün")) x = x.replace("grün","gruen");
-    const map = { sk1:"rot", sk2:"gelb", sk3:"gruen", sk0:"schwarz" };
+    var x = String(v).trim().toLowerCase();
+    if (x.indexOf("grün") >= 0) x = x.replace("grün","gruen");
+    var map = { sk1:"rot", sk2:"gelb", sk3:"gruen", sk0:"schwarz" };
     if (map[x]) x = map[x];
-    return ["rot","gelb","gruen","schwarz"].includes(x) ? x : null;
+    return (x==="rot"||x==="gelb"||x==="gruen"||x==="schwarz") ? x : null;
   }
 
-  function upsertAblage(id, kat){
-    const ABL_KEY = "ablage.active.v1";
-    const now = Date.now();
+  function jget(k,f){ try{ var v=localStorage.getItem(k); return v?JSON.parse(v):f; }catch(_){ return f; } }
+  function jset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } }
 
-    let list = [];
-    try { list = JSON.parse(localStorage.getItem(ABL_KEY) || "[]"); } catch {}
+  function updateSichtungMap(patientKey, kat){
+    var sm = jget("sichtungMap", {});
+    if (!sm || typeof sm !== "object") sm = {};
+    sm[patientKey] = kat;
+    jset("sichtungMap", sm);
+
+    // optional: einzelkey (falls irgendwo genutzt)
+    jset("sicht_"+patientKey, jget("sicht_"+patientKey, {t:false,b:false}));
+  }
+
+  function upsertActiveQueue(patientKey, pidNumber, kat){
+    // NUR wenn du willst, dass das direkt in der Ablage "queued" sichtbar wird:
+    // Schema passend zu v11.x (queuedAt/startAt/offset)
+    var ABL_KEY = "ablage.active.v1";
+    var list = jget(ABL_KEY, []);
     if (!Array.isArray(list)) list = [];
 
-    const i = list.findIndex(e => e && e.id === id);
-    if (i >= 0) list[i] = { ...list[i], id, sk: kat, lastUpdate: now, start: list[i].start ?? now };
-    else list.push({ id, sk: kat, start: now, lastUpdate: now });
+    var idx = list.findIndex(function(e){ return e && String(e.id)===String(patientKey); });
+    var t = Date.now();
 
-    try { localStorage.setItem(ABL_KEY, JSON.stringify(list)); } catch {}
+    if (idx >= 0){
+      // NICHT startAt setzen! (Start nur beim Betreten der Ablage-Seite)
+      if (typeof list[idx].queuedAt !== "number") list[idx].queuedAt = t;
+      if (typeof list[idx].offset !== "number") list[idx].offset = 0;
+      if (!("startAt" in list[idx])) list[idx].startAt = null;
+      list[idx].sk = kat;
+      list[idx].name = list[idx].name || ("Patient "+pidNumber);
+      list[idx].prio = list[idx].prio || "";
+    } else {
+      list.push({
+        id: patientKey,
+        name: "Patient "+pidNumber,
+        prio: "",
+        sk: kat,
+        queuedAt: t,
+        startAt: null,
+        offset: 0
+      });
+    }
 
-    // Kompat-Schlüssel (falls deine Ablage so liest)
-    try { localStorage.setItem("ablage", JSON.stringify(list)); } catch {}
-    try { localStorage.setItem("ablage_ids", JSON.stringify(list.map(x => x.id))); } catch {}
-    try { localStorage.setItem("ablage_patient_" + id, kat); } catch {}
+    jset(ABL_KEY, list);
+  }
+
+  function pingUI(){
+    // Storage-Ping (für Tabs)
+    try{ localStorage.setItem("ablage_ping", String(Date.now())); }catch(_){}
+    // BroadcastChannel (falls genutzt)
+    try{ new BroadcastChannel("ablage").postMessage({ type:"refresh" }); }catch(_){}
+    // Direkter Hook
+    if (typeof window.renderAblage === "function") {
+      try{ window.renderAblage(); }catch(_){}
+    }
   }
 
   function applyChanges(changes){
     if (!Array.isArray(changes) || !changes.length) return;
 
-    for (const row of changes){
-      const n = parseInt(row?.patient_id, 10);
-      if (!Number.isFinite(n) || n <= 0) continue;
+    var touched = 0;
+    for (var i=0;i<changes.length;i++){
+      var row = changes[i] || {};
+      var n = parseInt(row.patient_id, 10);
+      if (!isFinite(n) || n <= 0) continue;
 
-      const id  = ("patient" + n).toLowerCase();
-      const kat = normKat(row?.triage);
+      var patientKey = ("patient" + n).toLowerCase();
+      var kat = normKat(row.triage);
       if (!kat) continue;
 
-      upsertAblage(id, kat);
+      updateSichtungMap(patientKey, kat);
+      upsertActiveQueue(patientKey, n, kat);
+      touched++;
     }
 
-    // ✅ HIER: deine Ablage neu zeichnen
-    // Falls du eine Render-Funktion hast:
-    if (typeof window.renderAblage === "function") window.renderAblage();
-
-    // Falls du BroadcastChannel nutzt:
-    try { new BroadcastChannel("ablage").postMessage({ type:"refresh" }); } catch {}
+    if (touched) pingUI();
   }
 
-  window.addEventListener("coop:changes", (ev)=>{
-    const changes = ev?.detail?.changes || [];
+  window.addEventListener("coop:changes", function(ev){
+    var changes = ev && ev.detail && ev.detail.changes ? ev.detail.changes : [];
     applyChanges(changes);
   });
 })();
-
-
