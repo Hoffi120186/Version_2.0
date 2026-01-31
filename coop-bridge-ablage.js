@@ -1,5 +1,5 @@
 // /coop-bridge-ablage.js  (v2: robust active-check + poll loop)
-// Zweck: Holt Coop-Änderungen regelmäßig vom Server (über coop.js pullState/poll)
+// Zweck: Holt Coop-Änderungen regelmäßig vom Server (über coop.js poll)
 //        und feuert "coop:changes", damit script.js / SKWriter das in localStorage/Ablage schreibt.
 
 (function () {
@@ -9,39 +9,46 @@
   if (window.__COOP_BRIDGE_VER__ === VER) return;
   window.__COOP_BRIDGE_VER__ = VER;
 
-  const DEBUG = false;
-  const log  = (...a) => DEBUG && console.log('[COOP-BRIDGE]', ...a);
-  const warn = (...a) => console.warn('[COOP-BRIDGE]', ...a);
+  const DEBUG = true;
 
-  function isCoopActive() {
+  function log(...a){ if (DEBUG) console.log('[COOP-BRIDGE]', ...a); }
+  function warn(...a){ console.warn('[COOP-BRIDGE]', ...a); }
+
+  function getSession(){
+    try { return JSON.parse(localStorage.getItem('coop_session_v1') || 'null'); }
+    catch { return null; }
+  }
+
+  function isCoopActive(){
     try {
       if (window.Coop && typeof window.Coop.getStatus === 'function') {
         const st = window.Coop.getStatus();
-        return !!st?.active;
+        return !!(st && st.active && st.incident_id && st.token);
       }
-      const s = JSON.parse(localStorage.getItem('coop_session_v1') || 'null');
-      return !!(s && s.token && s.incident_id);
-    } catch {
-      return false;
-    }
+    } catch {}
+
+    // fallback: session vorhanden
+    const s = getSession();
+    return !!(s && s.incident_id && s.token);
   }
 
   async function doPoll(){
     if (!window.Coop) return null;
-
-    // 1) Falls eine poll()-Methode existiert (ältere/andere Clients)
-    if (typeof window.Coop.poll === 'function') {
-      try { return await window.Coop.poll(); }
-      catch (e) { warn('poll failed', e); return null; }
+    try {
+      if (typeof window.Coop.poll === "function") {
+        const res = await window.Coop.poll();
+        return res || null;
+      }
+      if (typeof window.Coop.pullState === "function") {
+        await window.Coop.pullState();
+        // coop.js feuert coop:changes selbst
+        return null;
+      }
+      return null;
+    } catch (e) {
+      warn('poll failed', e);
+      return null;
     }
-
-    // 2) coop.js: nutzt pullState() und feuert coop:changes selbst
-    if (typeof window.Coop.pullState === 'function') {
-      try { await window.Coop.pullState(); return null; }
-      catch (e) { warn('pullState failed', e); return null; }
-    }
-
-    return null;
   }
 
   function fireChanges(changes){
@@ -55,37 +62,47 @@
 
   // Poll-Loop
   let timer = null;
-
   async function tick(){
-    try{
-      if (!isCoopActive()){
-        schedule(1500);
-        return;
-      }
+    if (!isCoopActive()) return;
 
-      const out = await doPoll();
+    const out = await doPoll();
 
-      // Wenn poll() Daten liefert: entweder Array oder {changes:[...]}
-      const changes = Array.isArray(out) ? out : (out && Array.isArray(out.changes) ? out.changes : []);
-      if (changes && changes.length) fireChanges(changes);
+    // coop.js kann entweder {changes:[...]} zurückgeben oder direkt array
+    const changes = Array.isArray(out) ? out : (out && Array.isArray(out.changes) ? out.changes : []);
 
-      schedule(900);
-    }catch(e){
-      warn('tick failed', e);
-      schedule(1500);
-    }
+    if (changes && changes.length) fireChanges(changes);
   }
 
-  function schedule(ms){
-    clearTimeout(timer);
-    timer = setTimeout(tick, ms);
+  function start(){
+    if (timer) return;
+    log('start');
+    timer = setInterval(tick, 1500); // 1.5s reicht
+    tick();
   }
 
-  // Start
-  schedule(800);
+  function stop(){
+    if (!timer) return;
+    clearInterval(timer);
+    timer = null;
+    log('stop');
+  }
 
-  // Optional: bei Sichtbarkeit schneller prüfen
+  // automatisch starten wenn coop aktiv ist
+  window.addEventListener('load', start);
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') schedule(200);
+    if (document.visibilityState === 'visible') start();
   });
+  window.addEventListener('online', start);
+
+  // falls coop.js Events feuert, sofort starten
+  window.addEventListener('coop:created', start);
+  window.addEventListener('coop:joined', start);
+  window.addEventListener('coop:restored', start);
+
+  // bei reset/ended stoppen
+  window.addEventListener('coop:reset', stop);
+  window.addEventListener('coop:ended', stop);
+  window.addEventListener('coop:disabled', stop);
+
+  start();
 })();
