@@ -272,9 +272,39 @@ function sichtungFor(id){
   return ['rot','gelb','gruen','schwarz'].includes(k) ? k : null;
 }
 function sightedIds(){
-  return Object.keys(getSMap())
-    .filter(k => /^patient\d+$/i.test(k))
-    .sort((a,b)=> parseInt(a.replace(/\D/g,'')) - parseInt(b.replace(/\D/g,'')));
+  const ids = new Set();
+
+  // 1) Primär: sichtungMap (patient1..patient40)
+  try{
+    const sm = getSMap();
+    Object.keys(sm||{}).forEach(k=>{
+      if(/^patient\d+$/i.test(k)) ids.add(k.toLowerCase());
+    });
+  }catch{}
+
+  // 2) Fallback: alte per-patient Flags "sicht_patientX" oder "sicht_patientX_v1"
+  try{
+    for (let i=0;i<localStorage.length;i++){
+      const key = localStorage.key(i);
+      if(!key) continue;
+      const m = key.match(/^sicht_(patient\d+)$/i);
+      if (m && m[1]) ids.add(m[1].toLowerCase());
+    }
+  }catch{}
+
+  // 3) Fallback: Ablage-Liste (ablage.active.v1) enthält {id:"patientX", ...}
+  try{
+    const raw = localStorage.getItem('ablage.active.v1');
+    const arr = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(arr)){
+      arr.forEach(it=>{
+        const pid = String(it?.id || '').toLowerCase();
+        if(/^patient\d+$/.test(pid)) ids.add(pid);
+      });
+    }
+  }catch{}
+
+  return [...ids].sort((a,b)=> parseInt(a.replace(/\D/g,'')) - parseInt(b.replace(/\D/g,'')));
 }
 function __readTogglePayload(id){
   let raw=null;
@@ -818,13 +848,11 @@ function imageToDataURL(src){
 /* Beim Verlassen Autostart verbieten */
 window.addEventListener('beforeunload', () => { denyAutostart(); });
 </script>
-<script src="/coop.js?v=2026-01-31-A"></script>
-<script src="/coop-bridge-ablage.js?v=2026-01-31-A"></script>
+<script src="/coop-client.js?v=2026-01-31-1"></script>
 
+<script src="/coop-bridge-ablage.js?v=1"></script>
 <script src="/metrics.js" defer></script>
 <script src="/ablage.js?v=8"></script>
 </body>
 </html>
-
-
 
