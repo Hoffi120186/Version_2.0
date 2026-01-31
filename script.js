@@ -1,10 +1,11 @@
-// script.js — 2026-01-25-coop-sync (last-click-wins + SK jederzeit änderbar + T/B nur bei SK1/SK3)
-// + COOP: send (patchPatient) AND receive (coop:changes -> local ablage.active.v1)
+// script.js — 2026-02-01-coop-light (state.php poll + patch_patient.php send + loop-schutz + startAt fix)
+// + COOP: send (sendTriage) AND receive (state.php -> coop:changes -> local)
 // + LOOP-SCHUTZ: Server->Local darf nicht sofort wieder patchen
+// + Timer-Fix: ablage.active.v1 nutzt startAt (kompatibel zu ablage.js v10)
 
 // ==== Version & Singleton Guards (wichtig gegen doppelte Init via SW) ====
 (function(){
-  const VER = '2026-01-25-coop-sync';
+  const VER = '2026-02-01-coop-light';
   if (window.__APP_VER && window.__APP_VER === VER) {
     console.warn('[guard] already initialized', VER);
     return;
@@ -27,6 +28,38 @@ const CANONICAL_HOST = ""; // z.B. "www.1rettungsmittel.de"
 })();
 
 const __SK_DEBUG = true;
+
+// =========================================================
+// COOP CLIENT LOADER (damit du NICHT jede Seite anfassen musst)
+// Lädt /coop-client.js, falls window.Coop noch nicht existiert
+// =========================================================
+const __ensureCoopClient = (() => {
+  let p = null;
+
+  function alreadyReady(){
+    return !!(window.Coop && typeof window.Coop.isActive === 'function');
+  }
+
+  return function ensure(){
+    if (alreadyReady()) return Promise.resolve(true);
+    if (p) return p;
+
+    p = new Promise((resolve) => {
+      try{
+        const s = document.createElement('script');
+        s.src = '/coop-client.js?v=1';
+        s.async = true;
+        s.onload = () => resolve(alreadyReady());
+        s.onerror = () => resolve(false);
+        document.head.appendChild(s);
+      }catch(_){
+        resolve(false);
+      }
+    });
+
+    return p;
+  };
+})();
 
 // ==== Patient-ID erkennen (robust) ====
 (function(){
@@ -98,14 +131,16 @@ const SKWriter = (() => {
     save:(k,v)=>{ try { localStorage.setItem(k, JSON.stringify(v)); } catch(_) {} },
   };
 
+  // ✅ Timer-Fix: startAt statt start
   function upsertAblage(id, kat){
     const now = Date.now();
     const list = J.load(ABL_KEY, []);
     const i = list.findIndex(e => e && e.id === id);
+
     if (i >= 0) {
-      list[i] = { ...list[i], id, sk: kat, lastUpdate: now, start: list[i].start ?? now };
+      list[i] = { ...list[i], id, sk: kat, lastUpdate: now, startAt: list[i].startAt ?? now };
     } else {
-      list.push({ id, sk: kat, start: now, lastUpdate: now });
+      list.push({ id, sk: kat, startAt: now, lastUpdate: now });
     }
 
     J.save(ABL_KEY, list);
@@ -123,14 +158,11 @@ const SKWriter = (() => {
 
   const coopActive = () => {
     try {
-      if (window.Coop && typeof window.Coop.getStatus === "function") {
-        const st = window.Coop.getStatus();
-        return !!(st && st.active && st.incident_id);
-      }
+      return !!(window.Coop && typeof window.Coop.isActive === "function" && window.Coop.isActive());
     } catch {}
-    // fallback: session key aus coop.js
+    // fallback: session key aus coop-client.js
     try {
-      const raw = localStorage.getItem("coop_session_v1");
+      const raw = localStorage.getItem("coop_session");
       const s = raw ? JSON.parse(raw) : null;
       return !!(s && s.incident_id && s.token);
     } catch {}
@@ -142,11 +174,16 @@ const SKWriter = (() => {
   const coopLastSend = new Map();
   const COOP_MIN_MS = 250;
 
-  function coopSyncTriageAndLocation(id, kat){
+  async function coopSyncTriageAndLocation(id, kat){
     try{
       if (__suppressCoopPatch) return;              // ✅ LOOP-SCHUTZ
       if (!coopActive()) return;
-      if (!window.Coop || typeof window.Coop.patchPatient !== "function") return;
+
+      // ensure Coop client
+      const ok = await __ensureCoopClient();
+      if (!ok) return;
+
+      if (!window.Coop || typeof window.Coop.sendTriage !== "function") return;
 
       const p = pidNum(id);
       if (!p) return;
@@ -157,8 +194,8 @@ const SKWriter = (() => {
       coopLastSend.set(id, t);
 
       window.Coop
-        .patchPatient(p, { triage: kat, location: COOP_LOC_ABLAGE })
-        .catch(err => console.warn("[COOP] patch failed", err));
+        .sendTriage({ patient_id: p, triage: kat, location: COOP_LOC_ABLAGE })
+        .catch(err => console.warn("[COOP] sendTriage failed", err));
     }catch(e){
       console.warn("[COOP] sync error", e);
     }
@@ -208,7 +245,7 @@ const SKWriter = (() => {
     }
   }
 
-  // ===== COOP Receive: coop:changes -> localStorage / Ablage =====
+  // ===== COOP Receive: state.php changes -> localStorage / Ablage =====
   function applyCoopChanges(changes){
     if (!Array.isArray(changes) || !changes.length) return;
 
@@ -221,7 +258,7 @@ const SKWriter = (() => {
 
         const id = ("patient" + n).toLowerCase();
 
-        // triage kann z.B. "rot/gelb/gruen/schwarz" sein
+        // triage ist rot/gelb/gruen/schwarz
         const kat = normKat(row?.triage);
         if (!kat) continue;
 
@@ -356,6 +393,7 @@ function showStartAbbruchModal(targetHref) {
 }
 
 // ==== (Kompatibel belassen) __enqueueAblage ====
+// ✅ Timer-Fix: startAt statt start
 (function(){
   const ABL_KEY = "ablage.active.v1";
   const load=(k,f)=>{ try { return JSON.parse(localStorage.getItem(k)) ?? f; } catch(_) { return f; } };
@@ -365,8 +403,8 @@ function showStartAbbruchModal(targetHref) {
     const now = Date.now();
     const list = load(ABL_KEY, []);
     const idx = list.findIndex(x => x && x.id === id);
-    if (idx >= 0) list[idx] = { ...list[idx], id, sk: kat, lastUpdate: now, start: list[idx].start ?? now };
-    else list.push({ id, sk: kat, start: now, lastUpdate: now });
+    if (idx >= 0) list[idx] = { ...list[idx], id, sk: kat, lastUpdate: now, startAt: list[idx].startAt ?? now };
+    else list.push({ id, sk: kat, startAt: now, lastUpdate: now });
     save(ABL_KEY, list);
     try { localStorage.setItem('ablage', JSON.stringify(list)); } catch(_){}
     try { localStorage.setItem('ablage_ids', JSON.stringify(list.map(x => x.id))); } catch(_){}
@@ -478,6 +516,47 @@ const SightingSync = (() => {
   }
 
   return { setup };
+})();
+
+// =========================================================
+// COOP RECEIVE POLL (läuft auf jeder Seite mit script.js)
+// -> state.php -> dispatch coop:changes -> SKWriter apply
+// =========================================================
+(function coopPoll(){
+  if (window.__COOP_POLL_WIRED__) return;
+  window.__COOP_POLL_WIRED__ = true;
+
+  const SINCE_KEY = 'coop_since_dt_v1'; // datetime-string
+
+  async function tick(){
+    try{
+      const ok = await __ensureCoopClient();
+      if (!ok) return;
+
+      if (!window.Coop || typeof window.Coop.getState !== 'function') return;
+      if (!(window.Coop.isActive && window.Coop.isActive())) return;
+
+      const since = localStorage.getItem(SINCE_KEY) || '';
+      const data = await window.Coop.getState({ since });
+
+      if (!data || data.ok !== true) return;
+
+      const changes = data.changes || [];
+      if (!changes.length) return;
+
+      // wie früher: Event füttert applyCoopChanges()
+      window.dispatchEvent(new CustomEvent('coop:changes', { detail: { changes } }));
+
+      const last = changes[changes.length - 1];
+      if (last && last.updated_at) localStorage.setItem(SINCE_KEY, String(last.updated_at));
+    }catch(e){
+      console.warn('[COOP] poll error', e);
+    }
+  }
+
+  setInterval(tick, 2500);
+  document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) tick(); });
+  tick();
 })();
 
 // ==== Summary ====
