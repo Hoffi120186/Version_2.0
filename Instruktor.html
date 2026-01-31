@@ -750,14 +750,14 @@
     });
   </script>
 
-  <!-- ✅ COOP-CLIENT (NEU) -->
-  <script src="/coop-client.js?v=2026-01-31-1"></script>
+  <!-- ✅ COOP CORE -->
+  <script src="/coop.js?v=2026-01-31-a"></script>
 
   <!-- QR + Scanner libs -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
 
-  <!-- ✅ COOP UI (Instruktor) – nutzt coop-client.js -->
+  <!-- ✅ COOP UI (Instruktor) – nutzt coop.js -->
   <script>
   // >>>>>> HIER NUR BASIS-KONFIG <<<<<<
   const COOP_API = "https://www.1rettungsmittel.de/api/coop_test"; // dein IONOS Pfad
@@ -843,7 +843,7 @@
     }
   }
 
-  // Events vom coop-client.js
+  // Events vom coop.js
   window.addEventListener("coop:created",  renderCoopBar);
   window.addEventListener("coop:joined",   renderCoopBar);
   window.addEventListener("coop:restored", renderCoopBar);
@@ -878,8 +878,13 @@
       if (!ok) return;
 
       try {
-        if (isHost) await window.Coop.end({ reason:"instr_button" });
-        else        await window.Coop.leave({ reason:"instr_button" });
+        if (isHost) {
+          // INSTR/ORGL soll wirklich beenden -> mode:'end'
+          await window.Coop.end({ mode:"end", reason:"instr_button" });
+        } else {
+          // RTW/NEF soll nur verlassen -> mode:'leave'
+          await window.Coop.end({ mode:"leave", reason:"instr_button" });
+        }
       } catch (e) {
         console.warn(e);
         try { window.Coop.hardReset("instr_button_fail"); } catch {}
@@ -933,7 +938,7 @@
     if (!ok) return;
 
     try {
-      await window.Coop.end({ reason:"uebungsende_modal" });
+      await window.Coop.end({ mode:"end", reason:"uebungsende_modal" });
     } catch (e) {
       console.warn(e);
       try { window.Coop.hardReset("uebungsende_fail"); } catch {}
