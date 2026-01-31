@@ -6,13 +6,7 @@
   <title>Patientenablage – gesichtete Patienten</title>
   <meta name="mobile-web-app-capable" content="yes" />
   <link rel="manifest" href="/manifest.json" />
-
-  <!-- jsPDF -->
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
-
-  <!-- ✅ WICHTIG: ablage.js VOR dem Module-Script -->
-  <script src="/ablage.js?v=8"></script>
-  <script src="/coop.js?v=2026-01-25-1" defer></script>
 
   <style>
 :root{
@@ -60,12 +54,14 @@ header h1{margin:0;font-size:20px}
   background:var(--glass);border:2px solid rgba(255,255,255,.55);border-radius:12px;box-shadow:var(--shadow);
   padding:12px;break-inside:avoid;page-break-inside:avoid;
   border-left: 10px solid rgba(255,255,255,.25);
-  position:relative;
+  position:relative; /* wichtig für saubere Overlays (falls später) */
 }
+
 .k-rot{     border-left-color:#e53935 !important; }
 .k-gelb{    border-left-color:#f3fc02 !important; }
 .k-gruen{   border-left-color:#2e7d32 !important; }
 .k-schwarz{ border-left-color:#111 !important; }
+
 .card:hover{ outline:2px solid rgba(255,255,255,.35); }
 
 .thumb{
@@ -99,6 +95,7 @@ h2{
 .badge-gruen{   background:#2e7d32; color:#fff; border-color:#2e7d32; }
 .badge-schwarz{ background:#111;    color:#fff; border-color:#111; }
 
+/* farbige Sub-Badges passend zur Kategorie */
 .badge-rot .flag{     background:#e53935; color:#fff; border-color:#e53935; }
 .badge-gelb .flag{    background:#f3fc02; color:#111; border-color:#f3fc02; }
 .badge-gruen .flag{   background:#2e7d32; color:#fff; border-color:#2e7d32; }
@@ -227,8 +224,8 @@ document.addEventListener('visibilitychange', () => {
 });
 allowAutostart();
 
-/* ===== Helpers ===== */
-const VERSION = 'v-COOP-ABLAGE-STABLE-04';
+/* ===== Setups & Helpers ===== */
+const VERSION = 'v-0901-06';
 function abs(href, base){
   try{
     const b = base ? new URL(base, location.href).href : location.href;
@@ -239,36 +236,53 @@ function abs(href, base){
 }
 const withV = (u)=> u + (u.includes('?') ? '&' : '?') + VERSION;
 
-/* ===== COOP helpers ===== */
-function coopEnabled(){
-  try{
-    const st = window.Coop?.getState?.();
-    return !!(st && st.enabled && st.incident_id && st.token && st.apiBase);
-  }catch{ return false; }
-}
-function coopState(){ try{ return window.Coop?.getState?.() || null; }catch{ return null; } }
-function coopTriageToCat(triage){
-  let k = String(triage||'').trim().toLowerCase();
-  if (!k) return null;
-  k = k.replace('grün','gruen');
-  if (k === 'sk1') k='rot';
-  if (k === 'sk2') k='gelb';
-  if (k === 'sk3') k='gruen';
-  if (k === 'sk4') k='schwarz';
-  if (['rot','gelb','gruen','schwarz'].includes(k)) return k;
+function normGender(g){
+  if(!g) return null;
+  const x = String(g).trim().toLowerCase();
+  if (x === 'm' || /^m(ännlich|aennlich)$/.test(x) || ['male','mann','herr'].includes(x)) return 'männlich';
+  if (x === 'w' || ['weiblich','female','frau','weibl'].includes(x))                   return 'weiblich';
+  if (x === 'd' || /divers|non[-\s]?binary/.test(x))                                   return 'divers';
   return null;
 }
-function pidToLocalId(pid){
-  const m = String(pid ?? '').match(/(\d+)/);
-  const n = m ? parseInt(m[1],10) : NaN;
-  if(!Number.isFinite(n) || n<=0) return null;
-  return 'patient' + n;
+
+/* ===== Datenquellen ===== */
+function getPatMeta(){ try { return JSON.parse(localStorage.getItem('patMeta') || '{}'); } catch { return {}; } }
+function getPatientsData(){ try { return JSON.parse(localStorage.getItem('patientsData') || '[]'); } catch { return []; } }
+
+/* Overlays */
+function overlayFromPatMeta(info){
+  const meta = getPatMeta()[info.id] || {};
+  if(meta.age)    info.age = String(meta.age);
+  if(meta.gender) info.gender = normGender(meta.gender) || meta.gender;
+  if(meta.photo && !info.img) info.img = abs(meta.photo, info.url);
+}
+function overlayFromJson(info){
+  const num = Number(info.id.replace('patient',''));
+  const j = getPatientsData().find(x => Number(x.id) === num);
+  if(!j) return;
+  if(!info.age && j.age) info.age = String(j.age);
+  if(!info.gender && j.gender) info.gender = normGender(j.gender) || j.gender;
+  if(!info.img && j.photo) info.img = abs(j.photo, info.url);
 }
 
-/* ===== local flags (T/B) bleiben wie gehabt (nur Anzeige) ===== */
+/* ===== Sichtungen & Flags ===== */
+function getSMap(){ try{ return JSON.parse(localStorage.getItem('sichtungMap')||'{}'); }catch{ return {}; } }
+function sichtungFor(id){
+  const k = (getSMap()[id]||'').toString().toLowerCase().replace('grün','gruen');
+  return ['rot','gelb','gruen','schwarz'].includes(k) ? k : null;
+}
+function sightedIds(){
+  return Object.keys(getSMap())
+    .filter(k => /^patient\d+$/i.test(k))
+    .sort((a,b)=> parseInt(a.replace(/\D/g,'')) - parseInt(b.replace(/\D/g,'')));
+}
 function __readTogglePayload(id){
   let raw=null;
   try { raw = localStorage.getItem("sicht_" + id); } catch {}
+  if (!raw) {
+    const pathKey = "sicht_" + (location.pathname.split("/").pop() || "unknown");
+    try { raw = localStorage.getItem(pathKey); } catch {}
+  }
   if (!raw) return {};
   try { return JSON.parse(raw)||{}; } catch { return {}; }
 }
@@ -288,6 +302,8 @@ function getSichtungDisplay(id, cat){
   if (cat === 'schwarz')  return 'SK4';
   return '—';
 }
+
+/* ===== Priorität (Sortierung) ===== */
 function __prio(cat, flags){
   const t=!!flags?.t, b=!!flags?.b;
   if (cat==='rot'   && t) return 0;
@@ -308,77 +324,13 @@ function getDoneSet(){
   }catch{ return new Set(); }
 }
 
-/* ===== lokale "offene" IDs aus Ablage.js (robust + fallback) ===== */
-function getLocalOpenIds(){
-  try{
-    // 1) offizieller Weg über ablage.js (wenn vorhanden)
-    const tryFns = [
-      window.Ablage?.listOpen,
-      window.Ablage?.getOpenIds,
-      window.Ablage?.getOpen
-    ].filter(Boolean);
-
-    for (const fn of tryFns){
-      try{
-        const arr = fn.call(window.Ablage);
-        if (Array.isArray(arr) && arr.length){
-          return arr.map(String).filter(Boolean);
-        }
-      }catch{}
-    }
-
-    // 2) Fallback: versuche bekannte Storage-Strukturen
-    const candidates = ['ablage_open','ablageOpen','ablage','AblageOpen','Ablage'];
-    for (const k of candidates){
-      const raw = localStorage.getItem(k);
-      if(!raw) continue;
-      const j = JSON.parse(raw);
-      if (Array.isArray(j) && j.length){
-        return j.map(x => String(x.id || x.pid || x.patient || x)).filter(Boolean);
-      }
-      if (j && Array.isArray(j.open) && j.open.length){
-        return j.open.map(String).filter(Boolean);
-      }
-    }
-
-    // 3) HARTER Fallback (sehr zuverlässig):
-    //    Nimm alle Patienten, die eine Sichtung (cat/kat/triage) in "sicht_patientX" haben
-    const ids = [];
-    for(let i=0; i<localStorage.length; i++){
-      const key = localStorage.key(i);
-      if(!key) continue;
-      // passt zu: sicht_patient1, sicht_patient12, ...
-      const m = key.match(/^sicht_(patient\d+)$/);
-      if(!m) continue;
-
-      const id = m[1]; // patientX
-      let payload = {};
-      try{ payload = JSON.parse(localStorage.getItem(key) || '{}') || {}; }catch{}
-      const k = String(payload.cat || payload.kat || payload.triage || '').toLowerCase().replace('grün','gruen');
-      if(['rot','gelb','gruen','schwarz','sk1','sk2','sk3','sk4'].includes(k)){
-        ids.push(id);
-      }
-    }
-    return ids;
-  }catch{
-    return [];
-  }
-}
-
-
-/* ===== Kategorie lokal aus sicht_patientX ===== */
-function localCatOf(id){
-  const p = __readTogglePayload(id) || {};
-  const k = String(p.cat || p.kat || p.triage || '').toLowerCase().replace('grün','gruen');
-  if(['rot','gelb','gruen','schwarz'].includes(k)) return k;
-  return null;
-}
-
 /* ===== Stats ===== */
-function updateStatsFromIds(ids, catOf){
+function updateStats(){
+  const done = getDoneSet();
+  const ids = sightedIds().filter(id => !done.has(id));
   let rot=0,gelb=0,gruen=0,schwarz=0;
   for(const id of ids){
-    const k = catOf(id);
+    const k = sichtungFor(id);
     if(k==='rot') rot++;
     else if(k==='gelb') gelb++;
     else if(k==='gruen') gruen++;
@@ -393,48 +345,129 @@ function updateStatsFromIds(ids, catOf){
 function highlightAssignButtons(){
   document.querySelectorAll('.card button').forEach(btn=>{
     const t = (btn.textContent || '').trim().toLowerCase();
-    if(t === 'klinik zuweisen') btn.classList.add('btn-assign-clinic');
+    if(t === 'klinik zuweisen'){
+      btn.classList.add('btn-assign-clinic');
+    }
   });
 }
 
-/* ===== Bildsuche & Patient HTML Fetch ===== */
-function normGender(g){
-  if(!g) return null;
-  const x = String(g).trim().toLowerCase();
-  if (x === 'm' || /^m(ännlich|aennlich)$/.test(x) || ['male','mann','herr'].includes(x)) return 'männlich';
-  if (x === 'w' || ['weiblich','female','frau','weibl'].includes(x)) return 'weiblich';
-  if (x === 'd' || /divers|non[-\s]?binary/.test(x)) return 'divers';
-  return null;
-}
-function getPatMeta(){ try { return JSON.parse(localStorage.getItem('patMeta') || '{}'); } catch { return {}; } }
-function getPatientsData(){ try { return JSON.parse(localStorage.getItem('patientsData') || '[]'); } catch { return []; } }
-function overlayFromPatMeta(info){
-  const meta = getPatMeta()[info.id] || {};
-  if(meta.age)    info.age = String(meta.age);
-  if(meta.gender) info.gender = normGender(meta.gender) || meta.gender;
-  if(meta.photo && !info.img) info.img = abs(meta.photo, info.url);
-}
-function overlayFromJson(info){
-  const num = Number(info.id.replace('patient',''));
-  const j = getPatientsData().find(x => Number(x.id) === num);
-  if(!j) return;
-  if(!info.age && j.age) info.age = String(j.age);
-  if(!info.gender && j.gender) info.gender = normGender(j.gender) || j.gender;
-  if(!info.img && j.photo) info.img = abs(j.photo, info.url);
-}
-
-/* 🚀 Performance: KEIN 404-Probing mehr */
-async function findPhotoFast({ html, baseUrl }){
+/* ===== Bildsuche (Fallbacks) ===== */
+const SUFFIXES = ['', 'messer', 'kopf', 'arm', 'bein', 'bauch', 'brust', 'foto', '_1', '_a'];
+async function findPhoto({ html, baseUrl, index }){
   const im = html.match(/<img[^>]*id=["']patient-photo["'][^>]*src=["']([^"']+)["']/i);
   if(im) return abs(im[1], baseUrl);
-
   const dp = html.match(/data-photo=["']([^"']+\.(?:jpg|jpeg|png|webp))["']/i);
   if(dp) return abs(dp[1], baseUrl);
-
   const og = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i);
   if(og) return abs(og[1], baseUrl);
 
+  const EXT = ['jpg','jpeg','png','webp','JPG','JPEG','PNG','WEBP'];
+  const rx = new RegExp(`(^|\\/)(pat(?:ient)?${index})[^\\/]*\\.(${EXT.join('|')})$`, 'i');
+  const allImgs = [...html.matchAll(/<img[^>]*src=["']([^"']+)["'][^>]*>/ig)];
+  for(const m of allImgs){ const url = abs(m[1], baseUrl); if(rx.test(url)) return url; }
+
+  for(const suf of SUFFIXES){
+    for(const ex of EXT){
+      const url = `${location.origin}/pat${index}${suf ? suf : ''}.${ex}`;
+      if(await probeImage(url)) return url;
+    }
+  }
+  for(const ex of EXT){
+    const url = `${location.origin}/patient${index}.${ex}`;
+    if(await probeImage(url)) return url;
+  }
   return null;
+}
+function probeImage(url){
+  return new Promise(res => {
+    const i=new Image();
+    i.onload=()=>res(true);
+    i.onerror=()=>res(false);
+    i.src = withV(url);
+  });
+}
+
+/* ===== Cache + Fetch der Patientenseiten ===== */
+const listEl = document.getElementById('list');
+const CACHE_KEY = `pat-cache-${VERSION}`;
+function readCache(){ try{ return JSON.parse(sessionStorage.getItem(CACHE_KEY)||'{}'); }catch{return{};} }
+function writeCache(map){ try{ sessionStorage.setItem(CACHE_KEY, JSON.stringify(map)); }catch{} }
+
+async function fetchPatientData(entry){
+  const cache = readCache();
+  if(cache[entry.id]) return cache[entry.id];
+
+  const idx = +entry.id.replace('patient','');
+  const info = { id:entry.id, label:entry.label, url:entry.url, age:null, gender:null, injury:'—', vitals:null, img:null, code:null, error:null };
+
+  try{
+    const res = await fetch(withV(entry.url), { cache:'no-store' });
+    if(!res.ok){
+      info.error = 'HTTP '+res.status;
+      const c=readCache(); c[entry.id]=info; writeCache(c);
+      return info;
+    }
+    const html = await res.text();
+
+    const s = html.match(/<script[^>]*id=["']patient-data["'][^>]*type=["']application\/json["'][^>]*>([\s\S]*?)<\/script>/i);
+    if(s){
+      try{
+        const j = JSON.parse(s[1]);
+        if(j.age)    info.age    = String(j.age);
+        if(j.gender) info.gender = String(j.gender);
+        if(j.code)   info.code   = String(j.code);
+        if(j.injury) info.injury = String(j.injury);
+        if(j.photo)  info.img    = abs(j.photo, entry.url);
+        if(j.vitals) info.vitals = String(j.vitals);
+      }catch{}
+    }
+
+    const dataTag = html.match(/<[^>]+id=["']patient["'][^>]*>/i);
+    if(dataTag){
+      const tag = dataTag[0];
+      const pick = (name)=>{ const m = tag.match(new RegExp(`data-${name}=["']([^"']+)["']`,'i')); return m ? m[1] : null; };
+      if(!info.age){ const v = pick('age'); if(v) info.age = String(v); }
+      if(!info.gender){ const v = pick('gender'); if(v) info.gender = String(v); }
+      if(!info.code){ const v = pick('code'); if(v) info.code = String(v); }
+      if(!info.img){ const v = pick('photo'); if(v) info.img = abs(v, entry.url); }
+      if(info.injury==='—'){ const v = pick('injury'); if(v) info.injury = String(v); }
+      if(!info.vitals){ const v = pick('vitals'); if(v) info.vitals = String(v); }
+    }
+
+    const btn1 = html.match(/<button[^>]*id=["']btn1["'][^>]*>([\s\S]*?)<\/button>/i);
+    if(btn1){
+      const raw = btn1[1];
+      const text = cleanText(raw);
+      if(info.injury==='—') info.injury = extractMainInjuryFromButtonHTML(raw);
+      if(!info.vitals){
+        const vit = extractVitalsFromText(text);
+        if(vit) info.vitals = vit;
+      }
+    }
+    const btn2 = html.match(/<button[^>]*id=["']btn2["'][^>]*>([\s\S]*?)<\/button>/i);
+    if(btn2){
+      const raw2 = btn2[1];
+      const inj2 = extractMainInjuryFromButtonHTML(raw2);
+      if((!info.injury || info.injury==='—') && inj2 && inj2 !== '—') info.injury = inj2;
+      if(!info.vitals){
+        const vit2 = extractVitalsFromText(cleanText(raw2));
+        if(vit2) info.vitals = vit2;
+      }
+    }
+
+    if(!info.img){
+      info.img = await findPhoto({ html, baseUrl: entry.url, index: idx });
+    }
+
+  }catch(e){
+    info.error = e?.message || String(e);
+  }
+
+  overlayFromPatMeta(info);
+  overlayFromJson(info);
+
+  const c2 = readCache(); c2[entry.id]=info; writeCache(c2);
+  return info;
 }
 
 function cleanText(html){
@@ -466,76 +499,119 @@ function extractVitalsFromText(t){
   return `Puls ${hr}/min`;
 }
 
-const listEl = document.getElementById('list');
-const CACHE_KEY = `pat-cache-${VERSION}`;
-function readCache(){ try{ return JSON.parse(sessionStorage.getItem(CACHE_KEY)||'{}'); }catch{return{};} }
-function writeCache(map){ try{ sessionStorage.setItem(CACHE_KEY, JSON.stringify(map)); }catch{} }
-
-async function fetchPatientData(entry){
-  const cache = readCache();
-  if(cache[entry.id]) return cache[entry.id];
-
-  const info = { id:entry.id, label:entry.label, url:entry.url, age:null, gender:null, injury:'—', vitals:null, img:null, code:null, error:null };
-
-  try{
-    const res = await fetch(withV(entry.url), { cache:'no-store' });
-    if(!res.ok){
-      info.error = 'HTTP '+res.status;
-      const c=readCache(); c[entry.id]=info; writeCache(c);
-      return info;
-    }
-    const html = await res.text();
-
-    const s = html.match(/<script[^>]*id=["']patient-data["'][^>]*type=["']application\/json["'][^>]*>([\s\S]*?)<\/script>/i);
-    if(s){
-      try{
-        const j = JSON.parse(s[1]);
-        if(j.age)    info.age    = String(j.age);
-        if(j.gender) info.gender = String(j.gender);
-        if(j.code)   info.code   = String(j.code);
-        if(j.injury) info.injury = String(j.injury);
-        if(j.photo)  info.img    = abs(j.photo, entry.url);
-        if(j.vitals) info.vitals = String(j.vitals);
-      }catch{}
-    }
-
-    const btn1 = html.match(/<button[^>]*id=["']btn1["'][^>]*>([\s\S]*?)<\/button>/i);
-    if(btn1){
-      const raw = btn1[1];
-      const text = cleanText(raw);
-      if(info.injury==='—') info.injury = extractMainInjuryFromButtonHTML(raw);
-      if(!info.vitals){
-        const vit = extractVitalsFromText(text);
-        if(vit) info.vitals = vit;
-      }
-    }
-    const btn2 = html.match(/<button[^>]*id=["']btn2["'][^>]*>([\s\S]*?)<\/button>/i);
-    if(btn2){
-      const raw2 = btn2[1];
-      const inj2 = extractMainInjuryFromButtonHTML(raw2);
-      if((!info.injury || info.injury==='—') && inj2 && inj2 !== '—') info.injury = inj2;
-      if(!info.vitals){
-        const vit2 = extractVitalsFromText(cleanText(raw2));
-        if(vit2) info.vitals = vit2;
-      }
-    }
-
-    if(!info.img){
-      info.img = await findPhotoFast({ html, baseUrl: entry.url });
-    }
-
-  }catch(e){
-    info.error = e?.message || String(e);
+/* ===== UI ===== */
+function renderSkeletons(ids){
+  listEl.innerHTML='';
+  for(const id of ids){
+    const skel=document.createElement('div');
+    skel.className='card';
+    skel.dataset.id=id;
+    skel.innerHTML=`
+      <div class="thumb skeleton"></div>
+      <div>
+        <div class="title-skel skeleton"></div>
+        <div class="line-skel skeleton" style="width:50%"></div>
+        <div class="injury-skel skeleton"></div>
+      </div>
+      <div class="actions">
+        <button class="btn" disabled>Als PDF</button>
+      </div>`;
+    listEl.appendChild(skel);
   }
-
-  overlayFromPatMeta(info);
-  overlayFromJson(info);
-
-  const c2 = readCache(); c2[entry.id]=info; writeCache(c2);
-  return info;
 }
 
-/* ===== Lightbox / PDF clicks ===== */
+function upsertCard(p){
+  const kat = sichtungFor(p.id);
+  const flags = __readTogglePayload(p.id) || {};
+  const label = kat ? __labelFromCat(kat) : '—';
+  const flagChar = (kat==='rot'   && flags.t) ? 'T'
+                 : (kat==='gruen' && flags.b) ? 'B'
+                 : '';
+  const katBadgeClass = kat ? `badge-${kat}` : '';
+
+  let injText = p.injury ?? '—';
+  if(p.vitals && !/af\s*\d+|puls\s*\d+/i.test((injText||'').toLowerCase())){
+    injText += ` — ${p.vitals}`;
+  }
+
+  const badge = `<span class="badge ${katBadgeClass}">
+                   <span class="sk">${label}</span>
+                   ${flagChar ? `<span class="flag">${flagChar}</span>` : ''}
+                 </span>`;
+
+  const imgBlock = p.img
+    ? `<img data-src="${withV(abs(p.img))}" alt="${p.label}" loading="lazy">`
+    : `<span>${p.label}<br>Kein Foto</span>`;
+
+  const html = `
+    <div class="thumb" ${p.img ? `data-view="${withV(abs(p.img))}"` : ''} title="${p.img ? 'Foto ansehen' : ''}">
+      ${imgBlock}
+    </div>
+    <div>
+      <h2>${p.label} ${badge}</h2>
+      <div class="meta">Alter: ${p.age ?? '—'} | Geschlecht: ${p.gender ?? '—'}</div>
+      <div class="injury"><b>Hauptverletzung:</b> ${injText}</div>
+      ${p.error ? `<div style="color:#ffd2d2;margin-top:6px;font-size:12px;">⚠ ${p.error}</div>` : ''}
+    </div>
+    <div class="actions">
+      <button class="btn" data-id="${p.id}">Als PDF</button>
+    </div>`;
+
+  let card = listEl.querySelector(`.card[data-id="${p.id}"]`);
+  const cls = kat ? ('k-'+kat) : '';
+
+  if(card){
+    card.classList.remove('k-rot','k-gelb','k-gruen','k-schwarz');
+    if(cls) card.classList.add(cls);
+    card.setAttribute('data-patient-id', p.id);
+    card.setAttribute('data-name', p.label || p.id);
+    card.setAttribute('data-prio', kat || '');
+    card.innerHTML = html;
+  }else{
+    card=document.createElement('div');
+    card.className='card '+cls;
+    card.dataset.id=p.id;
+    card.setAttribute('data-patient-id', p.id);
+    card.setAttribute('data-name', p.label || p.id);
+    card.setAttribute('data-prio', kat || '');
+    card.dataset.open=withV(p.url);
+    card.innerHTML=html;
+    listEl.appendChild(card);
+  }
+
+  const img=card.querySelector('img[data-src]');
+  if(img) observeImage(img);
+}
+
+/* Entfernen */
+function removeCard(id){
+  const el = listEl.querySelector(`.card[data-id="${id}"]`);
+  if(el) el.remove();
+}
+
+/* Suche */
+document.addEventListener('input', e=>{
+  if(e.target.id!=='search') return;
+  const q=e.target.value.toLowerCase();
+  const all=(window.__PAT_DATA__||[]);
+  listEl.innerHTML='';
+
+  (q ? all.filter(p =>
+    `${p.id} ${p.label} ${p.age||''} ${p.gender||''} ${p.injury||''} ${p.vitals||''}`.toLowerCase().includes(q)
+  ) : all).forEach(upsertCard);
+
+  if (window.Ablage) {
+    window.Ablage.hydrateCards({
+      containerSelector: '#list',
+      cardSelector: '.card',
+      placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
+      placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
+    });
+    highlightAssignButtons();
+  }
+});
+
+/* Clicks (Lightbox & PDF) */
 document.addEventListener('click', async e=>{
   const target=e.target;
 
@@ -584,142 +660,53 @@ function observeImage(img){
   else img.src=img.dataset.src;
 }
 
-/* ===== Render helpers ===== */
-function ensureEmptyHidden(){
-  const empty = document.getElementById('__empty__');
-  if(empty) empty.remove();
-}
-function showEmpty(){
-  if(document.getElementById('__empty__')) return;
-  const div = document.createElement('div');
-  div.id='__empty__';
-  div.className='empty';
-  div.innerHTML = `
-    <h2>Keine offenen Patienten in der Ablage</h2>
-    <p>Gesichtete und noch nicht zugewiesene Patienten erscheinen hier automatisch.</p>`;
-  listEl.appendChild(div);
-}
+/* ===== Laden & Sortiertes Rendern ===== */
+async function load(){
+  const done = getDoneSet();
+  const ids = sightedIds().filter(id => !done.has(id));
 
-/* Badge & Farbe updaten, ohne Card neu zu bauen */
-function applyTriageToExistingCard(id, cat){
-  const card = listEl.querySelector(`.card[data-id="${id}"]`);
-  if(!card) return;
-
-  card.classList.remove('k-rot','k-gelb','k-gruen','k-schwarz');
-  if(cat) card.classList.add('k-'+cat);
-
-  const badge = card.querySelector('.badge');
-  if(badge){
-    badge.classList.remove('badge-rot','badge-gelb','badge-gruen','badge-schwarz');
-    if(cat) badge.classList.add('badge-'+cat);
-    const sk = __labelFromCat(cat) || '—';
-    const flags = __readTogglePayload(id) || {};
-    const flagChar = (cat==='rot' && flags.t) ? 'T' : (cat==='gruen' && flags.b) ? 'B' : '';
-    badge.innerHTML = `<span class="sk">${sk}</span>${
-      flagChar ? `<span class="flag">${flagChar}</span>` : ''
-    }`;
-  }
-}
-
-function upsertCard(p, catFn){
-  const kat = catFn(p.id);
-  const flags = __readTogglePayload(p.id) || {};
-  const label = kat ? __labelFromCat(kat) : '—';
-  const flagChar = (kat==='rot'   && flags.t) ? 'T'
-                 : (kat==='gruen' && flags.b) ? 'B'
-                 : '';
-  const katBadgeClass = kat ? `badge-${kat}` : '';
-
-  let injText = p.injury ?? '—';
-  if(p.vitals && !/af\s*\d+|puls\s*\d+/i.test((injText||'').toLowerCase())){
-    injText += ` — ${p.vitals}`;
-  }
-
-  const badge = `<span class="badge ${katBadgeClass}">
-                   <span class="sk">${label}</span>
-                   ${flagChar ? `<span class="flag">${flagChar}</span>` : ''}
-                 </span>`;
-
-  const imgBlock = p.img
-    ? `<img data-src="${withV(abs(p.img))}" alt="${p.label}" loading="lazy">`
-    : `<span>${p.label}<br>Kein Foto</span>`;
-
-  const html = `
-    <div class="thumb" ${p.img ? `data-view="${withV(abs(p.img))}"` : ''} title="${p.img ? 'Foto ansehen' : ''}">
-      ${imgBlock}
-    </div>
-    <div>
-      <h2>${p.label} ${badge}</h2>
-      <div class="meta">Alter: ${p.age ?? '—'} | Geschlecht: ${p.gender ?? '—'}</div>
-      <div class="injury"><b>Hauptverletzung:</b> ${injText}</div>
-      ${p.error ? `<div style="color:#ffd2d2;margin-top:6px;font-size:12px;">⚠ ${p.error}</div>` : ''}
-    </div>
-    <div class="actions">
-      <button class="btn" data-id="${p.id}">Als PDF</button>
-    </div>`;
-
-  let card = listEl.querySelector(`.card[data-id="${p.id}"]`);
-  const cls = kat ? ('k-'+kat) : '';
-
-  if(card){
-    applyTriageToExistingCard(p.id, kat);
-
-    const meta = card.querySelector('.meta');
-    if(meta) meta.textContent = `Alter: ${p.age ?? '—'} | Geschlecht: ${p.gender ?? '—'}`;
-
-    const inj = card.querySelector('.injury');
-    if(inj){
-      let t = p.injury ?? '—';
-      if(p.vitals && !/af\s*\d+|puls\s*\d+/i.test((t||'').toLowerCase())) t += ` — ${p.vitals}`;
-      inj.innerHTML = `<b>Hauptverletzung:</b> ${t}`;
-    }
-
-    const img = card.querySelector('img');
-    if(img && p.img){
-      img.dataset.src = withV(abs(p.img));
-      observeImage(img);
-      const thumb = card.querySelector('.thumb');
-      if(thumb) thumb.setAttribute('data-view', withV(abs(p.img)));
-    }
+  if(ids.length===0){
+    listEl.innerHTML = `
+      <div class="empty">
+        <h2>Keine offenen Patienten in der Ablage</h2>
+        <p>Gesichtete und noch nicht zugewiesene Patienten erscheinen hier automatisch.</p>
+      </div>`;
+    updateStats();
+    allowAutostart();
     return;
   }
 
-  card=document.createElement('div');
-  card.className='card '+cls;
-  card.dataset.id=p.id;
-  card.setAttribute('data-patient-id', p.id);
-  card.setAttribute('data-name', p.label || p.id);
-  card.setAttribute('data-prio', kat || '');
-  card.dataset.open=withV(p.url);
-  card.innerHTML=html;
-  listEl.appendChild(card);
+  renderSkeletons(ids);
 
-  const img=card.querySelector('img[data-src]');
-  if(img) observeImage(img);
-}
+  const data=[];
+  for(const id of ids){
+    const num = id.replace('patient','');
+    const entry = { id, label: `Patient ${num}`, url: `patient${num}.html` };
+    const p = await fetchPatientData(entry);
+    data.push(p);
+  }
 
-/* ===== Suche ===== */
-document.addEventListener('input', e=>{
-  if(e.target.id!=='search') return;
-  const q=e.target.value.toLowerCase();
-  const all=(window.__PAT_DATA__||[]);
-  const catFn = window.__CAT_FN__ || (()=>null);
-
-  listEl.innerHTML='';
-  if(!all.length){ showEmpty(); return; }
-
-  (q ? all.filter(p =>
-    `${p.id} ${p.label} ${p.age||''} ${p.gender||''} ${p.injury||''} ${p.vitals||''}`.toLowerCase().includes(q)
-  ) : all).forEach(p=> {
-    const wrap = document.createElement('div');
-    wrap.className='card';
-    wrap.dataset.id=p.id;
-    listEl.appendChild(wrap);
-    wrap.remove();
-    upsertCard(p, catFn);
+  data.sort((a,b)=>{
+    const aCat = sichtungFor(a.id) || '';
+    const bCat = sichtungFor(b.id) || '';
+    const pa = __readTogglePayload(a.id) || {};
+    const pb = __readTogglePayload(b.id) || {};
+    const d  = __prio(aCat, pa) - __prio(bCat, pb);
+    return d !== 0 ? d : (__numFromId(a.id) - __numFromId(b.id));
   });
 
-  if (window.Ablage?.hydrateCards) {
+  listEl.innerHTML = '';
+  data.forEach(upsertCard);
+  window.__PAT_DATA__ = data;
+  updateStats();
+
+  allowAutostart();
+
+  if (window.Ablage && typeof window.Ablage.startAllOnEnter === 'function') {
+    window.Ablage.startAllOnEnter();
+  }
+
+  if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
     window.Ablage.hydrateCards({
       containerSelector: '#list',
       cardSelector: '.card',
@@ -728,162 +715,58 @@ document.addEventListener('input', e=>{
     });
     highlightAssignButtons();
   }
+}
+load();
+
+/* Live-Updates (Sichtung/T/B/DONE) */
+window.addEventListener('storage', (e)=>{
+  if(!e || !e.key) return;
+  if(e.key==='sichtungMap' || e.key==='ablage.done.v1' || e.key.startsWith('sicht_')){
+    updateStats();
+
+    const done = getDoneSet();
+    const want = new Set(sightedIds().filter(id => !done.has(id)));
+    const have = new Set([...document.querySelectorAll('.card[data-id]')].map(el=>el.dataset.id)); // FIX!
+
+    for(const id of have){
+      if(!want.has(id)) removeCard(id);
+    }
+
+    for(const id of want){
+      if(!have.has(id)){
+        const num=id.replace('patient','');
+        const entry={ id, label: `Patient ${num}`, url: `patient${num}.html` };
+
+        fetchPatientData(entry).then(p=>{
+          (window.__PAT_DATA__ = (window.__PAT_DATA__||[])).push(p);
+          upsertCard(p);
+          allowAutostart();
+
+          if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
+            window.Ablage.hydrateCards({
+              containerSelector: '#list',
+              cardSelector: '.card',
+              placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
+              placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
+            });
+            highlightAssignButtons();
+          }
+        });
+      }
+    }
+  }
 });
 
-/* ===== Stable Sync: UNION (lokal + COOP) ===== */
-let __seen = new Set();
-let __triageMap = {};
-
-async function syncOnce(){
-  const done = getDoneSet();
-
-  const localIds = getLocalOpenIds().map(String).filter(Boolean).filter(id => !done.has(id));
-
-  let coopIds = [];
-  let coopMap = {};
-
-  if (coopEnabled()){
-    const st = coopState();
-    const url = st.apiBase.replace(/\/$/,'') + '/list_patients.php'
-      + '?open_only=1'
-      + '&incident_id=' + encodeURIComponent(st.incident_id)
-      + '&token=' + encodeURIComponent(st.token)
-      + '&_t=' + Date.now();
-
-    try{
-      const res = await fetch(url, { cache:'no-store' });
-      const j = await res.json().catch(()=>null);
-      const arr = (j && j.ok && Array.isArray(j.patients)) ? j.patients : [];
-
-      for(const row of arr){
-        const id = pidToLocalId(row.patient_id);
-        if(!id) continue;
-        if(done.has(id)) continue;
-        coopIds.push(id);
-        coopMap[id] = coopTriageToCat(row.triage);
-      }
-    }catch{}
-  }
-
-  const allIds = Array.from(new Set([...localIds, ...coopIds]))
-    .sort((a,b)=> __numFromId(a)-__numFromId(b));
-
-  const catFn = (id)=> (id in coopMap) ? coopMap[id] : localCatOf(id);
-  window.__CAT_FN__ = catFn;
-
-  if(!allIds.length){
-    listEl.innerHTML = '';
-    showEmpty();
-    updateStatsFromIds([], catFn);
-    __seen = new Set();
-    __triageMap = {};
-    window.__PAT_DATA__ = [];
-    return;
-  }
-
-  ensureEmptyHidden();
-  updateStatsFromIds(allIds, catFn);
-
-  const keep = new Set(allIds);
-  for (const id of Array.from(__seen)){
-    if (!keep.has(id)){
-      const el = listEl.querySelector(`.card[data-id="${id}"]`);
-      if(el) el.remove();
-      __seen.delete(id);
-      delete __triageMap[id];
-      if (Array.isArray(window.__PAT_DATA__)) {
-        window.__PAT_DATA__ = window.__PAT_DATA__.filter(x => x.id !== id);
-      }
-    }
-  }
-
-  for(const id of allIds){
-    const cat = catFn(id) || null;
-
-    if(__seen.has(id)){
-      if(__triageMap[id] !== cat){
-        __triageMap[id] = cat;
-        applyTriageToExistingCard(id, cat);
-      }
-      continue;
-    }
-
-    __seen.add(id);
-    __triageMap[id] = cat;
-
-    const num = id.replace('patient','');
-    const entry = { id, label: `Patient ${num}`, url: `patient${num}.html` };
-
-    upsertCard({ ...entry, age:null, gender:null, injury:'—', vitals:null, img:null }, catFn);
-
-    if (window.Ablage?.hydrateCards) {
-      window.Ablage.hydrateCards({
-        containerSelector:'#list',
-        cardSelector:'.card',
-        placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
-        placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
-      });
-      highlightAssignButtons();
-    }
-
-    fetchPatientData(entry).then(p=>{
-      (window.__PAT_DATA__ = (window.__PAT_DATA__||[])).push(p);
-      upsertCard(p, catFn);
-      if (window.Ablage?.hydrateCards) {
-        window.Ablage.hydrateCards({
-          containerSelector:'#list',
-          cardSelector:'.card',
-          placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
-          placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
-        });
-        highlightAssignButtons();
-      }
-    }).catch(()=>{});
-  }
-
-  const cards = [...listEl.querySelectorAll('.card[data-id]')];
-  cards.sort((a,b)=>{
-    const ida=a.dataset.id, idb=b.dataset.id;
-    const ca = catFn(ida) || '';
-    const cb = catFn(idb) || '';
-    const pa = __readTogglePayload(ida) || {};
-    const pb = __readTogglePayload(idb) || {};
-    const d = __prio(ca, pa) - __prio(cb, pb);
-    return d !== 0 ? d : (__numFromId(ida) - __numFromId(idb));
-  });
-  for(const el of cards) listEl.appendChild(el);
-}
-
-/* Polling */
-let __poll = 0;
-function startPolling(){
-  if(__poll) return;
-  __poll = setInterval(()=>{
-    if(document.visibilityState !== 'visible') return;
-    if(!navigator.onLine) return;
-    syncOnce().catch(()=>{});
-  }, 1500);
-  window.addEventListener('online', ()=> syncOnce().catch(()=>{}));
-  document.addEventListener('visibilitychange', ()=>{
-    if(document.visibilityState === 'visible') syncOnce().catch(()=>{});
-  });
-}
-
-/* start */
-syncOnce().catch(()=>{});
-startPolling();
-
-/* === PDF: Einzelkarte === */
+/* === PDF: Einzelkarte (inkl. SKx · T/B) === */
 function ensureJsPDF(){ return window.jspdf && window.jspdf.jsPDF; }
 
 async function pdfSingle(p){
   const jsPDF=ensureJsPDF(); if(!jsPDF) return;
-  const catFn = window.__CAT_FN__ || (()=>null);
   const doc=new jsPDF({unit:'mm', format:'a4', orientation:'portrait'});
   const W=doc.internal.pageSize.getWidth();
   let y=20;
 
-  const kat = catFn(p.id);
+  const kat = sichtungFor(p.id);
   const display = kat ? getSichtungDisplay(p.id, kat) : '—';
 
   doc.setFontSize(16);
@@ -932,10 +815,11 @@ function imageToDataURL(src){
   });
 }
 
+/* Beim Verlassen Autostart verbieten */
 window.addEventListener('beforeunload', () => { denyAutostart(); });
 </script>
 
-<!-- ✅ metrics auf Netlify testweise AUS (CORS auf 1rettungsmittel.de) -->
-<!-- <script src="/metrics.js" defer></script> -->
+<script src="/metrics.js" defer></script>
+<script src="/ablage.js?v=8"></script>
 </body>
 </html>
