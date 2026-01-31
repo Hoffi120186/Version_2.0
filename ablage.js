@@ -407,3 +407,63 @@
   window.addEventListener('pageshow', autoInit);
 
 })();
+// === COOP: Änderungen -> localStorage Ablage updaten + UI refresh ===
+(function(){
+  function normKat(v){
+    if (!v) return null;
+    let x = String(v).trim().toLowerCase();
+    if (x.includes("grün")) x = x.replace("grün","gruen");
+    const map = { sk1:"rot", sk2:"gelb", sk3:"gruen", sk0:"schwarz" };
+    if (map[x]) x = map[x];
+    return ["rot","gelb","gruen","schwarz"].includes(x) ? x : null;
+  }
+
+  function upsertAblage(id, kat){
+    const ABL_KEY = "ablage.active.v1";
+    const now = Date.now();
+
+    let list = [];
+    try { list = JSON.parse(localStorage.getItem(ABL_KEY) || "[]"); } catch {}
+    if (!Array.isArray(list)) list = [];
+
+    const i = list.findIndex(e => e && e.id === id);
+    if (i >= 0) list[i] = { ...list[i], id, sk: kat, lastUpdate: now, start: list[i].start ?? now };
+    else list.push({ id, sk: kat, start: now, lastUpdate: now });
+
+    try { localStorage.setItem(ABL_KEY, JSON.stringify(list)); } catch {}
+
+    // Kompat-Schlüssel (falls deine Ablage so liest)
+    try { localStorage.setItem("ablage", JSON.stringify(list)); } catch {}
+    try { localStorage.setItem("ablage_ids", JSON.stringify(list.map(x => x.id))); } catch {}
+    try { localStorage.setItem("ablage_patient_" + id, kat); } catch {}
+  }
+
+  function applyChanges(changes){
+    if (!Array.isArray(changes) || !changes.length) return;
+
+    for (const row of changes){
+      const n = parseInt(row?.patient_id, 10);
+      if (!Number.isFinite(n) || n <= 0) continue;
+
+      const id  = ("patient" + n).toLowerCase();
+      const kat = normKat(row?.triage);
+      if (!kat) continue;
+
+      upsertAblage(id, kat);
+    }
+
+    // ✅ HIER: deine Ablage neu zeichnen
+    // Falls du eine Render-Funktion hast:
+    if (typeof window.renderAblage === "function") window.renderAblage();
+
+    // Falls du BroadcastChannel nutzt:
+    try { new BroadcastChannel("ablage").postMessage({ type:"refresh" }); } catch {}
+  }
+
+  window.addEventListener("coop:changes", (ev)=>{
+    const changes = ev?.detail?.changes || [];
+    applyChanges(changes);
+  });
+})();
+
+
