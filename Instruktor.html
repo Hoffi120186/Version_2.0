@@ -44,7 +44,6 @@
     .btn:active{ transform:translateY(1px); background:rgba(255,255,255,.18); }
     .btn[disabled]{ opacity:.55; filter:grayscale(40%); cursor:not-allowed; transform:none !important; }
 
-    /* Startseite-Button */
     .btn-start{
       position:fixed; bottom:calc(18px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
       background:#a54524; color:#fff; padding:14px 26px; border-radius:var(--radius);
@@ -80,7 +79,7 @@
     .small{ font-size:13px; opacity:.9; }
     .muted{ opacity:.8; }
 
-    /* Nachrichten-Badge (rechts im Button) */
+    /* Nachrichten-Badge */
     #msgBadge{
       display:none; position:absolute; top:8px; right:14px;
       background:#ef4444; color:#fff; font-weight:800; font-size:.9em; line-height:1;
@@ -155,7 +154,7 @@
     <!-- ✅ COOP -->
     <button id="coopBtn" class="btn" type="button">🤝 Coop-Modus</button>
 
-    <!-- ✅ Coop Statusbar (aktiv + code + rolle) -->
+    <!-- ✅ Coop Statusbar -->
     <div class="coop-bar">
       <div class="chip2"><span id="coopDot" class="dot off"></span><span id="coopStateTxt">Coop aus</span></div>
       <div class="chip2">Code: <span id="coopJoinTxt" class="mono">—</span></div>
@@ -186,7 +185,8 @@
 
       <div id="viewLogin">
         <div class="row">
-          <input id="pinLogin" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" type="password" placeholder="PIN (4–8 Ziffern)" style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid #334155; background:#111827; color:#fff;" />
+          <input id="pinLogin" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" type="password" placeholder="PIN (4–8 Ziffern)"
+                 style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid #334155; background:#111827; color:#fff;" />
           <button id="btnLogin" class="btn" type="button" style="min-width:120px">Entsperren</button>
         </div>
         <div id="msgLogin" class="bad" aria-live="polite"></div>
@@ -197,7 +197,8 @@
 
       <div id="viewVerify" style="display:none">
         <div class="row">
-          <input id="pinVerify" inputmode="numeric" pattern="[0-9]*" type="password" placeholder="Aktuelle PIN" style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid #334155; background:#111827; color:#fff;" />
+          <input id="pinVerify" inputmode="numeric" pattern="[0-9]*" type="password" placeholder="Aktuelle PIN"
+                 style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid #334155; background:#111827; color:#fff;" />
           <button id="btnVerify" class="btn" type="button" style="min-width:120px">Weiter</button>
         </div>
         <div id="msgVerify" class="bad" aria-live="polite"></div>
@@ -208,10 +209,12 @@
 
       <div id="viewSetup" style="display:none">
         <div class="row">
-          <input id="pinNew1" inputmode="numeric" type="password" placeholder="Neue PIN (optional, 4–8 Ziffern)" style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid #334155; background:#111827; color:#fff;" />
+          <input id="pinNew1" inputmode="numeric" type="password" placeholder="Neue PIN (optional, 4–8 Ziffern)"
+                 style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid #334155; background:#111827; color:#fff;" />
         </div>
         <div class="row">
-          <input id="pinNew2" inputmode="numeric" type="password" placeholder="PIN wiederholen" style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid #334155; background:#111827; color:#fff;" />
+          <input id="pinNew2" inputmode="numeric" type="password" placeholder="PIN wiederholen"
+                 style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid #334155; background:#111827; color:#fff;" />
         </div>
         <div class="row small">
           <label><input type="checkbox" id="chkEnabled" /> Schutz aktivieren</label>
@@ -495,7 +498,7 @@
             appId,
             subscription: sub,
             profile: { licenseType, deviceId }
-          })
+            })
         });
 
         await reflectPushState();
@@ -750,17 +753,17 @@
     });
   </script>
 
-  <!-- ✅ COOP-CLIENT (NEU) -->
-  <script src="/coop-client.js?v=2026-01-31-1"></script>
+  <!-- ✅ COOP CLIENT (Root / Netlify) -->
+  <script src="/coop-client.js?v=2026-02-01-1"></script>
 
   <!-- QR + Scanner libs -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
 
-  <!-- ✅ COOP UI (Instruktor) – nutzt coop-client.js -->
+  <!-- ✅ COOP UI -->
   <script>
-  // >>>>>> HIER NUR BASIS-KONFIG <<<<<<
-  const COOP_API = "https://www.1rettungsmittel.de/api/coop_test"; // dein IONOS Pfad
+  // API auf IONOS
+  const COOP_API = "https://www.1rettungsmittel.de/api/coop_test";
 
   // UI refs
   const coopBtn      = document.getElementById("coopBtn");
@@ -800,16 +803,6 @@
     coopDot.classList.toggle("off", !on);
   }
 
-  function buildJoinLink(join_code){
-    return `${location.origin}/index.html?join_code=${encodeURIComponent(join_code)}`;
-  }
-
-  function renderQr(link){
-    coopQrEl.innerHTML = "";
-    // eslint-disable-next-line no-undef
-    new QRCode(coopQrEl, { text: link, width: 220, height: 220 });
-  }
-
   function renderCoopBar(){
     const st = window.Coop?.getStatus?.() || { active:false };
     const active = !!st.active;
@@ -824,26 +817,32 @@
       return;
     }
 
-    const role = (st.role || "").toUpperCase() || "—";
-    const jc   = st.join_code || "—";
-
     coopStateTxt.textContent = "Coop aktiv";
-    coopJoinTxt.textContent  = jc;
-    coopRoleTxt.textContent  = role;
-
+    coopJoinTxt.textContent  = st.join_code || "—";
+    coopRoleTxt.textContent  = (st.role || "—").toUpperCase();
     coopBtn.textContent = "🛑 Coop beenden";
   }
 
-  async function forceResumeIfSessionExists(){
+  function buildJoinLink(join_code){
+    return `${location.origin}/index.html?join_code=${encodeURIComponent(join_code)}`;
+  }
+
+  function renderQr(link){
+    coopQrEl.innerHTML = "";
+    // global QRCode
+    new QRCode(coopQrEl, { text: link, width: 220, height: 220 });
+  }
+
+  async function resumeIfPossible(){
     try{
       window.Coop?.enable?.({ apiBase: COOP_API });
-      await window.Coop?.resume?.(); // macht nichts, wenn keine Session da ist
+      await window.Coop?.resume?.();
     }catch(e){
-      console.warn("[COOP] resume failed", e);
+      // ok, wenn keine session
     }
   }
 
-  // Events vom coop-client.js
+  // Events
   window.addEventListener("coop:created",  renderCoopBar);
   window.addEventListener("coop:joined",   renderCoopBar);
   window.addEventListener("coop:restored", renderCoopBar);
@@ -853,18 +852,18 @@
   window.addEventListener("coop:status",   renderCoopBar);
 
   window.addEventListener("load", async () => {
-    await forceResumeIfSessionExists();
+    await resumeIfPossible();
     renderCoopBar();
   });
 
   document.addEventListener("visibilitychange", async () => {
     if (document.visibilityState === "visible") {
-      await forceResumeIfSessionExists();
+      await resumeIfPossible();
       renderCoopBar();
     }
   });
 
-  // Button
+  // Main button
   coopBtn.addEventListener("click", async () => {
     const st = window.Coop?.getStatus?.() || { active:false };
     if (st.active) {
@@ -881,7 +880,6 @@
         if (isHost) await window.Coop.end({ reason:"instr_button" });
         else        await window.Coop.leave({ reason:"instr_button" });
       } catch (e) {
-        console.warn(e);
         try { window.Coop.hardReset("instr_button_fail"); } catch {}
       }
 
@@ -895,33 +893,33 @@
   choiceClose.addEventListener("click", () => hide(choiceModal));
 
   // INSTR erstellen
-  window.Coop.enable({ apiBase: COOP_API });
+  createBtn.addEventListener("click", async () => {
+    hide(choiceModal);
 
-coopStatus.textContent = "⏳ TEST: create_incident.php wird direkt gefetcht…";
-show(qrModal);
+    try {
+      window.Coop.enable({ apiBase: COOP_API });
 
-try {
-  const url = COOP_API.replace(/\/$/,'') + "/create_incident.php?ts=" + Date.now();
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type":"application/json" },
-    body: JSON.stringify({ expires_hours: 12 }),
-    cache: "no-store"
+      coopStatus.textContent = "⏳ Einsatz wird erstellt…";
+      show(qrModal);
+
+      const data = await window.Coop.createIncident({ expires_hours: 12 });
+
+      const join_code = data.join_code || data.joinCode || data.code;
+      if (!join_code) throw new Error("join_code fehlt");
+
+      const link = buildJoinLink(join_code);
+      renderQr(link);
+
+      coopStatus.textContent = `✅ Coop aktiv. Join-Code: ${join_code}`;
+      renderCoopBar();
+
+    } catch (e) {
+      alert("Coop konnte nicht gestartet werden: " + (e?.message || e));
+      try { window.Coop.hardReset("create_fail"); } catch {}
+      hide(qrModal);
+      renderCoopBar();
+    }
   });
-
-  const txt = await res.text(); // <- WICHTIG: text, nicht json!
-  coopStatus.textContent =
-    "HTTP " + res.status + "\n" +
-    "Antwort (erste 500 Zeichen):\n" +
-    txt.slice(0, 500);
-
-} catch (e) {
-  coopStatus.textContent =
-    "FETCH FEHLER:\n" +
-    (e?.message || String(e)) +
-    "\n\nDas ist fast immer CORS/Preflight oder falsche URL.";
-}
-
 
   qrClose.addEventListener("click", () => hide(qrModal));
 
@@ -932,7 +930,6 @@ try {
     try {
       await window.Coop.end({ reason:"uebungsende_modal" });
     } catch (e) {
-      console.warn(e);
       try { window.Coop.hardReset("uebungsende_fail"); } catch {}
     }
 
@@ -968,7 +965,6 @@ try {
       scanLoopRunning = true;
       requestAnimationFrame(scanLoop);
     } catch (e) {
-      console.error(e);
       camState.textContent = "⚠️ Kamera nicht verfügbar – nutze Join-Code";
     }
   }
@@ -1013,7 +1009,6 @@ try {
       ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
 
       const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      // eslint-disable-next-line no-undef
       const code = jsQR(img.data, img.width, img.height);
 
       if (code && code.data) {
@@ -1045,8 +1040,7 @@ try {
 
       renderCoopBar();
     } catch (e) {
-      console.error(e);
-      joinMsg.textContent = "Beitritt fehlgeschlagen: " + (e.message || e);
+      joinMsg.textContent = "Beitritt fehlgeschlagen: " + (e?.message || e);
     }
   }
 
@@ -1054,6 +1048,9 @@ try {
   roleNEF.addEventListener("click", () => doJoin("NEF"));
   </script>
 
+  <script>
+    window.METRICS_URL = "https://1rettungsmittel.de/metrics.php";
+  </script>
   <script src="/metrics.js" defer></script>
 </body>
 </html>
