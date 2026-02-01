@@ -98,6 +98,7 @@
       if (v.includes('grün')) v = v.replace('grün','gruen');
       return v;
     };
+
     function __readTogglePayload(id){
       let raw=null;
       try { raw = localStorage.getItem("sicht_" + id); } catch {}
@@ -118,15 +119,70 @@
     }
     function __prio(cat, flags){
       const t=!!flags?.t, b=!!flags?.b;
-      if (cat==='rot'   && t) return 0; // SK1 · T
-      if (cat==='rot')        return 1; // SK1
-      if (cat==='gelb')       return 2; // SK2
-      if (cat==='gruen' && b) return 3; // SK3 · B
-      if (cat==='gruen')      return 4; // SK3
-      if (cat==='schwarz')    return 5; // SK4
+      if (cat==='rot'   && t) return 0;
+      if (cat==='rot')        return 1;
+      if (cat==='gelb')       return 2;
+      if (cat==='gruen' && b) return 3;
+      if (cat==='gruen')      return 4;
+      if (cat==='schwarz')    return 5;
       return 6;
     }
     function __numFromId(id){ return parseInt(String(id).replace(/\D/g,''))||99999; }
+
+    // ---------- Coop State Helper ----------
+    function getCoopState(){
+      try{
+        if (window.Coop && typeof window.Coop.getState === 'function'){
+          const st = window.Coop.getState();
+          if (st && st.incident_id && st.token) return st;
+        }
+      }catch{}
+      try{
+        const raw = localStorage.getItem('coop_state_v1') || localStorage.getItem('coop_state') || '';
+        if(!raw) return null;
+        const st2 = JSON.parse(raw);
+        if (st2 && st2.incident_id && st2.token) return st2;
+      }catch{}
+      return null;
+    }
+
+    async function syncAblageToServer(){
+      const st = getCoopState();
+      if(!st) return;
+
+      // union aus sichtungMap + ablage.active.v1
+      let sMap = {}; try { sMap = JSON.parse(localStorage.getItem('sichtungMap') || '{}'); } catch {}
+      let ablage = []; try { ablage = JSON.parse(localStorage.getItem('ablage.active.v1') || '[]'); } catch {}
+
+      const ids = new Set();
+      Object.keys(sMap||{}).forEach(k=>{ if(/^patient\d+$/i.test(k)) ids.add(k.toLowerCase()); });
+      (ablage||[]).forEach(it=>{
+        const id = String(it?.id||'').toLowerCase();
+        if(/^patient\d+$/.test(id)) ids.add(id);
+      });
+
+      const items = [];
+      ids.forEach(id=>{
+        const pid = parseInt(id.replace(/\D/g,''),10) || 0;
+        if(pid<=0) return;
+
+        const triage = normKat(sMap[id] || '');
+        const flags = __readTogglePayload(id) || {};
+        items.push({ patient_id: pid, triage, t: !!flags.t, b: !!flags.b });
+      });
+
+      if(!items.length) return;
+
+      await fetch('/api/coop_test/ablage_add.php', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          incident_id: st.incident_id,
+          token: st.token,
+          items
+        })
+      }).catch(()=>{});
+    }
 
     // ---------- Gesamt- / Patientenzeiten ----------
     function collectTimes() {
@@ -161,7 +217,7 @@
       let ablage = [];
       try { ablage = JSON.parse(localStorage.getItem('ablage.active.v1') || '[]'); } catch {}
 
-      const out = new Map(); // id lc -> { id, sk }
+      const out = new Map();
       Object.entries(sMap).forEach(([id, sk])=>{
         if(!id || !sk) return;
         out.set(String(id).toLowerCase(), { id:String(id).toLowerCase(), sk });
@@ -223,12 +279,8 @@
       localStorage.setItem('resetFlag', 'true');
     }
     function resetAuswertungData() {
-      // ✅ WICHTIG:
-      // Beim Wechsel zur Patientenablage dürfen Sichtungen (sichtungMap + sicht_* Payloads)
-      // NICHT gelöscht werden, sonst ist Ablage1 leer.
-      // Hier also nur Zeiten zurücksetzen.
       Object.keys(localStorage).forEach(k=>{
-        if (k.startsWith('time_')) {
+        if (k.startsWith('time_') || k.startsWith('sichtung_')) {
           localStorage.removeItem(k);
         }
       });
@@ -241,8 +293,13 @@
       window.location.href = "/index.html";
     });
 
-    document.getElementById('toAblage')?.addEventListener('click', (e)=>{
+    document.getElementById('toAblage')?.addEventListener('click', async (e)=>{
       e.preventDefault();
+
+      // ✅ COOP: Ablage an Server spiegeln (nur wenn Coop aktiv)
+      try { await syncAblageToServer(); } catch {}
+
+      // wie bisher:
       resetAuswertungData();
       document.getElementById('gesamtzeit').textContent = '00:00';
       document.getElementById('patientenzeiten').innerHTML = '';
@@ -370,9 +427,12 @@
   });
   </script>
 
-  <script src="/coop.js"></script>
   <script type="module" src="/freigabe.js?cache=9"></script>
   <script defer src="/warmup.js?v=2025-08-22-1"></script>
+
+  <!-- optional, hilft wenn du Coop.getState sicher haben willst -->
+  <script src="/coop-client.js?v=2026-02-01-1" defer></script>
+
   <script src="/metrics.js" defer></script>
 </body>
 </html>
