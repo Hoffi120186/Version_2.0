@@ -347,3 +347,15 @@ async function heartbeatOnce(){
 
   };
 })();
+
+async function autoResume() {
+  try {
+    const raw = localStorage.getItem("coop_session_v1");
+    if (!raw) return;
+    await window.Coop.resume();
+  } catch {}
+}
+window.addEventListener("load", autoResume);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") autoResume();
+});
