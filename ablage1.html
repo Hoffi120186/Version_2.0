@@ -255,7 +255,7 @@ function getPatMeta(){ try { return JSON.parse(localStorage.getItem('patMeta') |
 function getPatientsData(){ try { return JSON.parse(localStorage.getItem('patientsData') || '[]'); } catch { return []; } }
 
 /* ===== COOP: Ablage aus Server (nur wenn Coop aktiv) ===== */
-const COOP_API = '/api/coop_test';
+const COOP_API = 'https://1rettungsmittel.de/api/coop_test';
 const COOP_POLL_MS = 1500;
 let __COOP_CACHE = null; // { items: [...], byId: {patient12:{cat,t,b,updated_at,by}} }
 let __COOP_SIG = '';
@@ -270,7 +270,7 @@ function getCoopState(){
   }catch{}
 
   // 2) fallback: localStorage
-  const keys = ['coop_state_v1', 'coop_state', 'coop.session', 'coopSession'];
+  const keys = ['coop_session_v1', 'coop_state_v1', 'coop_state', 'coop.session', 'coopSession'];
   for (const k of keys){
     try{
       const raw = localStorage.getItem(k);
@@ -290,9 +290,12 @@ function getCoopState(){
 }
 
 function coopActive(){
+  const active = localStorage.getItem('coop.active');
+  if (active === '0' || active === 'false') return false;
   const st = getCoopState();
   return !!(st && st.incident_id && st.token);
 }
+
 
 function normCat(v){
   const x = String(v||'').trim().toLowerCase().replace('grün','gruen');
