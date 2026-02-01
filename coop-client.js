@@ -148,7 +148,8 @@
     saveSession(getStatus());
     startLoops();
     await fetchSnapshotOnce().catch(()=>{});
-    emit("created", getStatus());
+    emit("joined", getStatus());
+
     emit("status", getStatus());
     return j;
 
@@ -245,13 +246,33 @@
     emit("status", getStatus());
   }
 
-  async function heartbeatOnce() {
-    if (!isActive()) return;
-    await postJSON(`${S.apiBase}/ping.php`, {
-      incident_id: S.incident_id,
-      token: S.token
-    });
+async function heartbeatOnce(){
+  if (!isActive()) return { ok:false, error:"no_session" };
+
+  const body = new URLSearchParams({
+    incident_id: S.incident_id || "",
+    token:      S.token || "",
+    client_id:  S.client_id || ""
+  });
+
+  const res = await fetch(`${S.apiBase}/ping.php`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+    cache: "no-store",
+  });
+
+  const txt = await res.text();
+  let data = {};
+  try { data = JSON.parse(txt || "{}"); } catch {}
+
+  if (!res.ok || data?.ok === false) {
+    throw new Error(data?.error || `HTTP_${res.status}`);
   }
+
+  return data; // optional, aber hilft beim Debuggen
+}
+
 
   function stopLoops() {
     if (S.timers.poll) { clearInterval(S.timers.poll); S.timers.poll = null; }
