@@ -191,6 +191,32 @@
       ...(patch || {}),
     });
   }
+  async function fetchSnapshotOnce() {
+    if (!isActive()) return;
+
+    const url = new URL(`${S.apiBase}/list_patients.php`);
+    url.searchParams.set("incident_id", S.incident_id);
+    url.searchParams.set("token", S.token);
+
+    const r = await fetch(url.toString(), { cache: "no-store" });
+    const j = await r.json().catch(() => null);
+    if (!j || j.ok !== true) throw new Error((j && j.error) ? j.error : `http_${r.status}`);
+
+    const rows = Array.isArray(j.patients) ? j.patients
+              : Array.isArray(j.rows) ? j.rows
+              : Array.isArray(j.items) ? j.items
+              : [];
+
+    // since auf server_time/next_since setzen (falls vorhanden)
+    if (j.next_since) S.since = j.next_since;
+    else if (j.server_time) S.since = j.server_time;
+
+    saveSession(getStatus());
+
+    // Snapshot-Event feuern (Bridge/Ablage kann es genauso behandeln wie changes)
+    emit("snapshot", { patients: rows });
+    emit("status", getStatus());
+  }
 
   async function pollChangesOnce() {
     if (!isActive()) return;
@@ -292,3 +318,4 @@
     patchPatient,
   };
 })();
+
