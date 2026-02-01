@@ -1,108 +1,69 @@
-// /coop-bridge-ablage.js  (v2: robust active-check + poll loop)
-// Zweck: Holt Coop-Änderungen regelmäßig vom Server (über coop.js poll)
-//        und feuert "coop:changes", damit script.js / SKWriter das in localStorage/Ablage schreibt.
+// /coop-bridge-ablage.js  (v3: event-forward only, coop-client compatible)
+// Zweck:
+// - coop-client.js pollt selbst und feuert: coop:changes
+// - optional feuert coop-client.js: coop:snapshot (list_patients)
+// Diese Bridge reicht beides konsistent an deine Ablage-Logik weiter.
 
 (function () {
-  'use strict';
+  "use strict";
 
-  const VER = 'coop-bridge-ablage-v2';
+  const VER = "coop-bridge-ablage-v3";
   if (window.__COOP_BRIDGE_VER__ === VER) return;
   window.__COOP_BRIDGE_VER__ = VER;
 
   const DEBUG = true;
+  const log  = (...a) => DEBUG && console.log("[COOP-BRIDGE]", ...a);
+  const warn = (...a) => console.warn("[COOP-BRIDGE]", ...a);
 
-  function log(...a){ if (DEBUG) console.log('[COOP-BRIDGE]', ...a); }
-  function warn(...a){ console.warn('[COOP-BRIDGE]', ...a); }
-
-  function getSession(){
-    try { return JSON.parse(localStorage.getItem('coop_session_v1') || 'null'); }
-    catch { return null; }
+  // Hilfs-Fire: wir schicken IMMER coop:changes weiter,
+  // damit deine ablage.js / applyChanges-Logik nur EINEN Eingang hat.
+  function forwardAsChanges(rows, source) {
+    try {
+      const changes = Array.isArray(rows) ? rows : [];
+      if (!changes.length) return;
+      window.dispatchEvent(new CustomEvent("coop:changes", { detail: { changes, source } }));
+      log("forward -> coop:changes", source, changes.length);
+    } catch (e) {
+      warn("forward failed", e);
+    }
   }
 
-  function isCoopActive(){
+  // 1) Wenn coop-client Änderungen liefert:
+  window.addEventListener("coop:changes", (ev) => {
+    // Achtung: das ist bereits coop:changes.
+    // Wir lassen es durch (oder duplizieren nicht).
+    // Optional: Wenn du hier zusätzlich einen "Refresh" triggern willst:
     try {
-      if (window.Coop && typeof window.Coop.getStatus === 'function') {
-        const st = window.Coop.getStatus();
-        return !!(st && st.active && st.incident_id && st.token);
-      }
+      // Refresh-Hinweis an Ablage UI (optional)
+      new BroadcastChannel("ablage").postMessage({ type: "refresh", reason: "coop_changes" });
     } catch {}
-
-    // fallback: session vorhanden
-    const s = getSession();
-    return !!(s && s.incident_id && s.token);
-  }
-
-  async function doPoll(){
-    if (!window.Coop) return null;
-    try {
-      if (typeof window.Coop.poll === "function") {
-        const res = await window.Coop.poll();
-        return res || null;
-      }
-      if (typeof window.Coop.pullState === "function") {
-        await window.Coop.pullState();
-        // coop.js feuert coop:changes selbst
-        return null;
-      }
-      return null;
-    } catch (e) {
-      warn('poll failed', e);
-      return null;
-    }
-  }
-
-  function fireChanges(changes){
-    try {
-      window.dispatchEvent(new CustomEvent('coop:changes', { detail: { changes } }));
-      log('dispatched coop:changes', changes);
-    } catch (e) {
-      warn('dispatch failed', e);
-    }
-  }
-
-  // Poll-Loop
-  let timer = null;
-  async function tick(){
-    if (!isCoopActive()) return;
-
-    const out = await doPoll();
-
-    // coop.js kann entweder {changes:[...]} zurückgeben oder direkt array
-    const changes = Array.isArray(out) ? out : (out && Array.isArray(out.changes) ? out.changes : []);
-
-    if (changes && changes.length) fireChanges(changes);
-  }
-
-  function start(){
-    if (timer) return;
-    log('start');
-    timer = setInterval(tick, 1500); // 1.5s reicht
-    tick();
-  }
-
-  function stop(){
-    if (!timer) return;
-    clearInterval(timer);
-    timer = null;
-    log('stop');
-  }
-
-  // automatisch starten wenn coop aktiv ist
-  window.addEventListener('load', start);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') start();
   });
-  window.addEventListener('online', start);
 
-  // falls coop.js Events feuert, sofort starten
-  window.addEventListener('coop:created', start);
-  window.addEventListener('coop:joined', start);
-  window.addEventListener('coop:restored', start);
+  // 2) Snapshot aus coop-client (list_patients) -> in changes umwandeln
+  window.addEventListener("coop:snapshot", (ev) => {
+    const patients = ev?.detail?.patients || [];
+    forwardAsChanges(patients, "snapshot");
+    try {
+      new BroadcastChannel("ablage").postMessage({ type: "refresh", reason: "coop_snapshot" });
+    } catch {}
+  });
 
-  // bei reset/ended stoppen
-  window.addEventListener('coop:reset', stop);
-  window.addEventListener('coop:ended', stop);
-  window.addEventListener('coop:disabled', stop);
+  // 3) Optional: beim Restore/Join einmal Snapshot anstoßen (wenn coop-client es exportiert)
+  async function trySnapshot(reason) {
+    try {
+      if (window.Coop && typeof window.Coop.fetchSnapshotOnce === "function") {
+        await window.Coop.fetchSnapshotOnce();
+        log("snapshot requested", reason);
+      }
+    } catch (e) {
+      warn("snapshot request failed", reason, e);
+    }
+  }
 
-  start();
+  window.addEventListener("coop:created",  () => trySnapshot("created"));
+  window.addEventListener("coop:joined",   () => trySnapshot("joined"));
+  window.addEventListener("coop:restored", () => trySnapshot("restored"));
+
+  // Beim Laden (falls Session schon da ist)
+  window.addEventListener("load", () => trySnapshot("load"));
 })();
