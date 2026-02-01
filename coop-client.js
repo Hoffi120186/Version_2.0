@@ -125,10 +125,12 @@
 
     S.since = isoSinceNowSkewed();
     saveSession(getStatus());
-    startLoops();
+       startLoops();
+    await fetchSnapshotOnce().catch(()=>{});
     emit("created", getStatus());
     emit("status", getStatus());
     return j;
+
   }
 
   async function joinIncident({ join_code, role = "RTW", label = "" } = {}) {
@@ -145,9 +147,11 @@
     S.since = isoSinceNowSkewed();
     saveSession(getStatus());
     startLoops();
-    emit("joined", getStatus());
+    await fetchSnapshotOnce().catch(()=>{});
+    emit("created", getStatus());
     emit("status", getStatus());
     return j;
+
   }
 
   async function leave({ reason = "leave" } = {}) {
@@ -294,10 +298,12 @@
 
     setStateFromSession(sess);
     if (!S.since) S.since = isoSinceNowSkewed();
-    startLoops();
+      startLoops();
+    await fetchSnapshotOnce().catch(()=>{});
     emit("restored", getStatus());
     emit("status", getStatus());
     return { ok:true };
+
   }
 
   // expose
@@ -316,6 +322,7 @@
     end,
 
     patchPatient,
+    fetchSnapshotOnce,
+
   };
 })();
-
