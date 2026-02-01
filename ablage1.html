@@ -848,11 +848,20 @@ function imageToDataURL(src){
 /* Beim Verlassen Autostart verbieten */
 window.addEventListener('beforeunload', () => { denyAutostart(); });
 </script>
-<script src="/coop-client.js?v=2026-01-31-1"></script>
+<!-- 1) Coop zuerst -->
+<script src="/coop-client.js?v=2026-02-01-1" defer></script>
+<script src="/coop-bridge-ablage.js?v=2026-02-01-1" defer></script>
 
-<script src="/coop-bridge-ablage.js?v=1"></script>
+<!-- 2) Ablage-Engine vor deinem UI-Modul -->
+<script src="/ablage.js?v=2026-02-01-1" defer></script>
+
+<!-- 3) dann erst dein UI / Render-Script -->
+<script type="module">
+  // DEIN GANZES großes Modulscript (das aktuell oben steht) HIER rein
+</script>
+
+<!-- optional -->
 <script src="/metrics.js" defer></script>
-<script src="/ablage.js?v=8"></script>
+
 </body>
 </html>
-
