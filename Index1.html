@@ -220,7 +220,7 @@
     }
     @keyframes ripple{ to{ transform:scale(4); opacity:0; } }
 
-    /* Alarmbild immer mittig */
+    /* Alarmbild (alt) – bleibt drin, wird aber nicht mehr gebraucht */
     .image-container img{
       display:none;
       width:clamp(280px, 90vw, 520px);
@@ -260,6 +260,121 @@
       position:absolute; inset:15% 10%;
       border:3px solid rgba(255,255,255,.7); border-radius:12px; pointer-events:none;
     }
+
+    /* =========================================================
+       MELDER OVERLAY (NEU, FINAL)
+       ========================================================= */
+    .melderOverlay{
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      z-index: 10000; /* über allem */
+      padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+      background: radial-gradient(ellipse at center, rgba(0,0,0,.35), rgba(0,0,0,.70));
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .melderOverlay.isOpen{ display:grid; }
+
+    .melderWrap{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:14px;
+    }
+
+    .melderCard{
+      position: relative;
+      width: min(92vw, 820px);
+      border-radius: 26px;
+      overflow: hidden;
+      transform: translateY(46px) scale(.985);
+      opacity: 0;
+      background: rgba(255,255,255,.08);
+      box-shadow:
+        0 22px 70px rgba(0,0,0,.55),
+        inset 0 1px 0 rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.14);
+    }
+    .melderOverlay.isOpen .melderCard{
+      animation: melderIn 520ms cubic-bezier(.2,.9,.2,1) forwards;
+    }
+    .melderOverlay.isClosing .melderCard{
+      animation: melderOut 360ms cubic-bezier(.4,0,.9,.2) forwards;
+    }
+    @keyframes melderIn{ to{ transform: translateY(0) scale(1); opacity: 1; } }
+    @keyframes melderOut{ to{ transform: translateY(26px) scale(.992); opacity: 0; } }
+
+    .melderImg{ width:100%; display:block; }
+
+    /* Display Position (passt als Start gut zu deinem Bild) */
+    .display{
+      position:absolute;
+      left: 14.8%;
+      top: 22%;
+      width: 70.4%;
+      height: 34.5%;
+      border-radius: 10px;
+      overflow:hidden;
+      background: radial-gradient(circle at 30% 30%, rgba(210,255,120,.95), rgba(170,220,70,.90));
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,.18),
+        0 10px 20px rgba(0,0,0,.25),
+        0 0 28px rgba(180,255,120,.35);
+      filter: saturate(1.05) contrast(1.06);
+    }
+
+    /* Scanlines super subtil */
+    .scanline{
+      position:absolute; inset:0;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(0,0,0,.06) 0px,
+        rgba(0,0,0,.06) 1px,
+        rgba(255,255,255,.02) 2px,
+        rgba(255,255,255,.02) 4px
+      );
+      mix-blend-mode: overlay;
+      opacity: .34;
+      pointer-events:none;
+    }
+
+    .lines{
+      position:absolute;
+      inset: 10% 7% 10% 7%;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      gap:6px;
+      font-family: system-ui, -apple-system, "SF Pro Display", Segoe UI, Roboto, Arial, sans-serif;
+      font-weight: 900;
+      font-size: clamp(16px, 2.7vw, 30px);
+      line-height: 1.03;
+      color: rgba(8,8,8,.92);
+      text-shadow: 0 1px 0 rgba(255,255,255,.35);
+    }
+
+    .line{
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 180ms ease, transform 180ms ease;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .line.show{ opacity:1; transform: translateY(0); }
+
+    .melderHint{
+      font-size: 14px;
+      color: rgba(255,255,255,.88);
+      background: rgba(0,0,0,.25);
+      border: 1px solid rgba(255,255,255,.10);
+      padding: 10px 14px;
+      border-radius: 999px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
   </style>
 
   <link rel="stylesheet" href="/app-flow.css">
@@ -277,6 +392,13 @@
       <button id="startButton" class="status-btn">
         Status 1<br>Fahrzeug einsatzbereit
       </button>
+
+      <!-- NEU: Status 3 erscheint erst nach Alarm -->
+      <button id="status3Button" class="status-btn status-btn--primary" style="display:none;">
+        Status 3<br>Einsatz übernommen
+      </button>
+
+      <!-- Alt (lassen wir drin, wird aber nicht mehr genutzt) -->
       <img id="alarmImage" src="fotos/Melder1rett.png" alt="Alarmbild">
     </div>
 
@@ -286,6 +408,28 @@
       </button>
     </div>
   </main>
+
+  <!-- ====== MELDER OVERLAY (NEU) ====== -->
+  <div id="melderOverlay" class="melderOverlay" aria-hidden="true">
+    <div class="melderWrap">
+      <div class="melderCard" role="dialog" aria-label="Alarmmelder">
+        <!-- WICHTIG: Dein leeres Melderbild -->
+        <img class="melderImg" src="/fotos/Melder_Leer.png" alt="Alarmmelder" />
+
+        <div class="display">
+          <div class="scanline"></div>
+          <div class="lines" id="melderLines">
+            <div class="line"></div>
+            <div class="line"></div>
+            <div class="line"></div>
+            <div class="line"></div>
+            <div class="line"></div>
+          </div>
+        </div>
+      </div>
+      <div class="melderHint">Bestätigen mit <b>Status 3</b></div>
+    </div>
+  </div>
 
   <!-- Scanner-Overlay -->
   <div id="scannerOverlay" class="scan-overlay" aria-hidden="true">
@@ -299,50 +443,19 @@
     </div>
   </div>
 
-  <!-- ✅ Vorsound (robust: relativ zur index1.html) -->
+  <!-- Status 1 + Ripple + Melder-Sequence -->
   <script>
-    // Lädt status1_pre.mp3 aus dem gleichen Ordner wie index1.html
-    const PRE_URL = new URL('status1_pre.mp3', location.href).href;
-    const audioPre = new Audio(PRE_URL);
-    audioPre.preload = 'auto';
+    // Pager-Ton: wir nehmen deinen bestehenden Alarmton (passt super)
+    const pagerAudio = new Audio('/Alarmton2.mp3');
 
-    console.log('[pre] audioPre src =', audioPre.src);
-    // Debug: zeigt dir 200/404 + content-type in der Konsole
-    fetch(audioPre.src, { cache: 'no-store' })
-      .then(r => console.log('[pre] fetch', r.status, r.headers.get('content-type')))
-      .catch(e => console.log('[pre] fetch failed', e));
+    const startButton   = document.getElementById("startButton");
+    const status3Button = document.getElementById("status3Button");
+    const alarmImage    = document.getElementById("alarmImage"); // bleibt ungenutzt
 
-    function playPreSoundThen(nextFn){
-      audioPre.onended = null;
-      audioPre.onerror = null;
+    const melderOverlay = document.getElementById('melderOverlay');
+    const melderLines   = document.getElementById('melderLines');
 
-      const done = () => {
-        audioPre.onended = null;
-        audioPre.onerror = null;
-        try { nextFn && nextFn(); } catch(e){ console.warn(e); }
-      };
-
-      audioPre.onended = done;
-      audioPre.onerror = done;
-
-      try{
-        audioPre.pause();
-        audioPre.currentTime = 0;
-      } catch {}
-
-      audioPre.play().catch((err) => {
-        console.warn('[pre-audio] play blocked/failed', err);
-        done(); // damit es nicht hängt
-      });
-    }
-  </script>
-
-  <!-- Status 1 + Ripple -->
-  <script>
-    const audio = new Audio('/Alarmton2.mp3'); // Hauptsound (wie bisher)
-    const startButton = document.getElementById("startButton");
-    const alarmImage  = document.getElementById("alarmImage");
-
+    // ---------- Reset (dein Original) ----------
     function resetAuswertungOnly() {
       try {
         const toRemove = [];
@@ -364,22 +477,123 @@
       if (saved) alarmImage.src = saved;
     });
 
-    // ✅ Klick -> Vorsound -> dann Bild + Hauptsound
-    startButton.addEventListener("click", function () {
+    // ---------- Kleine Helpers ----------
+    function wait(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+    // Bestätigungston ohne Datei (iOS-friendly weil direkt im Klick)
+    let audioCtx = null;
+    function beepConfirm(){
+      try{
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.type = 'sine';
+        o.frequency.value = 880; // "Beep"
+        g.gain.value = 0.0001;
+        o.connect(g); g.connect(audioCtx.destination);
+
+        const now = audioCtx.currentTime;
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.linearRampToValueAtTime(0.15, now + 0.02);
+        g.gain.linearRampToValueAtTime(0.0001, now + 0.12);
+
+        o.start(now);
+        o.stop(now + 0.14);
+      }catch(e){
+        // Wenn WebAudio blockt: egal, dann ist nur der Beep weg.
+      }
+    }
+
+    // Deine Einsatzdaten – später kannst du das dynamisch aus Szenario/localStorage füllen
+    function getDispatchLines(){
+      // Wenn du später "meldebild" / Szenario mappen willst: sag Bescheid, dann binden wir das an.
+      return [
+        "Alarm RTW 1-83-1",
+        "Gehweg 29-38",
+        "(Fußgängerzone)",
+        "Unklare Lage",
+        "Pol. auf Anfahrt"
+      ];
+    }
+
+    function setLines(lines){
+      const nodes = [...melderLines.querySelectorAll('.line')];
+      nodes.forEach((n,i) => {
+        n.textContent = lines[i] || "";
+        n.classList.remove('show');
+      });
+      return nodes;
+    }
+
+    async function playPagerShort(){
+      try{
+        pagerAudio.currentTime = 0;
+        await pagerAudio.play();
+        // nach ~1.2s stoppen (klingt realistisch, nervt nicht)
+        setTimeout(() => {
+          try { pagerAudio.pause(); pagerAudio.currentTime = 0; } catch(_) {}
+        }, 1200);
+      }catch(e){
+        // iOS kann manchmal blocken – meist klappt's nach User-Klick
+      }
+    }
+
+    async function showMelderSequence(){
+      // 1) Confirm direkt
+      beepConfirm();
+
+      // 2) kurze Pause
+      await wait(240);
+
+      // 3) Overlay auf
+      melderOverlay.classList.add('isOpen');
+      melderOverlay.setAttribute('aria-hidden','false');
+
+      // 4) Pager-Ton kurz nach dem Öffnen
+      await wait(120);
+      await playPagerShort();
+
+      // 5) Text zeilenweise
+      const nodes = setLines(getDispatchLines());
+      for (let i=0; i<nodes.length; i++){
+        if (!nodes[i].textContent) continue;
+        await wait(150);
+        nodes[i].classList.add('show');
+      }
+
+      // 6) Status 3 freigeben
+      status3Button.style.display = "block";
+    }
+
+    async function hideMelder(){
+      melderOverlay.classList.add('isClosing');
+      await wait(360);
+      melderOverlay.classList.remove('isOpen','isClosing');
+      melderOverlay.setAttribute('aria-hidden','true');
+
+      // Reset lines
+      [...melderLines.querySelectorAll('.line')].forEach(n => n.classList.remove('show'));
+    }
+
+    // ---------- Status 1 klick ----------
+    startButton.addEventListener("click", async function () {
       resetAuswertungOnly();
 
-      playPreSoundThen(() => {
-        startButton.style.display = "none";
-        alarmImage.style.display = "block";
-        audio.play().catch(console.error);
-      });
+      startButton.style.display = "none";
+      alarmImage.style.display = "none"; // wir nutzen jetzt das Overlay statt Bild
+
+      // Sequence starten
+      await showMelderSequence();
     });
 
-    alarmImage.addEventListener("click", function () {
-      audio.pause();
-      audio.currentTime = 0;
+    // ---------- Status 3 klick (Bestätigung) ----------
+    status3Button.addEventListener("click", async function(){
+      status3Button.style.display = "none";
+      await hideMelder();
+      // Rest bleibt – Status 4 bleibt verfügbar
     });
 
+    // Ripple (dein Original)
     document.addEventListener('click', function(e){
       const btn = e.target.closest('.status-btn');
       if(!btn) return;
@@ -568,18 +782,14 @@
       try { const st = history.state; if (st && st.scan) history.back(); } catch {}
     }
 
-    // ✅ Status 4: Klick -> Vorsound -> dann Scanner
-    startBtn.addEventListener('click', function (e) {
+    startBtn.addEventListener('click', async (e) => {
       e.preventDefault();
       e.stopPropagation();
 
       resetClinicAndAssignmentsLikeEnd();
-
-      playPreSoundThen(async () => {
-        await whenServiceWorkerReady();
-        await new Promise(r => setTimeout(r, 300));
-        openScanner();
-      });
+      await whenServiceWorkerReady();
+      await new Promise(r => setTimeout(r, 300));
+      openScanner();
     }, { passive: false });
 
     closeBtn.addEventListener('click', closeScanner, { passive: true });
@@ -602,7 +812,7 @@
     }
   </script>
 
-  <script src="/coop.js"></script>
+  <!-- Metrics -->
   <script src="/metrics.js" defer></script>
 </body>
 </html>
