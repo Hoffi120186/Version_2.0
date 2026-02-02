@@ -218,7 +218,7 @@
       padding: 18px;
       box-sizing:border-box;
 
-      transition: opacity .25s ease;
+      transition: opacity .40s ease;
       opacity: 0;
     }
     .melder-overlay.open{
@@ -234,14 +234,13 @@
       gap: 16px;
     }
 
-    /* ✅ FIX: Card ist standardmäßig sichtbar, hidden nur per Klasse */
+    /* ✅ FIX: Card sichtbar, hidden nur per Klasse */
     .melderCard{
       position:relative;
       width: 100%;
       border-radius: 18px;
       overflow:hidden;
       box-shadow: 0 24px 70px rgba(0,0,0,.65);
-
       transform: translateY(0);
       opacity: 1;
     }
@@ -250,7 +249,7 @@
       opacity: 0;
     }
 
-    /* Das ist dein "leer" Melder-Bild (nur Gerät, ohne Text) */
+    /* Melder Bild */
     .melderImg{
       width:100%;
       height:auto;
@@ -258,7 +257,7 @@
       border-radius: 18px;
     }
 
-    /* LCD Display: final Werte */
+    /* LCD Display */
     .display{
       position:absolute;
       left: 18.0%;
@@ -275,8 +274,6 @@
         0 0 28px rgba(180,255,120,.35);
       filter: saturate(1.05) contrast(1.06);
     }
-
-    /* leichte "Scheibe/Glanz" */
     .display::before{
       content:"";
       position:absolute;
@@ -297,14 +294,13 @@
       line-height: 1.15;
       text-align:left;
     }
-
     .line{
       white-space: normal;
       word-break: break-word;
       min-height: 1em;
     }
 
-    /* Status 3 Button im gleichen Glass-Style */
+    /* Status 3 Button (Glass) */
     .melderConfirm{
       width: min(92vw, 520px);
       padding: 20px 18px;
@@ -351,25 +347,27 @@
       transform:none;
     }
 
-    /* --- Melder Realismus --- */
+    /* --- Melder Realismus: länger & "fühlbar" --- */
     @keyframes pagerEnter {
       0%   { transform: translateY(22px) scale(.985); opacity: 0; filter: blur(2px); }
       60%  { transform: translateY(-2px) scale(1.0);  opacity: 1; filter: blur(0); }
       100% { transform: translateY(0) scale(1.0); }
     }
+
+    /* ✅ längeres, realistischeres Wackeln */
     @keyframes pagerShake {
-  0%   { transform: translate(0,0) rotate(0deg); }
-  10%  { transform: translate(-2px, 2px) rotate(-.2deg); }
-  20%  { transform: translate(3px, -2px) rotate(.2deg); }
-  30%  { transform: translate(-3px, 1px) rotate(-.25deg); }
-  40%  { transform: translate(3px, 2px) rotate(.25deg); }
-  50%  { transform: translate(-2px, -2px) rotate(-.15deg); }
-  60%  { transform: translate(2px, 1px) rotate(.15deg); }
-  70%  { transform: translate(-1px, 1px) rotate(-.1deg); }
-  80%  { transform: translate(1px, -1px) rotate(.1deg); }
-  90%  { transform: translate(-1px, 0) rotate(-.05deg); }
-  100% { transform: translate(0,0) rotate(0deg); }
-}
+      0%   { transform: translate(0,0) rotate(0deg); }
+      10%  { transform: translate(-2px, 2px) rotate(-.2deg); }
+      20%  { transform: translate(3px, -2px) rotate(.2deg); }
+      30%  { transform: translate(-3px, 1px) rotate(-.25deg); }
+      40%  { transform: translate(3px, 2px) rotate(.25deg); }
+      50%  { transform: translate(-2px, -2px) rotate(-.15deg); }
+      60%  { transform: translate(2px, 1px) rotate(.15deg); }
+      70%  { transform: translate(-1px, 1px) rotate(-.1deg); }
+      80%  { transform: translate(1px, -1px) rotate(.1deg); }
+      90%  { transform: translate(-1px, 0) rotate(-.05deg); }
+      100% { transform: translate(0,0) rotate(0deg); }
+    }
 
     @keyframes lcdPulse {
       0%   { filter: brightness(1.00) saturate(1.02) contrast(1.05); }
@@ -378,30 +376,43 @@
       70%  { filter: brightness(1.10) saturate(1.08) contrast(1.07); }
       100% { filter: brightness(1.00) saturate(1.02) contrast(1.05); }
     }
+
+    /* ✅ besseres Flicker-Pattern */
     @keyframes lcdFlicker {
-      0%, 100% { opacity: 1; }
-      48% { opacity: .985; }
-      50% { opacity: .96; }
-      52% { opacity: .99; }
+      0%   { opacity: 1; }
+      6%   { opacity: .92; }
+      10%  { opacity: .99; }
+      18%  { opacity: .88; }
+      22%  { opacity: 1; }
+      38%  { opacity: .95; }
+      44%  { opacity: .85; }
+      48%  { opacity: 1; }
+      70%  { opacity: .93; }
+      78%  { opacity: .98; }
+      100% { opacity: 1; }
     }
 
-    /* ✅ Exit (Status 3) */
+    /* ✅ Exit: langsamer */
     @keyframes pagerExit {
       0%   { transform: translateY(0) scale(1); opacity: 1; filter: blur(0); }
-      100% { transform: translateY(26px) scale(.99); opacity: 0; filter: blur(2px); }
+      100% { transform: translateY(34px) scale(.99); opacity: 0; filter: blur(2px); }
     }
-   .melderCard.is-entering{
-  animation:
-    pagerEnter .55s ease-out both,
-    pagerShake 1.15s ease-in-out .05s both;
-}
+
+    .melderCard.is-entering{
+      animation:
+        pagerEnter .55s ease-out both,
+        pagerShake 1.15s ease-in-out .05s both;
+    }
 
     .melderCard.is-exiting{
-      animation: pagerExit .35s ease-in both;
+      animation: pagerExit .65s ease-in both;
     }
+
     .display.is-waking{
-      animation: lcdPulse 1.6s ease-in-out both;
+      animation: lcdPulse 2.2s ease-in-out both;
     }
+
+    /* Flicker läuft solange Alarm läuft (JS entfernt is-flicker beim Stop) */
     .display.is-flicker::after{
       content:"";
       position:absolute;
@@ -410,7 +421,7 @@
       background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,0));
       mix-blend-mode: overlay;
       opacity:.12;
-      animation: lcdFlicker 1.4s linear infinite;
+      animation: lcdFlicker 2.2s linear infinite;
     }
 
     /* ===== Scanner-Overlay ===== */
@@ -471,10 +482,8 @@
     <div class="melder-wrap">
 
       <div class="melderCard is-hidden">
-        <!-- ✅ leeres Melder-Bild -->
         <img class="melderImg" src="/fotos/Melder_Leer.png" alt="Melder">
 
-        <!-- ✅ LCD Bereich -->
         <div class="display">
           <div id="melderLines" class="lines"></div>
         </div>
@@ -532,10 +541,15 @@
         pagerSound: "/Alarmton2.mp3",
         openDelayAfterConfirmMs: 2500,
         pagerDelayAfterOpenMs: 150,
+
+        // ✅ Texttempo
         lineDelayMs: 1400,
-        charDelayMs: 55,
-        afterLinePauseMs: 320,
-        // alarmDurationMs: 6500,
+        charDelayMs: 70,
+        afterLinePauseMs: 420,
+
+        // ✅ Alarmzeit (kürzer) – kann in szenarien.js pro Szenario überschrieben werden
+        alarmDurationMs: 4500,
+
         lines: [
           "Alarm RTW 1-83-1 A08778",
           "Gehweg 29-38 (Fußgängerzone höhe Alm Klause)",
@@ -582,6 +596,14 @@
       }
     }
 
+    function setConfirmEnabled(on){
+      confirmBtn.disabled = !on;
+    }
+
+    function clearLines(){
+      melderLinesEl.innerHTML = "";
+    }
+
     function stopAlarm(){
       try{
         if (alarmStopTimer) { clearTimeout(alarmStopTimer); alarmStopTimer = 0; }
@@ -589,6 +611,10 @@
           alarmAudio.pause();
           alarmAudio.currentTime = 0;
         }
+      }catch{}
+      try{
+        // ✅ Flicker endet mit Alarm
+        displayEl.classList.remove('is-flicker');
       }catch{}
     }
 
@@ -600,8 +626,11 @@
       melderCard.classList.remove('is-hidden');
 
       melderCard.classList.add('is-entering');
+
+      // ✅ Flackern startet und bleibt solange Alarm läuft
       displayEl.classList.add('is-waking','is-flicker');
 
+      // ✅ Enter länger wirken lassen
       setTimeout(()=> melderCard.classList.remove('is-entering'), 1400);
       setTimeout(()=> displayEl.classList.remove('is-waking'), 2200);
     }
@@ -612,6 +641,7 @@
       melderCard.classList.remove('is-entering');
       melderCard.classList.add('is-exiting');
 
+      // ✅ Exit ist langsamer -> timeout passend
       setTimeout(() => {
         melderOverlay.classList.remove('open');
         melderOverlay.setAttribute('aria-hidden','true');
@@ -621,15 +651,7 @@
 
         clearLines();
         setConfirmEnabled(false);
-      }, 360);
-    }
-
-    function setConfirmEnabled(on){
-      confirmBtn.disabled = !on;
-    }
-
-    function clearLines(){
-      melderLinesEl.innerHTML = "";
+      }, 700);
     }
 
     function buildLines(lines){
@@ -673,16 +695,18 @@
       await wait(sc.pagerDelayAfterOpenMs ?? 150);
       alarmAudio.play().catch(()=>{});
 
-      if (sc.alarmDurationMs){
-        alarmStopTimer = setTimeout(()=> stopAlarm(), sc.alarmDurationMs);
+      // ✅ Alarm stoppt nach X ms (in szenarien.js via alarmDurationMs einstellbar)
+      const dur = sc.alarmDurationMs ?? 4500;
+      if (dur && dur > 0){
+        alarmStopTimer = setTimeout(()=> stopAlarm(), dur);
       }
 
       const lines = Array.isArray(sc.lines) ? sc.lines : [];
       const nodes = buildLines(lines);
 
       const lineDelay = sc.lineDelayMs ?? 1400;
-      const charDelay = sc.charDelayMs ?? 55;
-      const afterLinePause = sc.afterLinePauseMs ?? 320;
+      const charDelay = sc.charDelayMs ?? 70;
+      const afterLinePause = sc.afterLinePauseMs ?? 420;
 
       for (let i=0; i<nodes.length; i++){
         await wait(lineDelay);
@@ -943,4 +967,3 @@
   <script src="/metrics.js" defer></script>
 </body>
 </html>
-
