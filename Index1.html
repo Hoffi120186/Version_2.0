@@ -305,9 +305,9 @@
     .display{
       position:absolute;
       left: 16.8%;
-      top: 24.3%;
+      top: 28.3%;
       width: 66.8%;
-      height: 34.8%;
+      height: 33.4%;
       border-radius: 10px;
       overflow:hidden;
 
@@ -600,8 +600,8 @@
 
       // ✅ Typewriter Zeilen
       const nodes = setLines(sc.lines || []);
-      const lineDelay = sc.lineDelayMs ?? 1100;
-      const charDelay = sc.charDelayMs ?? 28;
+      const lineDelay = sc.lineDelayMs ?? 1400;
+      const charDelay = sc.charDelayMs ?? 50;
 
       for (let i=0; i<nodes.length; i++){
         const full = (sc.lines && sc.lines[i]) ? String(sc.lines[i]) : "";
