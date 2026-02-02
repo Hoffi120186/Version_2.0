@@ -234,7 +234,7 @@
       gap: 16px;
     }
 
-    /* ✅ FIX: Card sichtbar, hidden nur per Klasse */
+    /* Card sichtbar; hidden nur per Klasse */
     .melderCard{
       position:relative;
       width: 100%;
@@ -249,7 +249,6 @@
       opacity: 0;
     }
 
-    /* Melder Bild */
     .melderImg{
       width:100%;
       height:auto;
@@ -347,14 +346,53 @@
       transform:none;
     }
 
-    /* --- Melder Realismus: länger & "fühlbar" --- */
+    /* Reopen Button (Melder in Tasche) */
+    .melderReopen{
+      position: fixed;
+      right: 14px;
+      bottom: 14px;
+      z-index: 1002;
+
+      display:none;
+      padding: 14px 16px;
+      border-radius: 16px;
+
+      color:#fff;
+      font-weight: 900;
+      font-size: 16px;
+      letter-spacing: .2px;
+      text-shadow: 0 2px 10px rgba(0,0,0,.55);
+
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.22);
+      box-shadow:
+        0 14px 30px rgba(0,0,0,.45),
+        inset 0 1px 0 rgba(255,255,255,.25),
+        inset 0 -1px 0 rgba(0,0,0,.25);
+
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+
+      cursor:pointer;
+      user-select:none;
+      transition: transform .15s ease, background .2s ease, border-color .2s ease, opacity .2s ease;
+    }
+    .melderReopen:hover{
+      transform: translateY(-2px);
+      background: rgba(255,255,255,.16);
+      border-color: rgba(255,255,255,.30);
+    }
+    .melderReopen:active{
+      transform: translateY(0);
+    }
+
+    /* --- Melder Realismus --- */
     @keyframes pagerEnter {
       0%   { transform: translateY(22px) scale(.985); opacity: 0; filter: blur(2px); }
       60%  { transform: translateY(-2px) scale(1.0);  opacity: 1; filter: blur(0); }
       100% { transform: translateY(0) scale(1.0); }
     }
 
-    /* ✅ längeres, realistischeres Wackeln */
     @keyframes pagerShake {
       0%   { transform: translate(0,0) rotate(0deg); }
       10%  { transform: translate(-2px, 2px) rotate(-.2deg); }
@@ -377,7 +415,6 @@
       100% { filter: brightness(1.00) saturate(1.02) contrast(1.05); }
     }
 
-    /* ✅ besseres Flicker-Pattern */
     @keyframes lcdFlicker {
       0%   { opacity: 1; }
       6%   { opacity: .92; }
@@ -392,7 +429,7 @@
       100% { opacity: 1; }
     }
 
-    /* ✅ Exit: langsamer */
+    /* ✅ langsamer rauswischen */
     @keyframes pagerExit {
       0%   { transform: translateY(0) scale(1); opacity: 1; filter: blur(0); }
       100% { transform: translateY(34px) scale(.99); opacity: 0; filter: blur(2px); }
@@ -400,8 +437,12 @@
 
     .melderCard.is-entering{
       animation:
-        pagerEnter .55s ease-out both,
-        pagerShake 1.15s ease-in-out .05s both;
+        pagerEnter .55s ease-out both;
+    }
+
+    /* ✅ Wackeln solange Alarm läuft */
+    .melderCard.is-alarming{
+      animation: pagerShake 1.15s ease-in-out infinite;
     }
 
     .melderCard.is-exiting{
@@ -412,7 +453,6 @@
       animation: lcdPulse 2.2s ease-in-out both;
     }
 
-    /* Flicker läuft solange Alarm läuft (JS entfernt is-flicker beim Stop) */
     .display.is-flicker::after{
       content:"";
       position:absolute;
@@ -494,6 +534,11 @@
     </div>
   </div>
 
+  <!-- ✅ Melder "in Tasche" -->
+  <button id="melderReopen" class="melderReopen" type="button" aria-label="Melder erneut öffnen">
+    📟 Melder
+  </button>
+
   <!-- ===== Scanner-Overlay ===== -->
   <div id="scannerOverlay" class="scan-overlay" aria-hidden="true">
     <div class="scan-ui">
@@ -534,7 +579,6 @@
 
   <!-- ===== Status 1: Melder-Sequence ===== -->
   <script>
-    // Fallback falls szenarien.js mal nicht lädt
     function getScenarioFallback(){
       return {
         melderImage: "/fotos/Melder_Leer.png",
@@ -542,12 +586,10 @@
         openDelayAfterConfirmMs: 2500,
         pagerDelayAfterOpenMs: 150,
 
-        // ✅ Texttempo
         lineDelayMs: 1400,
         charDelayMs: 70,
         afterLinePauseMs: 420,
 
-        // ✅ Alarmzeit (kürzer) – kann in szenarien.js pro Szenario überschrieben werden
         alarmDurationMs: 4500,
 
         lines: [
@@ -568,17 +610,18 @@
       return getScenarioFallback();
     }
 
-    const startButton = document.getElementById("startButton");
-
+    const startButton  = document.getElementById("startButton");
     const melderOverlay = document.getElementById('melderOverlay');
     const melderCard    = document.querySelector('.melderCard');
     const displayEl     = document.querySelector('.display');
     const melderImg     = document.querySelector('.melderImg');
     const melderLinesEl = document.getElementById('melderLines');
     const confirmBtn    = document.getElementById('melderConfirmBtn');
+    const reopenBtn     = document.getElementById('melderReopen');
 
     let alarmAudio = null;
     let alarmStopTimer = 0;
+    let melderSequenceDone = false;
 
     function resetAuswertungOnly() {
       try {
@@ -600,10 +643,6 @@
       confirmBtn.disabled = !on;
     }
 
-    function clearLines(){
-      melderLinesEl.innerHTML = "";
-    }
-
     function stopAlarm(){
       try{
         if (alarmStopTimer) { clearTimeout(alarmStopTimer); alarmStopTimer = 0; }
@@ -613,12 +652,14 @@
         }
       }catch{}
       try{
-        // ✅ Flicker endet mit Alarm
         displayEl.classList.remove('is-flicker');
+        melderCard.classList.remove('is-alarming'); /* ✅ stop shake */
       }catch{}
     }
 
     function openMelder(){
+      reopenBtn.style.display = 'none';
+
       melderOverlay.classList.add('open');
       melderOverlay.setAttribute('aria-hidden','false');
 
@@ -627,11 +668,9 @@
 
       melderCard.classList.add('is-entering');
 
-      // ✅ Flackern startet und bleibt solange Alarm läuft
       displayEl.classList.add('is-waking','is-flicker');
 
-      // ✅ Enter länger wirken lassen
-      setTimeout(()=> melderCard.classList.remove('is-entering'), 1400);
+      setTimeout(()=> melderCard.classList.remove('is-entering'), 900);
       setTimeout(()=> displayEl.classList.remove('is-waking'), 2200);
     }
 
@@ -641,7 +680,6 @@
       melderCard.classList.remove('is-entering');
       melderCard.classList.add('is-exiting');
 
-      // ✅ Exit ist langsamer -> timeout passend
       setTimeout(() => {
         melderOverlay.classList.remove('open');
         melderOverlay.setAttribute('aria-hidden','true');
@@ -649,13 +687,16 @@
         melderCard.classList.remove('is-exiting');
         melderCard.classList.add('is-hidden');
 
-        clearLines();
         setConfirmEnabled(false);
+
+        /* ✅ Text NICHT löschen -> beim Reopen direkt da */
+        if (melderSequenceDone) reopenBtn.style.display = 'block';
       }, 700);
     }
 
     function buildLines(lines){
-      clearLines();
+      // Text nicht löschen beim Close -> aber beim Neuaufbau schon leeren
+      melderLinesEl.innerHTML = "";
       const nodes = [];
       for (const _ of lines){
         const d = document.createElement('div');
@@ -695,7 +736,9 @@
       await wait(sc.pagerDelayAfterOpenMs ?? 150);
       alarmAudio.play().catch(()=>{});
 
-      // ✅ Alarm stoppt nach X ms (in szenarien.js via alarmDurationMs einstellbar)
+      /* ✅ Shake solange Alarm läuft */
+      melderCard.classList.add('is-alarming');
+
       const dur = sc.alarmDurationMs ?? 4500;
       if (dur && dur > 0){
         alarmStopTimer = setTimeout(()=> stopAlarm(), dur);
@@ -714,6 +757,7 @@
         await wait(afterLinePause);
       }
 
+      melderSequenceDone = true;
       setConfirmEnabled(true);
     }
 
@@ -739,6 +783,15 @@
       const sc = getScenarioSafe();
       closeMelder();
       await wait(sc.pauseAfterConfirmMs ?? 260);
+    });
+
+    /* ✅ Reopen: nur wieder anzeigen, kein neues Tippen/kein Alarm */
+    reopenBtn.addEventListener('click', (e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openMelder();
+      setConfirmEnabled(true);
+      // Alarm bleibt aus (realistisch: nur nachlesen)
     });
 
     // Ripple Effekt
