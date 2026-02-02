@@ -793,16 +793,24 @@
     });
 
     // ✅ Status 3 / Schließen: immer Beep -> dann rauswischen
-    confirmBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+  confirmBtn.addEventListener('click', async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
 
-      playPreSoundThen(async () => {
-        closeMelder();
-        const sc = getScenarioSafe();
-        await wait(sc.pauseAfterConfirmMs ?? 260);
-      });
-    });
+  // ✅ Reopen-Modus: NUR schließen, KEIN Ton
+  if (reopenMode) {
+    closeMelder();
+    return;
+  }
+
+  // ✅ Normaler Ablauf (Status 3): Ton + rauswischen
+  playPreSoundThen(async () => {
+    closeMelder();
+    const sc = getScenarioSafe();
+    await wait(sc.pauseAfterConfirmMs ?? 260);
+  });
+});
+
 
     // ✅ Reopen: Melder erneut öffnen -> nur "Schließen" Button
     reopenBtn.addEventListener('click', (e)=>{
