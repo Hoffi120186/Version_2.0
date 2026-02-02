@@ -358,14 +358,19 @@
       100% { transform: translateY(0) scale(1.0); }
     }
     @keyframes pagerShake {
-      0%{ transform: translate(0,0) }
-      15%{ transform: translate(-1px, 1px) }
-      30%{ transform: translate(2px, -1px) }
-      45%{ transform: translate(-2px, 0) }
-      60%{ transform: translate(2px, 1px) }
-      75%{ transform: translate(-1px, -1px) }
-      100%{ transform: translate(0,0) }
-    }
+  0%   { transform: translate(0,0) rotate(0deg); }
+  10%  { transform: translate(-2px, 2px) rotate(-.2deg); }
+  20%  { transform: translate(3px, -2px) rotate(.2deg); }
+  30%  { transform: translate(-3px, 1px) rotate(-.25deg); }
+  40%  { transform: translate(3px, 2px) rotate(.25deg); }
+  50%  { transform: translate(-2px, -2px) rotate(-.15deg); }
+  60%  { transform: translate(2px, 1px) rotate(.15deg); }
+  70%  { transform: translate(-1px, 1px) rotate(-.1deg); }
+  80%  { transform: translate(1px, -1px) rotate(.1deg); }
+  90%  { transform: translate(-1px, 0) rotate(-.05deg); }
+  100% { transform: translate(0,0) rotate(0deg); }
+}
+
     @keyframes lcdPulse {
       0%   { filter: brightness(1.00) saturate(1.02) contrast(1.05); }
       20%  { filter: brightness(1.14) saturate(1.10) contrast(1.07); }
@@ -385,9 +390,12 @@
       0%   { transform: translateY(0) scale(1); opacity: 1; filter: blur(0); }
       100% { transform: translateY(26px) scale(.99); opacity: 0; filter: blur(2px); }
     }
-    .melderCard.is-entering{
-      animation: pagerEnter .42s ease-out both, pagerShake .35s ease-in-out .06s both;
-    }
+   .melderCard.is-entering{
+  animation:
+    pagerEnter .55s ease-out both,
+    pagerShake 1.15s ease-in-out .05s both;
+}
+
     .melderCard.is-exiting{
       animation: pagerExit .35s ease-in both;
     }
@@ -594,8 +602,8 @@
       melderCard.classList.add('is-entering');
       displayEl.classList.add('is-waking','is-flicker');
 
-      setTimeout(()=> melderCard.classList.remove('is-entering'), 650);
-      setTimeout(()=> displayEl.classList.remove('is-waking'), 1700);
+      setTimeout(()=> melderCard.classList.remove('is-entering'), 1400);
+      setTimeout(()=> displayEl.classList.remove('is-waking'), 2200);
     }
 
     function closeMelder(){
@@ -935,3 +943,4 @@
   <script src="/metrics.js" defer></script>
 </body>
 </html>
+
