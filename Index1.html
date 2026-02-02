@@ -234,7 +234,6 @@
       gap: 16px;
     }
 
-    /* Card sichtbar; hidden nur per Klasse */
     .melderCard{
       position:relative;
       width: 100%;
@@ -436,8 +435,7 @@
     }
 
     .melderCard.is-entering{
-      animation:
-        pagerEnter .55s ease-out both;
+      animation: pagerEnter .55s ease-out both;
     }
 
     /* ✅ Wackeln solange Alarm läuft */
@@ -610,7 +608,7 @@
       return getScenarioFallback();
     }
 
-    const startButton  = document.getElementById("startButton");
+    const startButton   = document.getElementById("startButton");
     const melderOverlay = document.getElementById('melderOverlay');
     const melderCard    = document.querySelector('.melderCard');
     const displayEl     = document.querySelector('.display');
@@ -622,6 +620,7 @@
     let alarmAudio = null;
     let alarmStopTimer = 0;
     let melderSequenceDone = false;
+    let reopenMode = false;
 
     function resetAuswertungOnly() {
       try {
@@ -660,6 +659,15 @@
     function openMelder(){
       reopenBtn.style.display = 'none';
 
+      // ✅ Button-Mode: normal (Status 3) oder Reopen (Schließen)
+      if (reopenMode){
+        confirmBtn.textContent = 'Schließen';
+        confirmBtn.disabled = false;
+      } else {
+        confirmBtn.textContent = 'Status 3';
+        // disabled bleibt wie showMelderSequence es steuert
+      }
+
       melderOverlay.classList.add('open');
       melderOverlay.setAttribute('aria-hidden','false');
 
@@ -689,13 +697,16 @@
 
         setConfirmEnabled(false);
 
-        /* ✅ Text NICHT löschen -> beim Reopen direkt da */
+        // ✅ Text NICHT löschen -> beim Reopen direkt da
+
         if (melderSequenceDone) reopenBtn.style.display = 'block';
+
+        // ✅ Nach dem Schließen wieder normal
+        reopenMode = false;
       }, 700);
     }
 
     function buildLines(lines){
-      // Text nicht löschen beim Close -> aber beim Neuaufbau schon leeren
       melderLinesEl.innerHTML = "";
       const nodes = [];
       for (const _ of lines){
@@ -761,37 +772,46 @@
       setConfirmEnabled(true);
     }
 
+    // Status 1: normaler Ablauf
     startButton.addEventListener("click", () => {
       resetAuswertungOnly();
       startButton.style.display = "none";
+
+      reopenMode = false;
 
       playPreSoundThen(async () => {
         try{
           await showMelderSequence();
         }catch(e){
           console.warn(e);
+          reopenMode = false;
           openMelder();
+          confirmBtn.textContent = 'Status 3';
           setConfirmEnabled(true);
         }
       });
     });
 
-    confirmBtn.addEventListener('click', async (e) => {
+    // ✅ Status 3 / Schließen: immer Beep -> dann rauswischen
+    confirmBtn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
 
-      const sc = getScenarioSafe();
-      closeMelder();
-      await wait(sc.pauseAfterConfirmMs ?? 260);
+      playPreSoundThen(async () => {
+        closeMelder();
+        const sc = getScenarioSafe();
+        await wait(sc.pauseAfterConfirmMs ?? 260);
+      });
     });
 
-    /* ✅ Reopen: nur wieder anzeigen, kein neues Tippen/kein Alarm */
+    // ✅ Reopen: Melder erneut öffnen -> nur "Schließen" Button
     reopenBtn.addEventListener('click', (e)=>{
       e.preventDefault();
       e.stopPropagation();
+
+      reopenMode = true;
       openMelder();
-      setConfirmEnabled(true);
-      // Alarm bleibt aus (realistisch: nur nachlesen)
+      // Kein Alarm, kein neu tippen
     });
 
     // Ripple Effekt
