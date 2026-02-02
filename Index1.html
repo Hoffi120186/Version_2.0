@@ -217,8 +217,14 @@
       -webkit-backdrop-filter: blur(6px);
       padding: 18px;
       box-sizing:border-box;
+
+      transition: opacity .25s ease;
+      opacity: 0;
     }
-    .melder-overlay.open{ display:flex; }
+    .melder-overlay.open{
+      display:flex;
+      opacity: 1;
+    }
 
     .melder-wrap{
       width: min(92vw, 560px);
@@ -228,12 +234,18 @@
       gap: 16px;
     }
 
+    /* ✅ FIX: Card ist standardmäßig sichtbar, hidden nur per Klasse */
     .melderCard{
       position:relative;
       width: 100%;
       border-radius: 18px;
       overflow:hidden;
       box-shadow: 0 24px 70px rgba(0,0,0,.65);
+
+      transform: translateY(0);
+      opacity: 1;
+    }
+    .melderCard.is-hidden{
       transform: translateY(10px);
       opacity: 0;
     }
@@ -246,13 +258,13 @@
       border-radius: 18px;
     }
 
-    /* LCD Display: final Werte + dein "unten noch bisschen mehr" */
+    /* LCD Display: final Werte */
     .display{
       position:absolute;
       left: 18.0%;
       top: 28.3%;
       width: 64.8%;
-      height: 38.6%;            /* ✅ unten noch ein kleines Stück mehr */
+      height: 38.6%;
       border-radius: 10px;
       overflow:hidden;
 
@@ -368,8 +380,16 @@
       52% { opacity: .99; }
     }
 
+    /* ✅ Exit (Status 3) */
+    @keyframes pagerExit {
+      0%   { transform: translateY(0) scale(1); opacity: 1; filter: blur(0); }
+      100% { transform: translateY(26px) scale(.99); opacity: 0; filter: blur(2px); }
+    }
     .melderCard.is-entering{
       animation: pagerEnter .42s ease-out both, pagerShake .35s ease-in-out .06s both;
+    }
+    .melderCard.is-exiting{
+      animation: pagerExit .35s ease-in both;
     }
     .display.is-waking{
       animation: lcdPulse 1.6s ease-in-out both;
@@ -442,8 +462,8 @@
   <div id="melderOverlay" class="melder-overlay" aria-hidden="true">
     <div class="melder-wrap">
 
-      <div class="melderCard">
-        <!-- ✅ DEIN leeres Melder-Bild -->
+      <div class="melderCard is-hidden">
+        <!-- ✅ leeres Melder-Bild -->
         <img class="melderImg" src="/fotos/Melder_Leer.png" alt="Melder">
 
         <!-- ✅ LCD Bereich -->
@@ -471,7 +491,6 @@
 
   <!-- ✅ Vorsound (Confirm-Beep) -->
   <script>
-    // status1_pre.mp3 liegt im gleichen Ordner wie index1.html
     const PRE_URL = new URL('status1_pre.mp3', location.href).href;
     const audioPre = new Audio(PRE_URL);
     audioPre.preload = 'auto';
@@ -503,12 +522,12 @@
       return {
         melderImage: "/fotos/Melder_Leer.png",
         pagerSound: "/Alarmton2.mp3",
-        openDelayAfterConfirmMs: 2500,  // ✅ 2.5s Pause nach Confirm-Beep
+        openDelayAfterConfirmMs: 2500,
         pagerDelayAfterOpenMs: 150,
         lineDelayMs: 1400,
         charDelayMs: 55,
         afterLinePauseMs: 320,
-        // optional: alarmDurationMs: 6500,
+        // alarmDurationMs: 6500,
         lines: [
           "Alarm RTW 1-83-1 A08778",
           "Gehweg 29-38 (Fußgängerzone höhe Alm Klause)",
@@ -569,17 +588,32 @@
       melderOverlay.classList.add('open');
       melderOverlay.setAttribute('aria-hidden','false');
 
-      // Realismus
+      melderCard.classList.remove('is-exiting');
+      melderCard.classList.remove('is-hidden');
+
       melderCard.classList.add('is-entering');
       displayEl.classList.add('is-waking','is-flicker');
+
       setTimeout(()=> melderCard.classList.remove('is-entering'), 650);
       setTimeout(()=> displayEl.classList.remove('is-waking'), 1700);
     }
 
     function closeMelder(){
       stopAlarm();
-      melderOverlay.classList.remove('open');
-      melderOverlay.setAttribute('aria-hidden','true');
+
+      melderCard.classList.remove('is-entering');
+      melderCard.classList.add('is-exiting');
+
+      setTimeout(() => {
+        melderOverlay.classList.remove('open');
+        melderOverlay.setAttribute('aria-hidden','true');
+
+        melderCard.classList.remove('is-exiting');
+        melderCard.classList.add('is-hidden');
+
+        clearLines();
+        setConfirmEnabled(false);
+      }, 360);
     }
 
     function setConfirmEnabled(on){
@@ -615,33 +649,26 @@
     async function showMelderSequence(){
       const sc = getScenarioSafe();
 
-      // Optional: wenn du pro Szenario später ein anderes leeres Melder-Bild willst
       if (sc.melderImage) melderImg.src = sc.melderImage;
 
-      // Button erst aktiv wenn Text fertig
       setConfirmEnabled(false);
 
-      // 2.5s Pause nach Confirm-Beep (einstellbar)
       const openDelay = sc.openDelayAfterConfirmMs ?? 2500;
       await wait(openDelay);
 
       openMelder();
 
-      // Alarm-Sound
       stopAlarm();
       alarmAudio = new Audio(sc.pagerSound || '/Alarmton2.mp3');
       alarmAudio.preload = 'auto';
 
-      // Start Alarm minimal verzögert (fühlt sich echter an)
       await wait(sc.pagerDelayAfterOpenMs ?? 150);
       alarmAudio.play().catch(()=>{});
 
-      // Optional: Alarm nach X ms stoppen (wenn gesetzt)
       if (sc.alarmDurationMs){
         alarmStopTimer = setTimeout(()=> stopAlarm(), sc.alarmDurationMs);
       }
 
-      // Text: langsam + Schreibmaschine
       const lines = Array.isArray(sc.lines) ? sc.lines : [];
       const nodes = buildLines(lines);
 
@@ -655,11 +682,9 @@
         await wait(afterLinePause);
       }
 
-      // Jetzt erst bestätigen erlauben
       setConfirmEnabled(true);
     }
 
-    // Status 1: Confirm-Beep -> Pause -> Melder + Text
     startButton.addEventListener("click", () => {
       resetAuswertungOnly();
       startButton.style.display = "none";
@@ -669,26 +694,22 @@
           await showMelderSequence();
         }catch(e){
           console.warn(e);
-          // fallback: Overlay trotzdem öffnen
           openMelder();
           setConfirmEnabled(true);
         }
       });
     });
 
-    // Status 3: nur Overlay schließen (Rest bleibt)
-    confirmBtn.addEventListener('click', async () => {
+    confirmBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
       const sc = getScenarioSafe();
       closeMelder();
-      // kleine Pause nach Confirm (optional)
       await wait(sc.pauseAfterConfirmMs ?? 260);
     });
 
-    // Overlay Klick außerhalb -> NICHT schließen (damit realistisch)
-    // Wenn du willst, dass es doch schließt: hier aktivieren.
-    // melderOverlay.addEventListener('click', (e)=>{ if(e.target===melderOverlay) closeMelder(); });
-
-    // Ripple Effekt wie bei dir
+    // Ripple Effekt
     document.addEventListener('click', function(e){
       const btn = e.target.closest('.status-btn');
       if(!btn) return;
