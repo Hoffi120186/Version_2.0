@@ -3,67 +3,92 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Coop – Beitreten</title>
+  <title>Coop beitreten</title>
+  <style>
+    body{font-family:system-ui;margin:18px;background:#0b0f1a;color:#fff}
+    .card{max-width:720px;margin:0 auto;background:rgba(255,255,255,.08);padding:16px;border-radius:14px}
+    input,select,button{width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.25);color:#fff;margin-top:10px}
+    button{background:#0B5FFF;border:none;font-weight:800;cursor:pointer}
+    .muted{opacity:.8;font-size:13px}
+    .ok{color:#7CFC98}
+    .warn{color:#FFD27A}
+  </style>
 </head>
-<body style="font-family:system-ui;padding:16px">
-  <h1>Coop – Übung beitreten</h1>
+<body>
+  <div class="card">
+    <h2>Coop beitreten</h2>
+    <div class="muted">Wenn du per QR hier bist, sind BaseURL & Join-Code schon gesetzt.</div>
 
-  <label>Server-URL:</label><br>
-  <input id="base" style="width:100%;padding:10px" value="http://raspberry:3000"><br><br>
+    <label>Server BaseURL (HTTPS)</label>
+    <input id="baseUrl" placeholder="https://192.168.x.x:3443" />
 
-  <label>Join-Code:</label><br>
-  <input id="code" style="width:100%;padding:10px"><br><br>
+    <label>Join-Code</label>
+    <input id="code" placeholder="ABC123" />
 
-  <label>Rolle:</label><br>
-  <select id="role" style="width:100%;padding:10px">
-    <option>RTW</option>
-    <option>NEF</option>
-    <option>ORGL</option>
-  </select><br><br>
+    <label>Rolle</label>
+    <select id="role">
+      <option value="RTW">RTW</option>
+      <option value="NEF">NEF</option>
+      <option value="ORGL">OrgL</option>
+    </select>
 
-  <button id="join" style="padding:12px 16px;font-weight:700">Beitreten</button>
+    <label>Name (optional)</label>
+    <input id="name" placeholder="RTW 1" />
 
-  <div id="out" style="margin-top:16px"></div>
+    <button id="btnJoin">Beitreten</button>
 
+    <div id="out" style="margin-top:12px"></div>
+  </div>
+
+  <script src="/coop-client.js" defer></script>
   <script>
-  (function(){
+    function $(id){return document.getElementById(id);}
+    function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));}
+
+    // Params übernehmen
     const qs = new URLSearchParams(location.search);
-    const pre = qs.get('code') || '';
-    document.getElementById('code').value = pre;
+    const base = qs.get('base'); const code = qs.get('code');
+    if (base) $('baseUrl').value = base;
+    if (code) $('code').value = code;
 
-    const out = document.getElementById('out');
+    $('btnJoin').onclick = async ()=>{
+      const baseUrl = $('baseUrl').value.trim().replace(/\/$/,'');
+      const join_code = $('code').value.trim().toUpperCase();
+      const role = $('role').value;
+      const name = $('name').value.trim();
 
-    document.getElementById('join').onclick = async () => {
-      out.textContent = 'Trete bei...';
+      if(!baseUrl || !join_code){
+        $('out').innerHTML = '<div class="warn">Bitte BaseURL und Join-Code ausfüllen.</div>';
+        return;
+      }
+
       try{
-        const baseUrl = document.getElementById('base').value.trim().replace(/\/$/,'');
-        const join_code = document.getElementById('code').value.trim().toUpperCase();
-        const role = document.getElementById('role').value;
-
         const res = await fetch(baseUrl + '/incident/join', {
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ join_code, role })
+          body: JSON.stringify({ join_code, role, name })
         });
-        const data = await res.json();
-        if(!res.ok || !data.ok) throw new Error(data?.error || 'join_failed');
+        const data = await res.json().catch(()=>null);
+        if(!res.ok || !data?.ok) throw new Error(data?.error || ('http_'+res.status));
 
-        localStorage.setItem('coop_session_v1', JSON.stringify({
+        // Session speichern
+        window.Coop?.saveSession?.({
           baseUrl,
           incident_id: data.incident_id,
           token: data.token,
           role
-        }));
+        });
 
-        out.innerHTML = `
-          <p>✅ Beigetreten als <b>${role}</b></p>
-          <p><button onclick="location.href='index1.html'" style="padding:12px 16px;font-weight:700">Start</button></p>
-        `;
+        $('out').innerHTML = `<div class="ok"><b>Verbunden.</b></div>
+          <div class="muted">Du kannst jetzt in die App zurück.</div>`;
+
+        // RTW: zurück in Haupt-App (oder patienten-qr / index1)
+        setTimeout(()=> location.href = 'index1.html', 500);
+
       }catch(e){
-        out.textContent = 'Fehler: ' + (e?.message || e);
+        $('out').innerHTML = `<div class="warn">Fehler: ${escapeHtml(e.message || e)}</div>`;
       }
     };
-  })();
   </script>
 </body>
 </html>
