@@ -44,21 +44,27 @@
       z-index:-1;
     }
 
+    /* Zurück-Button: neutral + glass (kein rosa) */
     a.zurueck{
       position:absolute;
       top:15px;
       left:15px;
+
       background: var(--glass);
       color: var(--text);
       text-decoration:none;
+
       padding: 12px 18px;
       border-radius: 12px;
       font-weight: 800;
       letter-spacing: .2px;
+
       border: 1px solid var(--border);
       box-shadow: 0 10px 24px rgba(0,0,0,.45);
+
       backdrop-filter: blur(14px) saturate(140%);
       -webkit-backdrop-filter: blur(14px) saturate(140%);
+
       transition: transform .15s ease, background .2s ease, border-color .2s ease, filter .2s ease;
     }
     a.zurueck:hover{
@@ -70,14 +76,17 @@
       transform: translateY(1px) scale(.98);
     }
 
+    /* Container: Glass-Card statt "schwarzer Block" */
     .container{
       background: rgba(0,0,0,0.20);
       border: 1px solid rgba(255,255,255,.16);
       backdrop-filter: blur(14px) saturate(140%);
       -webkit-backdrop-filter: blur(14px) saturate(140%);
+
       padding: 26px 22px;
       border-radius: var(--radius);
       box-shadow: var(--shadow);
+
       max-width: 420px;
       width: 90%;
       text-align: center;
@@ -90,6 +99,7 @@
       text-shadow: 0 2px 10px rgba(0,0,0,.55);
     }
 
+    /* Select + Buttons: modern, touch, sauber */
     select, button{
       font-size: 1.1em;
       padding: 14px 14px;
@@ -107,6 +117,7 @@
       font-weight: 700;
     }
 
+    /* Primary */
     button{
       background: linear-gradient(180deg, var(--accent), var(--accentDark));
       color: white;
@@ -119,6 +130,7 @@
     button:hover{ filter: brightness(1.07); transform: translateY(-1px); }
     button:active{ transform: translateY(1px) scale(.99); }
 
+    /* sekundärer Button */
     .btn-secondary{
       background: rgba(55,65,81,.92);
       border: 1px solid rgba(255,255,255,.14);
@@ -126,6 +138,7 @@
     }
     .btn-secondary:hover{ filter: brightness(1.07); }
 
+    /* Info-Text */
     .hint{
       margin-top: 10px;
       font-size: .92em;
@@ -134,6 +147,7 @@
       text-shadow: 0 2px 10px rgba(0,0,0,.45);
     }
 
+    /* Modal (dark + glass, passt besser) */
     .modal{
       display:none;
       position:fixed;
@@ -152,8 +166,10 @@
       max-width: 420px;
       width: 100%;
       text-align: left;
+
       border: 1px solid rgba(255,255,255,.14);
       box-shadow: 0 18px 46px rgba(0,0,0,.65);
+
       backdrop-filter: blur(16px) saturate(140%);
       -webkit-backdrop-filter: blur(16px) saturate(140%);
     }
@@ -193,16 +209,15 @@
     }
     .modal-actions .close:hover{ filter: brightness(1.08); }
 
+    /* Mobile Feinschliff */
     @media (max-width:420px){
       h2{ font-size: 24px; }
       .container{ padding: 22px 18px; }
     }
   </style>
 
+  <!-- WICHTIG: app-flow NACH Inline-CSS, sonst überschreibt es nichts -->
   <link rel="stylesheet" href="/css/app-flow.css?v=2">
-
-  <!-- ✅ ZENTRALE SZENARIEN -->
-  <script src="/szenarien.js?v=1" defer></script>
 </head>
 
 <body>
@@ -212,8 +227,16 @@
   <div class="container">
     <h2>Szenario für Einsatz auswählen</h2>
 
-    <!-- ✅ value ist jetzt scenarioId (s1..s8) -->
-    <select id="bildAuswahl" onchange="zeigePopup()"></select>
+    <select id="bildAuswahl" onchange="zeigePopup()">
+      <option value="fotos/Melder1rett.png">Szenario 1 – Schlägerei auf Party</option>
+      <option value="fotos/MelderBahnhof.png">Szenario 2 – Unklare Lage am Bahnhof</option>
+      <option value="fotos/MelderIndustrie.png">Szenario 3 – Schnittverletzung in der Industriehalle</option>
+      <option value="fotos/MelderZOB.png">Szenario 4 – Platzwunde ZOB</option>
+      <option value="fotos/MelderGalerie.jpg">Szenario 5 – Schlägerei in der Einkaufspassage</option>
+      <option value="fotos/MelderKaufhaus.jpg">Szenario 6 – Schnittverletzung im Kaufhaus</option>
+      <option value="fotos/MelderRegionalbahn.jpg">Szenario 7 – Schlägerei in der Regionalbahn</option>
+      <option value="fotos/MelderFußgängerzone.jpg">Szenario 8 – Unklare Lage in der Fußgängerzone</option>
+    </select>
 
     <button onclick="speichern()">Szenario speichern</button>
 
@@ -222,7 +245,7 @@
     </button>
 
     <p class="hint">
-      Das gewählte Szenario wird beim „Status 1“ automatisch angezeigt.
+      Das gewählte Szenario-Bild wird beim „Status 1“ automatisch angezeigt.
     </p>
   </div>
 
@@ -240,79 +263,44 @@
   </div>
 
   <script>
-    // ✅ Beschreibungen jetzt nach scenarioId
+    // Kurzbeschreibungen (Popup)
     const beschreibungen = {
-      s1: "Schlägerei auf Party: Mehrere Verletzte nach Schlägerei.",
-      s2: "Unklare Lage am Bahnhof: Unklare Lage, Polizei vor Ort.",
-      s3: "Schnittverletzung Industriehalle: Verletzte in Industriehalle.",
-      s4: "Platzwunde ZOB: Verletzte am ZOB.",
-      s5: "Schlägerei Einkaufspassage: Verletzte durch mehrere Täter.",
-      s6: "Schnittverletzung Kaufhaus: Lage im Kaufhaus.",
-      s7: "Schlägerei Regionalbahn: Mehrere Verletzte, Bahnsteig/Polizei.",
-      s8: "Unklare Lage Fußgängerzone: Unklare Lage, Polizei auf Anfahrt."
+      "fotos/Melder1rett.png": "Szenario 1 – Schlägerei auf Party: Mehrere Verletzte nach Schlägerei mit Messerbeteiligung.",
+      "fotos/MelderBahnhof.png": "Szenario 2 – Unklare Lage am Bahnhof: Unbekannte schlagen und stechen auf Passanten ein.",
+      "fotos/MelderIndustrie.png": "Szenario 3 – Schnittverletzung: Mehrere Verletzte in einer Industriehalle nach Feierlichkeiten.",
+      "fotos/MelderZOB.png": "Szenario 4 – Platzwunde: Mehrere Verletzte am ZOB nach psychischem Ausnahmezustand.",
+      "fotos/MelderGalerie.jpg": "Szenario 5 – Schlägerei in der Einkaufspassage: Durch mehrere Täter wurden Passanten verletzt.",
+      "fotos/MelderKaufhaus.jpg": "Szenario 6 – Schnittverletzung im Kaufhaus: Amoklauf im Kaufhaus.",
+      "fotos/MelderRegionalbahn.jpg": "Szenario 7 – Schlägerei in der Regionalbahn: Mehrere Verletzte. Zug steht im Bahnhof.",
+      "fotos/MelderFußgängerzone.jpg": "Szenario 8 – Unklare Lage in der Fußgängerzone: Viele Verletzte durch verschiedene Täter."
     };
 
-    // ✅ Detailseiten-Mapping jetzt nach scenarioId
+    // Detailseiten-Mapping
     const detailsPages = {
-      s1: "/status4.html",
-      s2: "/status4a.html",
-      s3: "/status4b.html",
-      s4: "/status4c.html",
-      s5: "/status4d.html",
-      s6: "/status4e.html",
-      s7: "/status4f.html",
-      s8: "/status4g.html"
+      "fotos/Melder1rett.png": "/status4.html",
+      "fotos/MelderBahnhof.png": "/status4a.html",
+      "fotos/MelderIndustrie.png": "/status4b.html",
+      "fotos/MelderZOB.png": "/status4c.html",
+      "fotos/MelderGalerie.jpg": "/status4d.html",
+      "fotos/MelderKaufhaus.jpg": "/status4e.html",
+      "fotos/MelderRegionalbahn.jpg": "/status4f.html",
+      "fotos/MelderFußgängerzone.jpg": "/status4g.html"
     };
-
-    function getSelectedScenarioId(){
-      return document.getElementById("bildAuswahl").value;
-    }
-
-    function getScenarioById(id){
-      return window.SCENARIOS?.[id] || null;
-    }
-
-    // ✅ Dropdown dynamisch aus szenarien.js befüllen
-    function buildSelect(){
-      const sel = document.getElementById("bildAuswahl");
-      sel.innerHTML = "";
-
-      const entries = Object.entries(window.SCENARIOS || {});
-      // s1..s8 sortieren
-      entries.sort((a,b) => a[0].localeCompare(b[0], 'de', {numeric:true}));
-
-      for (const [id, sc] of entries){
-        const opt = document.createElement("option");
-        opt.value = id;
-        opt.textContent = `${id.toUpperCase()} – ${sc?.name || id}`;
-        sel.appendChild(opt);
-      }
-
-      // gespeichertes laden
-      const savedId = localStorage.getItem("scenarioId");
-      if (savedId && window.SCENARIOS?.[savedId]) sel.value = savedId;
-    }
 
     function speichern(){
-      const id = getSelectedScenarioId();
-      localStorage.setItem("scenarioId", id);
-
-      // ✅ optional: meldebild weiter setzen (damit deine alte Logik nicht bricht)
-      const sc = getScenarioById(id);
-      if (sc?.melderImage) {
-        localStorage.setItem("meldebild", sc.melderImage);
-      }
-
-      alert("Gespeichert: " + (sc?.name || id));
+      const bild = document.getElementById("bildAuswahl").value;
+      localStorage.setItem("meldebild", bild);
+      alert("Gespeichert: " + bild);
     }
 
     function zeigePopup(){
-      const id = getSelectedScenarioId();
-      const sc = getScenarioById(id);
+      const key = document.getElementById("bildAuswahl").value;
+      const sel = document.getElementById("bildAuswahl");
+      const title = sel.options[sel.selectedIndex]?.textContent || "Szenario";
 
-      document.getElementById("modalTitle").textContent = sc?.name || ("Szenario " + id);
+      document.getElementById("modalTitle").textContent = title;
       document.getElementById("modalText").textContent =
-        beschreibungen[id] || "Keine Beschreibung vorhanden.";
+        beschreibungen[key] || "Keine Beschreibung vorhanden.";
 
       document.getElementById("infoModal").style.display = "flex";
     }
@@ -321,8 +309,8 @@
       document.getElementById("infoModal").style.display = "none";
     }
 
-    function openScenarioDetailsById(id){
-      const url = detailsPages[id];
+    function openScenarioDetailsByKey(key){
+      const url = detailsPages[key];
       if(!url){
         alert("Für dieses Szenario ist noch keine Detailseite hinterlegt.");
         return;
@@ -333,26 +321,19 @@
     }
 
     function openDetailsForCurrent(){
-      openScenarioDetailsById(getSelectedScenarioId());
+      const key = document.getElementById("bildAuswahl").value;
+      openScenarioDetailsByKey(key);
     }
 
     function openDetailsFromModal(){
-      const id = getSelectedScenarioId();
+      const key = document.getElementById("bildAuswahl").value;
       schliesseModal();
-      openScenarioDetailsById(id);
+      openScenarioDetailsByKey(key);
     }
 
-    // ✅ warten bis szenarien.js geladen ist
     window.addEventListener("DOMContentLoaded", () => {
-      // Falls script defer ist, ist SCENARIOS meist schon da – aber wir sind sicher:
-      const tryBuild = () => {
-        if (window.SCENARIOS) {
-          buildSelect();
-        } else {
-          setTimeout(tryBuild, 50);
-        }
-      };
-      tryBuild();
+      const gespeichertes = localStorage.getItem("meldebild");
+      if (gespeichertes) document.getElementById("bildAuswahl").value = gespeichertes;
     });
 
     document.getElementById("infoModal").addEventListener("click", (e) => {
