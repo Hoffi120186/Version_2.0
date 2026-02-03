@@ -715,21 +715,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Beim Laden immer verstecken
   hideTB();
+  
+function savePayload(cat, flags){
+  const payload = { cat, t:!!flags?.t, b:!!flags?.b, ts: Date.now() };
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(payload)); } catch {}
 
-  function savePayload(cat, flags){
-    const payload = { cat, t:!!flags?.t, b:!!flags?.b, ts: Date.now() };
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(payload)); } catch {}
-
-    // ✅ immer in zentrale Sichtung + Ablage schreiben (letzter Klick gewinnt)
-    if (pid && cat) {
-      SKWriter.setSK(pid, cat, { force:true });
-    }
-
-    if (window.sendMetric) {
-      try { sendMetric("sichtung", payload); } catch {}
-    }
-    if (window.__SK_DEBUG) console.log("✅ Sichtung gespeichert (Toggle)", payload);
+  // ✅ immer in zentrale Sichtung + Ablage schreiben (letzter Klick gewinnt)
+  if (pid && cat) {
+    SKWriter.setSK(pid, cat, { force:true });
   }
+
+  // ✅ NEU: im Coop an Server schicken (T/B Payload)  <-- HIER muss es hin
+  if (window.Coop?.isActive?.() && pid) {
+    window.Coop.sendEvent('togglePayload', { id: pid, data: payload }).catch(()=>{});
+  }
+
+  if (window.sendMetric) {
+    try { sendMetric("sichtung", payload); } catch {}
+  }
+  if (window.__SK_DEBUG) console.log("✅ Sichtung gespeichert (Toggle)", payload);
+}
+
 
   // SK-Buttons verdrahten (nur Toggle-Verhalten)
   skWrap.querySelectorAll(".sk-btn").forEach(btn => {
@@ -790,6 +796,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ✅ Wenn Seite mit bestehender SK geladen wird: T/B NICHT automatisch anzeigen (so gewünscht)
 });
+
 
 // === Anzeige-Helfer für Auswertung/Ablage/Klinik ====
 function __getPatientId(){
