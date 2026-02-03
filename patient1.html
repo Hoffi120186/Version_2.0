@@ -100,14 +100,18 @@ body {
     <button id="b-no"  class="sk-btn">Nein</button>
   </div>
 </div>
+<div id="button-container"></div>
+ <button id="btn4" class="btn hidden">
+    <strong>Sichtungskategorie wählen</strong><br><br>
+    Weiter nach regionalen Protokoll<br>
+    ggf.: Patientenumhängekarte anlegen<br>
 
-    <div id="button-container"></div>
-    <button id="btn4" class="btn hidden">
-        Sichtungskategorie wählen<br>Patientenumhängekarte anlegen<br>
-        Nächster QR-Scan
-        <br>
-        <span>Durch klicken</span>
-    </button>
+   <span class="qr-hint">
+  <strong>Nächster QR-Scan</strong><br>
+  <strong>Durch klicken</strong>
+</span>
+
+</button>
     <div class="camera-container">
         <video id="video" width="640" height="480" autoplay></video>
     </div>
@@ -142,13 +146,9 @@ body {
     window.location.href = "index.html";
   }
 </script>
-<script src="/coop-client.js?v=..." defer></script>
-<script src="/coop-bridge-local2server.js?v=2026-02-01-1" defer></script>
-<script src="/coop-bridge-ablage.js?v=..." defer></script>
+
 <script src="/metrics.js" defer></script>
 
-<script src="/coop.js?v=2026-01-25-1" defer></script>
-<script src="/coop_patient_hook.js?v=1" defer></script>
 
 
 </body>
