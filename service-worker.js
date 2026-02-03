@@ -1,12 +1,10 @@
-// /service-worker.js  (FINAL: 2026-01-31-64)
+// /service-worker.js  (FINAL: 2026-02-02-4)
 // Fix: Lizenz persistent im SW speichern (überlebt Updates / kalte Starts)
 // + Patienten 1–40 + QR 1–40 + Szenarien 1–8
 // + patienten.json network-first (iPad/PWA Cache-Falle gelöst)
 // + Duplikat-RespondWith-Block entfernt
-// + ✅ FIX: COOP API (cross-origin) niemals cachen (Netlify SW Freeze Fix)
-// + ✅ FIX: Cache-First nur same-origin in Cache schreiben
 
-const CACHE_VERSION = 'app-v2026-01-30-1';
+const CACHE_VERSION = 'app-v2025-12-28-5';
 const CACHE_NAME = `mein-pwa-cache-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 
@@ -82,8 +80,9 @@ self.addEventListener('install', (event) => {
   ];
 
   // Szenarien 1–8:
+  // Wir unterstützen BEIDE Varianten:
   // 1) /qr/Szenario 1.png (mit Leerzeichen)
-  // 2) /qr/szenario1.png (ohne Leerzeichen, klein)
+  // 2) /qr/szenario1.png (ohne Leerzeichen, klein) — weil du das aktuell im SW hast
   const QR_SCENARIOS_SPACE = [
     ...Array.from({ length: 8 }, (_, i) => `/qr/Szenario%20${i + 1}.png`),
   ];
@@ -95,6 +94,8 @@ self.addEventListener('install', (event) => {
     ...QR_PATIENT_IMAGES,
     ...QR_SCENARIOS_SPACE,
     ...QR_SCENARIOS_LOWER,
+    // optional:
+    // '/qr/placeholder.png',
   ];
 
   const PRECACHE_URLS = [
@@ -114,12 +115,12 @@ self.addEventListener('install', (event) => {
 
     // Scripts
     '/button1.js','/button2.js','/sperrung.js','/timer.js',
-    '/license.js','/warmup.js','/warmup-banner.js','/scanner.js',
+    '/license.js','/warmup.js','/warmup-banner.js','/scanner.js','/szenarien.js',
     '/freigabe.js','/ablage.js?v=7',
     '/vendor/jsqr.min.js',
 
     // Assets
-    '/Alarmton2.mp3',
+    '/Alarmton2.mp3','/status1_pre.mp3',
     '/Leit1.jpg','/LogoApp.jpg','/Patientenkarte.jpg',
     '/apple-touch-icon.png','/logoneu.png','/IMG_4004.JPG','/hinter1.JPEG','/achtung.jpg',
 
@@ -195,18 +196,26 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   const sameOrigin = url.origin === self.location.origin;
 
-  // ✅✅✅ NETLIFY-FIX: COOP API (auf 1rettungsmittel.de) niemals cachen → immer live
-  if (
-    (url.origin === 'https://www.1rettungsmittel.de' || url.origin === 'https://1rettungsmittel.de') &&
-    url.pathname.startsWith('/api/coop_test/')
-  ) {
-    event.respondWith(fetch(request, { cache: 'no-store' }));
-    return;
-  }
-
   // Netlify Functions immer live
   if (url.pathname.startsWith('/.netlify/functions/')) {
     event.respondWith(fetch(request, { cache: 'no-store' }));
+    return;
+  }
+  // ✅ AUDIO (.mp3) immer NETWORK-FIRST + Cache mit vollem Request (inkl. Query)
+  if (sameOrigin && url.pathname.endsWith('.mp3')) {
+    event.respondWith((async () => {
+      try {
+        const fresh = await fetch(request, { cache: 'no-store' });
+        if (fresh && (fresh.ok || fresh.type === 'opaque')) {
+          const c = await caches.open(CACHE_NAME);
+          await c.put(request, fresh.clone()); // Query bleibt erhalten
+        }
+        return fresh;
+      } catch {
+        const cached = await caches.match(request); // KEIN ignoreSearch!
+        return cached || caches.match(OFFLINE_URL);
+      }
+    })());
     return;
   }
 
@@ -317,6 +326,7 @@ self.addEventListener('fetch', (event) => {
 
   // Kritische Seiten network-first
   if (sameOrigin && (
+     url.pathname === '/index1.html'
     url.pathname === '/klinik.html' ||
     url.pathname === '/ablage1.html' ||
     url.pathname === '/auswertung.html'
@@ -406,11 +416,8 @@ self.addEventListener('fetch', (event) => {
     try {
       const netRes = await fetch(request);
       if (netRes && (netRes.ok || netRes.type === 'opaque')) {
-        // ✅✅✅ NETLIFY-FIX: nur SAME ORIGIN in Cache schreiben
-        if (sameOrigin) {
-          const c = await caches.open(CACHE_NAME);
-          await c.put(request, netRes.clone());
-        }
+        const c = await caches.open(CACHE_NAME);
+        await c.put(request, netRes.clone());
       }
       return netRes;
     } catch {
@@ -486,7 +493,7 @@ let currentLicense = null;
 
 // Beim Aktivieren Lizenz aus Store laden (falls vorhanden)
 self.addEventListener('activate', (event) => {
-  event.waitUntil((async ()=> {
+  event.waitUntil((async ()=>{
     const lic = await loadPersistedLicense();
     if (lic) {
       currentLicense = lic;
@@ -499,7 +506,7 @@ self.addEventListener('message', (event) => {
   const msg = event.data;
   if (!msg?.type) return;
 
-  event.waitUntil((async ()=> {
+  event.waitUntil((async ()=>{
     switch (msg.type) {
 
       case 'SET_LICENSE': {
@@ -533,5 +540,28 @@ self.addEventListener('message', (event) => {
     }
   })());
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
