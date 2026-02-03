@@ -210,13 +210,6 @@ h2{
     <img id="lightboxImg" src="" alt="Patientenfoto">
   </div>
 
-  <!-- Coop + Ablage-Engine (vor dem UI-Modul laden) -->
- <script src="/coop.js?v=2026-02-01-1" defer></script>
-<script src="/coop-client.js?v=..." defer></script>
-<script src="/coop-bridge-local2server.js?v=2026-02-01-1" defer></script>
-  <script src="/coop-bridge-ablage.js?v=2026-02-01-1" defer></script>
-  <script src="/ablage.js?v=2026-02-01-1" defer></script>
-
 <script type="module">
 'use strict';
 
@@ -256,95 +249,6 @@ function normGender(g){
 function getPatMeta(){ try { return JSON.parse(localStorage.getItem('patMeta') || '{}'); } catch { return {}; } }
 function getPatientsData(){ try { return JSON.parse(localStorage.getItem('patientsData') || '[]'); } catch { return []; } }
 
-/* ===== COOP: Ablage aus Server (nur wenn Coop aktiv) ===== */
-const COOP_API = 'https://1rettungsmittel.de/api/coop_test';
-const COOP_POLL_MS = 1500;
-let __COOP_CACHE = null; // { items: [...], byId: {patient12:{cat,t,b,updated_at,by}} }
-let __COOP_SIG = '';
-
-function getCoopState(){
-  // 1) bevorzugt: coop-client stellt globalen State bereit
-  try{
-    if (window.Coop && typeof window.Coop.getState === 'function') {
-      const st = window.Coop.getState();
-      if (st && st.incident_id && st.token) return st;
-    }
-  }catch{}
-
-  // 2) fallback: localStorage
-  const keys = ['coop_session_v1', 'coop_state_v1', 'coop_state', 'coop.session', 'coopSession'];
-  for (const k of keys){
-    try{
-      const raw = localStorage.getItem(k);
-      if(!raw) continue;
-      const st = JSON.parse(raw);
-      if (st && st.incident_id && st.token) return st;
-    }catch{}
-  }
-  // 3) direkter fallback (falls du diese Keys nutzt)
-  try{
-    const incident_id = localStorage.getItem('coop_incident_id') || '';
-    const token       = localStorage.getItem('coop_token') || '';
-    if (incident_id && token) return { incident_id, token };
-  }catch{}
-
-  return null;
-}
-
-function coopActive(){
-  const active = localStorage.getItem('coop.active');
-  if (active === '0' || active === 'false') return false;
-  const st = getCoopState();
-  return !!(st && st.incident_id && st.token);
-}
-
-
-function normCat(v){
-  const x = String(v||'').trim().toLowerCase().replace('grün','gruen');
-  if (x === 'sk1') return 'rot';
-  if (x === 'sk2') return 'gelb';
-  if (x === 'sk3') return 'gruen';
-  if (x === 'sk4') return 'schwarz';
-  if (['rot','gelb','gruen','schwarz'].includes(x)) return x;
-  return '';
-}
-
-async function coopFetchAblage(){
-  const st = getCoopState();
-  if(!st) return null;
-
-  const url = `${COOP_API}/ablage_list.php?incident_id=${encodeURIComponent(st.incident_id)}&token=${encodeURIComponent(st.token)}`;
-  const res = await fetch(url, { cache:'no-store' });
-  const j = await res.json();
-  if(!j || !j.ok) return null;
-
-  const byId = {};
-  const items = Array.isArray(j.items) ? j.items : [];
-  for (const it of items){
-    const pid = Number(it.patient_id) || 0;
-    if(!pid) continue;
-    const id = ('patient' + pid).toLowerCase();
-    const cat = normCat(it.triage);
-    byId[id] = {
-      cat,
-      t: false,
-      b: false,
-      updated_at: it.updated_at || '',
-      by: it.updated_by || ''
-    };
-  }
-
-  // Signatur: IDs + triage + updated_at (damit wir nur bei Änderungen rendern)
-  const sig = items
-    .map(it => `${it.patient_id}|${normCat(it.triage)}|${it.updated_at||''}`)
-    .sort()
-    .join('~');
-
-  __COOP_CACHE = { items, byId };
-  __COOP_SIG = sig;
-  return __COOP_CACHE;
-}
-
 /* Overlays */
 function overlayFromPatMeta(info){
   const meta = getPatMeta()[info.id] || {};
@@ -364,64 +268,15 @@ function overlayFromJson(info){
 /* ===== Sichtungen & Flags ===== */
 function getSMap(){ try{ return JSON.parse(localStorage.getItem('sichtungMap')||'{}'); }catch{ return {}; } }
 function sichtungFor(id){
-  // ✅ Coop: Kategorie kommt aus Server-Ablage (location=ABLAGE_1) via ablage_list.php
-  if (coopActive() && __COOP_CACHE?.byId){
-    const row = __COOP_CACHE.byId[String(id||'').toLowerCase()];
-    const k = String(row?.cat || '').toLowerCase();
-    return ['rot','gelb','gruen','schwarz'].includes(k) ? k : null;
-  }
-  // lokal wie bisher
   const k = (getSMap()[id]||'').toString().toLowerCase().replace('grün','gruen');
   return ['rot','gelb','gruen','schwarz'].includes(k) ? k : null;
 }
 function sightedIds(){
-  // ✅ Coop: IDs kommen aus Server-Ablage
-  if (coopActive() && __COOP_CACHE?.items){
-    const ids = __COOP_CACHE.items
-      .map(it => 'patient' + (Number(it.patient_id)||0))
-      .filter(x => /^patient\d+$/i.test(x))
-      .map(x => x.toLowerCase());
-    return [...new Set(ids)].sort((a,b)=> parseInt(a.replace(/\D/g,'')) - parseInt(b.replace(/\D/g,'')));
-  }
-
-  const ids = new Set();
-
-  // 1) Primär: sichtungMap (patient1..patient40)
-  try{
-    const sm = getSMap();
-    Object.keys(sm||{}).forEach(k=>{
-      if(/^patient\d+$/i.test(k)) ids.add(k.toLowerCase());
-    });
-  }catch{}
-
-  // 2) Fallback: alte per-patient Flags "sicht_patientX" oder "sicht_patientX_v1"
-  try{
-    for (let i=0;i<localStorage.length;i++){
-      const key = localStorage.key(i);
-      if(!key) continue;
-      const m = key.match(/^sicht_(patient\d+)$/i);
-      if (m && m[1]) ids.add(m[1].toLowerCase());
-    }
-  }catch{}
-
-  // 3) Fallback: Ablage-Liste (ablage.active.v1) enthält {id:"patientX", ...}
-  try{
-    const raw = localStorage.getItem('ablage.active.v1');
-    const arr = raw ? JSON.parse(raw) : [];
-    if (Array.isArray(arr)){
-      arr.forEach(it=>{
-        const pid = String(it?.id || '').toLowerCase();
-        if(/^patient\d+$/.test(pid)) ids.add(pid);
-      });
-    }
-  }catch{}
-
-  return [...ids].sort((a,b)=> parseInt(a.replace(/\D/g,'')) - parseInt(b.replace(/\D/g,'')));
+  return Object.keys(getSMap())
+    .filter(k => /^patient\d+$/i.test(k))
+    .sort((a,b)=> parseInt(a.replace(/\D/g,'')) - parseInt(b.replace(/\D/g,'')));
 }
 function __readTogglePayload(id){
-  // ✅ Coop: T/B gibt's serverseitig aktuell nicht → leer (Design bleibt, nur ohne T/B)
-  if (coopActive()) return {};
-
   let raw=null;
   try { raw = localStorage.getItem("sicht_" + id); } catch {}
   if (!raw) {
@@ -807,11 +662,6 @@ function observeImage(img){
 
 /* ===== Laden & Sortiertes Rendern ===== */
 async function load(){
-  // ✅ Coop: vor dem Rendern einmal Server-Ablage holen
-  if (coopActive() && !__COOP_CACHE){
-    try { await coopFetchAblage(); } catch {}
-  }
-
   const done = getDoneSet();
   const ids = sightedIds().filter(id => !done.has(id));
 
@@ -866,100 +716,7 @@ async function load(){
     highlightAssignButtons();
   }
 }
-
-/* ===== COOP: Live-Polling (Instruktor sieht Ablage 1:1) ===== */
-async function coopRefreshUI(force=false){
-  if (!coopActive()) return;
-
-  const prevSig = __COOP_SIG;
-  try { await coopFetchAblage(); } catch { return; }
-  if (!__COOP_CACHE) return;
-
-  if (!force && __COOP_SIG === prevSig) return;
-
-  // 1) Entfernen / Hinzufügen
-  const done = getDoneSet();
-  const want = new Set(sightedIds().filter(id => !done.has(id)));
-  const haveEls = [...document.querySelectorAll('.card[data-id]')];
-  const have = new Set(haveEls.map(el => el.dataset.id));
-
-  for (const id of have){
-    if (!want.has(id)) removeCard(id);
-  }
-
-  for (const id of want){
-    if (!have.has(id)){
-      const num = id.replace('patient','');
-      const entry = { id, label: `Patient ${num}`, url: `patient${num}.html` };
-      fetchPatientData(entry).then(p=>{
-        (window.__PAT_DATA__ = (window.__PAT_DATA__||[])).push(p);
-        upsertCard(p);
-        updateStats();
-        if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
-          window.Ablage.hydrateCards({
-            containerSelector: '#list',
-            cardSelector: '.card',
-            placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
-            placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
-          });
-          highlightAssignButtons();
-        }
-        // Reorder beim nächsten Tick
-      });
-    }
-  }
-
-  // 2) Badges aktualisieren (triage kann sich geändert haben)
-  for (const id of want){
-    const p = (window.__PAT_DATA__||[]).find(x=>x.id===id);
-    if (p) upsertCard(p);
-  }
-
-  // 3) Sortierung/Order der Cards nach Prio
-  const order = [...want].sort((a,b)=>{
-    const aCat = sichtungFor(a) || '';
-    const bCat = sichtungFor(b) || '';
-    const pa = __readTogglePayload(a) || {};
-    const pb = __readTogglePayload(b) || {};
-    const d  = __prio(aCat, pa) - __prio(bCat, pb);
-    return d !== 0 ? d : (__numFromId(a) - __numFromId(b));
-  });
-  for (const id of order){
-    const el = listEl.querySelector(`.card[data-id="${id}"]`);
-    if (el) listEl.appendChild(el);
-  }
-
-  // 4) Empty-State
-  if (order.length === 0){
-    listEl.innerHTML = `
-      <div class="empty">
-        <h2>Keine offenen Patienten in der Ablage</h2>
-        <p>Gesichtete und noch nicht zugewiesene Patienten erscheinen hier automatisch.</p>
-      </div>`;
-  }
-
-  updateStats();
-
-  if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
-    window.Ablage.hydrateCards({
-      containerSelector: '#list',
-      cardSelector: '.card',
-      placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
-      placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
-    });
-    highlightAssignButtons();
-  }
-}
-
-(async ()=>{
-  if (coopActive()) {
-    try { await coopFetchAblage(); } catch {}
-  }
-  await load();
-  if (coopActive()) {
-    setInterval(()=>{ coopRefreshUI(false); }, COOP_POLL_MS);
-  }
-})();
+load();
 
 /* Live-Updates (Sichtung/T/B/DONE) */
 window.addEventListener('storage', (e)=>{
@@ -1062,9 +819,7 @@ function imageToDataURL(src){
 window.addEventListener('beforeunload', () => { denyAutostart(); });
 </script>
 
-<!-- optional -->
 <script src="/metrics.js" defer></script>
-
+<script src="/ablage.js?v=8"></script>
 </body>
 </html>
-
