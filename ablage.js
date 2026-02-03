@@ -1,7 +1,5 @@
 /* =========================================================
-   1Rettungsmittel · ablage.js  (v11.2: Coop Patch SAFE + Outbox)
-   - FIX: coop:changes überschreibt NICHT mehr das Schema von `ablage.active.v1`
-   - FIX: coop:changes pflegt `sichtungMap` + optional Queue-Eintrag im richtigen Format
+   1Rettungsmittel · ablage.js  (v10: Start nur beim Betreten)
    ========================================================= */
 (function () {
   'use strict';
@@ -11,9 +9,6 @@
   var LS_HISTORY  = 'ablage.history.v1';
   var LS_SESSION  = 'ablage.sessionStart.v1';
   var LS_DONE     = 'ablage.done.v1';
-
-  // ----- COOP Outbox
-  var LS_COOP_OUTBOX = 'coop_outbox_v1';
 
   // ----- Utils
   function now(){ return Date.now(); }
@@ -61,7 +56,6 @@
         it.startAt = it.startedAt; delete it.startedAt; changed = true;
       }
       if (typeof it.offset !== 'number') { it.offset = 0; changed = true; }
-      // optional: sk Feld beibehalten
     }
     return changed;
   }
@@ -99,121 +93,7 @@
     setActive(a);
   }
 
-  // =========================================================
-  // COOP Helpers
-  // =========================================================
-  function coopGetState(){
-    try{
-      if (window.Coop && typeof window.Coop.getState === 'function'){
-        var st = window.Coop.getState();
-        if (st && st.incident_id && st.token) return st;
-      }
-    }catch(_){}
-
-    // Fallback: direkte LS-Keys (je nach Version)
-    try{
-      var raw = localStorage.getItem('coop_state_v1') || localStorage.getItem('coop_state') || '';
-      if (!raw) return null;
-      var st2 = JSON.parse(raw);
-      if (st2 && st2.incident_id && st2.token) return st2;
-    }catch(_){}
-    return null;
-  }
-
-  function coopEnabled(){
-    var st = coopGetState();
-    return !!(st && st.incident_id && st.token);
-  }
-
-  function patientIdToNumber(id){
-    var n = parseInt(String(id||'').replace(/\D/g,''), 10);
-    return (isFinite(n) && n>0) ? n : 0;
-  }
-
-  function coopOutboxGet(){ return asArray(load(LS_COOP_OUTBOX, [])); }
-  function coopOutboxSet(list){ save(LS_COOP_OUTBOX, asArray(list)); }
-
-  function coopOutboxPush(item){
-    var list = coopOutboxGet();
-    list.push(item);
-    coopOutboxSet(list);
-  }
-
-  // ✅ FIX: coopPatch korrekt (Signatur + Endpoint)
-  async function coopPatch(payload){
-    // payload erwartet: { patient_id, ...fields }
-    var pid = Number(payload && payload.patient_id);
-    if(!pid) throw new Error('missing_patient_id');
-
-    // Patch-Felder ohne patient_id
-    var patch = Object.assign({}, payload);
-    delete patch.patient_id;
-
-    // Wenn coop-client.js verfügbar ist: korrekte Signatur nutzen
-    if (window.Coop && typeof window.Coop.patchPatient === 'function'){
-      return window.Coop.patchPatient(pid, patch);
-    }
-
-    // Fallback: direkt fetchen (nur wenn coop state existiert)
-    var st = coopGetState();
-    if(!st) throw new Error('coop_not_active');
-
-    var API = (st.apiBase) || 'https://www.1rettungsmittel.de/api/coop_test';
-    var url = API.replace(/\/$/,'') + '/patch_patient.php';
-
-    var body = Object.assign({}, patch, {
-      patient_id: pid,
-      incident_id: st.incident_id,
-      token: st.token
-    });
-
-    var r = await fetch(url, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(body)
-    });
-    var j = await r.json().catch(function(){ return null; });
-    if (!j || !j.ok) throw new Error((j && j.error) ? j.error : 'coop_patch_failed');
-    return j;
-  }
-
-  async function coopFlushOutbox(){
-    if(!coopEnabled()) return;
-    if(!navigator.onLine) return;
-
-    var list = coopOutboxGet();
-    if(!list.length) return;
-
-    var keep = [];
-    for (var i=0;i<list.length;i++){
-      var job = list[i];
-      try{
-        await coopPatch(job.payload);
-      }catch(e){
-        keep.push(job);
-      }
-    }
-    coopOutboxSet(keep);
-  }
-
-  // regelmäßig versuchen, Outbox zu senden (leicht)
-  var __flushTimer = 0;
-  function startOutboxPump(){
-    if(__flushTimer) return;
-    __flushTimer = setInterval(function(){
-      coopFlushOutbox().catch(function(){});
-    }, 2500);
-    window.addEventListener('online', function(){
-      coopFlushOutbox().catch(function(){});
-    });
-    document.addEventListener('visibilitychange', function(){
-      if (document.visibilityState === 'visible') coopFlushOutbox().catch(function(){});
-    });
-  }
-
-  // =========================================================
-  // ----- Stop / Abschluss (inkl. Coop Klinik Patch)
-  // =========================================================
+  // ----- Stop / Abschluss
   function stopPatient(id, ziel, idVal){
     var a = getActive(), idx = -1;
     for(var i=0;i<a.length;i++){ if(String(a[i].id)===String(id)){ idx=i; break; } }
@@ -225,7 +105,7 @@
     if (typeof p.startedAt === 'number' && typeof p.startAt !== 'number') {
       p.startAt = p.startedAt; delete p.startedAt;
     }
-    var startAt = Number(p.startAt || now());
+    var startAt = Number(p.startAt || now()); // falls nie gestartet wurde, dann 0 Dauer
     var offset  = Number(p.offset || 0);
 
     var entry = {
@@ -238,36 +118,9 @@
       ziel: ziel || ''
     };
 
-    // ✅ LOKAL: aus Active raus / History+Done
     a.splice(idx,1); setActive(a);
     var h = getHistory(); h.push(entry); setHistory(h);
     var d = getDone(); d.push(p.id); setDone(d);
-
-    // ✅ COOP: Klinikzuweisung patchen (wenn aktiv)
-    try{
-      if (coopEnabled()){
-        startOutboxPump();
-
-        var pid = patientIdToNumber(p.id);
-        if(pid){
-          var payload = {
-            patient_id: pid,
-            clinic_target: ziel || '',
-            clinic_status: 'assigned'
-          };
-
-          coopPatch(payload).catch(function(err){
-            coopOutboxPush({
-              ts: Date.now(),
-              kind: 'clinic_assign',
-              payload: payload,
-              err: String(err && err.message ? err.message : err)
-            });
-          });
-        }
-      }
-    }catch(_){}
-
     return true;
   }
 
@@ -336,11 +189,8 @@
             var ziel = zielSel ? (zielSel.value||'') : '';
             if(!ziel && !window.confirm('Ohne Ziel zuweisen?')) return;
             var cid = cardEl.getAttribute('data-patient-id') || cardEl.getAttribute('data-id');
-
             if(cid && stopPatient(cid, ziel, idVal)){
-              try{ cardEl.remove(); }catch(_){
-                cardEl.parentNode && cardEl.parentNode.removeChild(cardEl);
-              }
+              try{ cardEl.remove(); }catch(_){ cardEl.parentNode && cardEl.parentNode.removeChild(cardEl); }
             }
           }, { passive:false });
         })(card, wrap.querySelector('.btn-zuweisen'));
@@ -387,23 +237,15 @@
 
   // ---------- Public API ----------
   window.Ablage = {
-    hydrateCards: hydrateCards,
-    stopPatient: stopPatient,
-    resetAll: resetAll,
-    _getActive:getActive,
-    _getHistory:getHistory,
-    _getDone:getDone
+    hydrateCards, stopPatient, resetAll,
+    _getActive:getActive, _getHistory:getHistory, _getDone:getDone
   };
 
   // ----- Auto-Init: Start nur beim Betreten
   function autoInit(){
+    // 1) Alle vorhandenen, noch nicht gestarteten Einträge starten
     startTimersOnEntry();
-
-    // Coop Outbox (falls Coop aktiv)
-    if (coopEnabled()){
-      startOutboxPump();
-      coopFlushOutbox().catch(function(){});
-    }
+    // 2) (Dein Code ruft irgendwo hydrateCards(...) auf)
   }
 
   if (document.readyState === 'complete' || document.readyState === 'interactive') {
@@ -411,104 +253,7 @@
   } else {
     document.addEventListener('DOMContentLoaded', autoInit, { once:true });
   }
+  // iOS bfcache: beim „Zurück“-Navigieren erneut auslösen (neue Session im Sinne der Seite)
   window.addEventListener('pageshow', autoInit);
 
-})();
-
-/* =========================================================
-   COOP: Änderungen -> localStorage Sichtung/Ablage updaten + UI refresh
-   FIX: überschreibt NICHT mehr `ablage.active.v1` im falschen Schema!
-   ========================================================= */
-(function(){
-  function normKat(v){
-    if (!v) return null;
-    var x = String(v).trim().toLowerCase();
-    if (x.indexOf("grün") >= 0) x = x.replace("grün","gruen");
-    var map = { sk1:"rot", sk2:"gelb", sk3:"gruen", sk0:"schwarz" };
-    if (map[x]) x = map[x];
-    return (x==="rot"||x==="gelb"||x==="gruen"||x==="schwarz") ? x : null;
-  }
-
-  function jget(k,f){ try{ var v=localStorage.getItem(k); return v?JSON.parse(v):f; }catch(_){ return f; } }
-  function jset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } }
-
-  function updateSichtungMap(patientKey, kat){
-    var sm = jget("sichtungMap", {});
-    if (!sm || typeof sm !== "object") sm = {};
-    sm[patientKey] = kat;
-    jset("sichtungMap", sm);
-
-    // optional: einzelkey (falls irgendwo genutzt)
-    jset("sicht_"+patientKey, jget("sicht_"+patientKey, {t:false,b:false}));
-  }
-
-  function upsertActiveQueue(patientKey, pidNumber, kat){
-    // NUR wenn du willst, dass das direkt in der Ablage "queued" sichtbar wird:
-    // Schema passend zu v11.x (queuedAt/startAt/offset)
-    var ABL_KEY = "ablage.active.v1";
-    var list = jget(ABL_KEY, []);
-    if (!Array.isArray(list)) list = [];
-
-    var idx = list.findIndex(function(e){ return e && String(e.id)===String(patientKey); });
-    var t = Date.now();
-
-    if (idx >= 0){
-      // NICHT startAt setzen! (Start nur beim Betreten der Ablage-Seite)
-      if (typeof list[idx].queuedAt !== "number") list[idx].queuedAt = t;
-      if (typeof list[idx].offset !== "number") list[idx].offset = 0;
-      if (!("startAt" in list[idx])) list[idx].startAt = null;
-      list[idx].sk = kat;
-      list[idx].name = list[idx].name || ("Patient "+pidNumber);
-      list[idx].prio = list[idx].prio || "";
-    } else {
-      list.push({
-        id: patientKey,
-        name: "Patient "+pidNumber,
-        prio: "",
-        sk: kat,
-        queuedAt: t,
-        startAt: null,
-        offset: 0
-      });
-    }
-
-    jset(ABL_KEY, list);
-  }
-
-  function pingUI(){
-    // Storage-Ping (für Tabs)
-    try{ localStorage.setItem("ablage_ping", String(Date.now())); }catch(_){}
-    // BroadcastChannel (falls genutzt)
-    try{ new BroadcastChannel("ablage").postMessage({ type:"refresh" }); }catch(_){}
-    // Direkter Hook
-    if (typeof window.renderAblage === "function") {
-      try{ window.renderAblage(); }catch(_){}
-    }
-  }
-
-  function applyChanges(changes){
-    if (!Array.isArray(changes) || !changes.length) return;
-
-    var touched = 0;
-    for (var i=0;i<changes.length;i++){
-      var row = changes[i] || {};
-      var n = parseInt(row.patient_id, 10);
-      if (!isFinite(n) || n <= 0) continue;
-
-      var patientKey = ("patient" + n).toLowerCase();
-      var kat = normKat(row.triage);
-      if (!kat) continue;
-
-      updateSichtungMap(patientKey, kat);
-      upsertActiveQueue(patientKey, n, kat);
-      touched++;
-    }
-
-    if (touched) pingUI();
-  }
-
-  window.addEventListener("coop:changes", function(ev){
-    var changes = ev && ev.detail && ev.detail.changes ? ev.detail.changes : [];
-    applyChanges(changes);
-  });
 })();
