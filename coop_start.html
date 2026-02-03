@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Coop – Übung starten</title>
+</head>
+<body style="font-family:system-ui;padding:16px">
+  <h1>Coop – Übung starten</h1>
+
+  <label>Server-URL (lokal):</label><br>
+  <input id="base" style="width:100%;padding:10px" value="http://raspberry:3000"><br><br>
+
+  <button id="create" style="padding:12px 16px;font-weight:700">Übung erstellen</button>
+
+  <div id="out" style="margin-top:16px"></div>
+
+  <script src="/coop-client.js" defer></script>
+  <script>
+  (function(){
+    const out = document.getElementById('out');
+    const base = document.getElementById('base');
+    document.getElementById('create').onclick = async () => {
+      out.textContent = 'Erstelle Übung...';
+      try{
+        const baseUrl = base.value.trim().replace(/\/$/,'');
+        const res = await fetch(baseUrl + '/incident/create', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if(!res.ok || !data.ok) throw new Error(data?.error || 'create_failed');
+
+        // Session speichern (passt zu coop-client.js)
+        localStorage.setItem('coop_session_v1', JSON.stringify({
+          baseUrl,
+          incident_id: data.incident_id,
+          token: data.token,
+          role: 'INSTRUKTOR'
+        }));
+
+        out.innerHTML = `
+          <p><b>Join-Code:</b> <span style="font-size:22px">${data.join_code}</span></p>
+          <p>RTW joinen über: <code>coop_join.html?code=${data.join_code}</code></p>
+          <p>
+            <button onclick="location.href='ablage1.html'" style="padding:12px 16px;font-weight:700">
+              Zur Ablage (live)
+            </button>
+          </p>
+        `;
+      }catch(e){
+        out.textContent = 'Fehler: ' + (e?.message || e);
+      }
+    };
+  })();
+  </script>
+</body>
+</html>
