@@ -434,23 +434,11 @@
       100% { transform: translateY(34px) scale(.99); opacity: 0; filter: blur(2px); }
     }
 
-    .melderCard.is-entering{
-      animation: pagerEnter .55s ease-out both;
-    }
+    .melderCard.is-entering{ animation: pagerEnter .55s ease-out both; }
+    .melderCard.is-alarming{ animation: pagerShake 1.15s ease-in-out infinite; }
+    .melderCard.is-exiting { animation: pagerExit .65s ease-in both; }
 
-    /* ✅ Wackeln solange Alarm läuft */
-    .melderCard.is-alarming{
-      animation: pagerShake 1.15s ease-in-out infinite;
-    }
-
-    .melderCard.is-exiting{
-      animation: pagerExit .65s ease-in both;
-    }
-
-    .display.is-waking{
-      animation: lcdPulse 2.2s ease-in-out both;
-    }
-
+    .display.is-waking{ animation: lcdPulse 2.2s ease-in-out both; }
     .display.is-flicker::after{
       content:"";
       position:absolute;
@@ -518,17 +506,13 @@
   <!-- ===== Melder Overlay ===== -->
   <div id="melderOverlay" class="melder-overlay" aria-hidden="true">
     <div class="melder-wrap">
-
       <div class="melderCard is-hidden">
         <img class="melderImg" src="/fotos/Melder_Leer.png" alt="Melder">
-
         <div class="display">
           <div id="melderLines" class="lines"></div>
         </div>
       </div>
-
       <button id="melderConfirmBtn" class="melderConfirm" disabled>Status 3</button>
-
     </div>
   </div>
 
@@ -549,38 +533,100 @@
     </div>
   </div>
 
-  <!-- ✅ Vorsound (Confirm-Beep) -->
+  <!-- =========================================================
+       ✅ AUDIO FINAL (iOS stabil)
+       - Pre: pro Klick NEUES Audio-Objekt
+       - Alarmton2: beim Klick STUMM "armen", später hörbar starten (kein doppelter Alarm)
+       ========================================================= -->
   <script>
-    const PRE_URL = new URL('status1_pre.mp3', location.href).href;
-    const audioPre = new Audio(PRE_URL);
-    audioPre.preload = 'auto';
+    const ASSET_VER = '2026-02-02-1';
+    const PRE_URL   = `/status1_pre.mp3?v=${ASSET_VER}`;
+    const ALARM_URL = `/Alarmton2.mp3?v=${ASSET_VER}`;
+
+    // EIN Alarm-Player (wird "armed" im Klick)
+    const alarmAudio = new Audio(ALARM_URL);
+    alarmAudio.preload = 'auto';
+
+    let __audioPrimed = false;
+
+    function makePreAudio(){
+      const a = new Audio(PRE_URL);
+      a.preload = 'auto';
+      try { a.playsInline = true; } catch {}
+      return a;
+    }
+
+    function primeAudioEl(a){
+      try{
+        a.muted = true;
+        a.currentTime = 0;
+        const p = a.play();
+        if (p && p.then){
+          p.then(()=>{
+            try{ a.pause(); }catch{}
+            try{ a.currentTime = 0; }catch{}
+            a.muted = false;
+          }).catch(()=>{});
+        }
+      }catch{}
+    }
+
+    // ✅ Pre + Alarm "unlocken", aber Alarm bleibt stumm (kein hörbarer Alarm beim Klick)
+    function primeAllSounds(){
+      if (__audioPrimed) return;
+      __audioPrimed = true;
+
+      const tmp = makePreAudio();
+      primeAudioEl(tmp);
+
+      // Alarm stumm "armen"
+      primeAudioEl(alarmAudio);
+
+      // sicher laden
+      try { alarmAudio.load(); } catch {}
+    }
 
     function playPreSoundThen(nextFn){
-      audioPre.onended = null;
-      audioPre.onerror = null;
+      const a = makePreAudio();
 
       const done = () => {
-        audioPre.onended = null;
-        audioPre.onerror = null;
+        try { a.onended = null; a.onerror = null; } catch {}
         try { nextFn && nextFn(); } catch(e){ console.warn(e); }
       };
 
-      audioPre.onended = done;
-      audioPre.onerror = done;
+      try { a.onended = done; a.onerror = done; } catch {}
 
-      try{ audioPre.pause(); audioPre.currentTime = 0; } catch {}
-      audioPre.play().catch(() => done());
+      try { a.pause(); a.currentTime = 0; } catch {}
+      try { a.load(); } catch {}
+
+      a.play().catch(() => done());
     }
 
     const wait = (ms)=> new Promise(r => setTimeout(r, ms));
+
+    function normalizeSoundUrl(u){
+      try{
+        if (!u) return ALARM_URL;
+        const url = new URL(u, location.origin);
+        if (url.origin === location.origin && url.pathname.toLowerCase().endsWith('.mp3')) {
+          if (!url.search) url.search = `?v=${ASSET_VER}`;
+          return url.pathname + url.search;
+        }
+        return url.href;
+      }catch{
+        return ALARM_URL;
+      }
+    }
   </script>
 
-  <!-- ===== Status 1: Melder-Sequence ===== -->
+  <!-- =========================================================
+       ✅ STATUS 1: Melder-Sequence
+       ========================================================= -->
   <script>
     function getScenarioFallback(){
       return {
         melderImage: "/fotos/Melder_Leer.png",
-        pagerSound: "/Alarmton2.mp3",
+        pagerSound: ALARM_URL,
         openDelayAfterConfirmMs: 2500,
         pagerDelayAfterOpenMs: 150,
 
@@ -602,7 +648,9 @@
     function getScenarioSafe(){
       try{
         if (typeof window.getActiveScenario === 'function') {
-          return window.getActiveScenario() || getScenarioFallback();
+          const sc = window.getActiveScenario() || getScenarioFallback();
+          if (sc && sc.pagerSound) sc.pagerSound = normalizeSoundUrl(sc.pagerSound);
+          return sc;
         }
       }catch{}
       return getScenarioFallback();
@@ -617,7 +665,6 @@
     const confirmBtn    = document.getElementById('melderConfirmBtn');
     const reopenBtn     = document.getElementById('melderReopen');
 
-    let alarmAudio = null;
     let alarmStopTimer = 0;
     let melderSequenceDone = false;
     let reopenMode = false;
@@ -645,35 +692,29 @@
     function stopAlarm(){
       try{
         if (alarmStopTimer) { clearTimeout(alarmStopTimer); alarmStopTimer = 0; }
-        if (alarmAudio){
-          alarmAudio.pause();
-          alarmAudio.currentTime = 0;
-        }
+        alarmAudio.pause();
+        alarmAudio.currentTime = 0;
       }catch{}
       try{
         displayEl.classList.remove('is-flicker');
-        melderCard.classList.remove('is-alarming'); /* ✅ stop shake */
+        melderCard.classList.remove('is-alarming');
       }catch{}
     }
 
     function openMelder(){
       reopenBtn.style.display = 'none';
 
-      // ✅ Button-Mode: normal (Status 3) oder Reopen (Schließen)
       if (reopenMode){
         confirmBtn.textContent = 'Schließen';
         confirmBtn.disabled = false;
       } else {
         confirmBtn.textContent = 'Status 3';
-        // disabled bleibt wie showMelderSequence es steuert
       }
 
       melderOverlay.classList.add('open');
       melderOverlay.setAttribute('aria-hidden','false');
 
-      melderCard.classList.remove('is-exiting');
-      melderCard.classList.remove('is-hidden');
-
+      melderCard.classList.remove('is-exiting','is-hidden');
       melderCard.classList.add('is-entering');
 
       displayEl.classList.add('is-waking','is-flicker');
@@ -697,11 +738,7 @@
 
         setConfirmEnabled(false);
 
-        // ✅ Text NICHT löschen -> beim Reopen direkt da
-
         if (melderSequenceDone) reopenBtn.style.display = 'block';
-
-        // ✅ Nach dem Schließen wieder normal
         reopenMode = false;
       }, 700);
     }
@@ -741,13 +778,29 @@
       openMelder();
 
       stopAlarm();
-      alarmAudio = new Audio(sc.pagerSound || '/Alarmton2.mp3');
-      alarmAudio.preload = 'auto';
+
+      // ✅ später NUR Alarmton2 starten (aber Player wurde schon im Klick "freigeschaltet")
+      const pagerSound = normalizeSoundUrl(sc.pagerSound || ALARM_URL);
+
+      try{
+        alarmAudio.pause();
+        alarmAudio.currentTime = 0;
+
+        const wanted = new URL(pagerSound, location.origin).href;
+        if (alarmAudio.src !== wanted) {
+          alarmAudio.src = pagerSound;
+          alarmAudio.load();
+        }
+      }catch{}
 
       await wait(sc.pagerDelayAfterOpenMs ?? 150);
-      alarmAudio.play().catch(()=>{});
 
-      /* ✅ Shake solange Alarm läuft */
+      try{
+        alarmAudio.muted = false;
+        const p = alarmAudio.play();
+        if (p && p.catch) p.catch(()=>{});
+      }catch{}
+
       melderCard.classList.add('is-alarming');
 
       const dur = sc.alarmDurationMs ?? 4500;
@@ -772,8 +825,13 @@
       setConfirmEnabled(true);
     }
 
-    // Status 1: normaler Ablauf
-    startButton.addEventListener("click", () => {
+    // ✅ Status 1
+    startButton.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      primeAllSounds(); // ✅ iOS unlock (Pre + Alarm stumm armed)
+
       resetAuswertungOnly();
       startButton.style.display = "none";
 
@@ -782,45 +840,45 @@
       playPreSoundThen(async () => {
         try{
           await showMelderSequence();
-        }catch(e){
-          console.warn(e);
+        }catch(err){
+          console.warn(err);
           reopenMode = false;
           openMelder();
           confirmBtn.textContent = 'Status 3';
           setConfirmEnabled(true);
         }
       });
-    });
+    }, { passive: false });
 
-    // ✅ Status 3 / Schließen: immer Beep -> dann rauswischen
-  confirmBtn.addEventListener('click', async (e) => {
-  e.preventDefault();
-  e.stopPropagation();
+    // ✅ Status 3 / Schließen
+    confirmBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
 
-  // ✅ Reopen-Modus: NUR schließen, KEIN Ton
-  if (reopenMode) {
-    closeMelder();
-    return;
-  }
+      primeAllSounds();
 
-  // ✅ Normaler Ablauf (Status 3): Ton + rauswischen
-  playPreSoundThen(async () => {
-    closeMelder();
-    const sc = getScenarioSafe();
-    await wait(sc.pauseAfterConfirmMs ?? 260);
-  });
-});
+      if (reopenMode) {
+        closeMelder();
+        return;
+      }
 
+      playPreSoundThen(async () => {
+        closeMelder();
+        const sc = getScenarioSafe();
+        await wait(sc.pauseAfterConfirmMs ?? 260);
+      });
+    }, { passive: false });
 
-    // ✅ Reopen: Melder erneut öffnen -> nur "Schließen" Button
+    // ✅ Reopen
     reopenBtn.addEventListener('click', (e)=>{
       e.preventDefault();
       e.stopPropagation();
 
+      primeAllSounds();
+
       reopenMode = true;
       openMelder();
-      // Kein Alarm, kein neu tippen
-    });
+    }, { passive: false });
 
     // Ripple Effekt
     document.addEventListener('click', function(e){
@@ -885,7 +943,7 @@
     }
   </script>
 
-  <!-- ===== Scanner (wie bei dir) ===== -->
+  <!-- ===== Scanner (Status 4) ===== -->
   <script>
   (function wrapGetUserMediaOnce(){
     if (!navigator.mediaDevices?.getUserMedia) return;
@@ -1011,9 +1069,12 @@
       try { const st = history.state; if (st && st.scan) history.back(); } catch {}
     }
 
+    // ✅ Status 4
     startBtn.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
+
+      primeAllSounds();
 
       resetClinicAndAssignmentsLikeEnd();
 
@@ -1048,4 +1109,3 @@
   <script src="/metrics.js" defer></script>
 </body>
 </html>
-
