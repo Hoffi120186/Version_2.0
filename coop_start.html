@@ -3,57 +3,110 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Coop – Übung starten</title>
+  <title>Coop starten</title>
+  <style>
+    body{font-family:system-ui;margin:18px;background:#0b0f1a;color:#fff}
+    .card{max-width:720px;margin:0 auto;background:rgba(255,255,255,.08);padding:16px;border-radius:14px}
+    input,select,button{width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.25);color:#fff;margin-top:10px}
+    button{background:#0B5FFF;border:none;font-weight:800;cursor:pointer}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .muted{opacity:.8;font-size:13px}
+    .ok{color:#7CFC98}
+    .warn{color:#FFD27A}
+    #qr{display:flex;justify-content:center;margin-top:12px}
+    a{color:#7fb0ff}
+  </style>
 </head>
-<body style="font-family:system-ui;padding:16px">
-  <h1>Coop – Übung starten</h1>
+<body>
+  <div class="card">
+    <h2>Coop starten (OrgL)</h2>
+    <div class="muted">
+      Wichtig: BaseURL muss <b>HTTPS</b> sein (iOS blockt sonst). Beispiel: <code>https://192.168.178.133:3443</code>
+    </div>
 
-  <label>Server-URL (lokal):</label><br>
-  <input id="base" style="width:100%;padding:10px" value="http://raspberry:3000"><br><br>
+    <label>Coop-Server BaseURL</label>
+    <input id="baseUrl" placeholder="https://192.168.x.x:3443" />
 
-  <button id="create" style="padding:12px 16px;font-weight:700">Übung erstellen</button>
+    <button id="btnCreate">Übung erstellen</button>
 
-  <div id="out" style="margin-top:16px"></div>
+    <div id="out" style="margin-top:12px"></div>
+    <div id="qr"></div>
+
+    <div class="row" style="margin-top:12px">
+      <button id="btnAblage" style="background:#e53935">Zur Ablage (OrgL)</button>
+      <button id="btnLeave" style="background:#444">Coop verlassen</button>
+    </div>
+
+    <div class="muted" style="margin-top:10px">
+      Tipp: Zertifikat einmalig auf iPad vertrauen, indem du die BaseURL in Safari öffnest.
+    </div>
+  </div>
+
+  <!-- QR lib (für Test per CDN ok). Später kannst du die Datei lokal mitliefern. -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
   <script src="/coop-client.js" defer></script>
   <script>
-  (function(){
-    const out = document.getElementById('out');
-    const base = document.getElementById('base');
-    document.getElementById('create').onclick = async () => {
-      out.textContent = 'Erstelle Übung...';
+    function $(id){return document.getElementById(id);}
+    function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));}
+
+    // Prefill aus localStorage
+    const last = localStorage.getItem('coop_last_baseurl');
+    if (last) $('baseUrl').value = last;
+
+    $('btnAblage').onclick = ()=> location.href = 'ablage1.html';
+    $('btnLeave').onclick = ()=>{
+      try{ window.Coop?.clearSession?.(); }catch{}
+      $('out').innerHTML = '<div class="warn">Session gelöscht.</div>';
+      $('qr').innerHTML = '';
+    };
+
+    $('btnCreate').onclick = async ()=>{
+      const baseUrl = $('baseUrl').value.trim().replace(/\/$/,'');
+      if(!baseUrl){ $('out').innerHTML='<div class="warn">Bitte BaseURL eingeben.</div>'; return; }
+
+      localStorage.setItem('coop_last_baseurl', baseUrl);
+
       try{
-        const baseUrl = base.value.trim().replace(/\/$/,'');
+        // create incident
         const res = await fetch(baseUrl + '/incident/create', {
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify({})
         });
-        const data = await res.json();
-        if(!res.ok || !data.ok) throw new Error(data?.error || 'create_failed');
+        const data = await res.json().catch(()=>null);
+        if(!res.ok || !data?.ok) throw new Error(data?.error || ('http_'+res.status));
 
-        // Session speichern (passt zu coop-client.js)
-        localStorage.setItem('coop_session_v1', JSON.stringify({
+        // Session speichern (OrgL)
+        window.Coop?.saveSession?.({
           baseUrl,
           incident_id: data.incident_id,
           token: data.token,
-          role: 'INSTRUKTOR'
-        }));
+          role: 'ORGL'
+        });
 
-        out.innerHTML = `
-          <p><b>Join-Code:</b> <span style="font-size:22px">${data.join_code}</span></p>
-          <p>RTW joinen über: <code>coop_join.html?code=${data.join_code}</code></p>
-          <p>
-            <button onclick="location.href='ablage1.html'" style="padding:12px 16px;font-weight:700">
-              Zur Ablage (live)
-            </button>
-          </p>
+        const joinCode = data.join_code;
+        const joinUrl  = location.origin + '/coop-join.html'
+          + '?base=' + encodeURIComponent(baseUrl)
+          + '&code=' + encodeURIComponent(joinCode);
+
+        $('out').innerHTML = `
+          <div class="ok"><b>Übung erstellt!</b></div>
+          <div>Join-Code: <b>${escapeHtml(joinCode)}</b></div>
+          <div class="muted">QR / Link für RTW: <a href="${joinUrl}">${joinUrl}</a></div>
         `;
+
+        $('qr').innerHTML = '';
+        new QRCode($('qr'), { text: joinUrl, width: 220, height: 220 });
+
       }catch(e){
-        out.textContent = 'Fehler: ' + (e?.message || e);
+        $('out').innerHTML = `<div class="warn">Fehler: ${escapeHtml(e.message || e)}</div>
+          <div class="muted">
+            Wenn das iPad “load failed” sagt: Zertifikat/HTTPS prüfen.
+          </div>`;
+        $('qr').innerHTML = '';
       }
     };
-  })();
   </script>
 </body>
 </html>
