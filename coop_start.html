@@ -3,110 +3,136 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Coop starten</title>
+  <title>Coop, Übung starten</title>
   <style>
-    body{font-family:system-ui;margin:18px;background:#0b0f1a;color:#fff}
-    .card{max-width:720px;margin:0 auto;background:rgba(255,255,255,.08);padding:16px;border-radius:14px}
-    input,select,button{width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.25);color:#fff;margin-top:10px}
-    button{background:#0B5FFF;border:none;font-weight:800;cursor:pointer}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .muted{opacity:.8;font-size:13px}
-    .ok{color:#7CFC98}
-    .warn{color:#FFD27A}
-    #qr{display:flex;justify-content:center;margin-top:12px}
-    a{color:#7fb0ff}
+    :root{
+      --radius:14px;
+      --shadow:0 6px 14px rgba(0,0,0,.2);
+      --glass:rgba(255,255,255,.12);
+      --glass2:rgba(255,255,255,.22);
+      --border:rgba(255,255,255,.25);
+      --txt:#f5f7ff;
+      --bg:rgba(0,0,0,.55);
+      --space:14px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0}
+    body{
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:#0b0f1a;
+      color:var(--txt);
+      padding:calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 16px);
+    }
+    .wrap{max-width:520px;margin:0 auto}
+    .card{
+      background:var(--glass);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:16px;
+      backdrop-filter:blur(10px);
+    }
+    h1{margin:0 0 12px;font-size:22px}
+    label{display:block;margin:10px 0 6px;font-weight:700}
+    input{
+      width:100%;
+      padding:12px 12px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.22);
+      background:rgba(0,0,0,.25);
+      color:var(--txt);
+      outline:none;
+    }
+    input:focus{border-color:rgba(255,255,255,.45)}
+    .btn{
+      width:100%;
+      margin-top:12px;
+      padding:14px 16px;
+      background:var(--glass);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      color:var(--txt);
+      font-weight:800;
+      cursor:pointer;
+      box-shadow:var(--shadow);
+      transition:.2s;
+    }
+    .btn:hover{background:var(--glass2)}
+    .muted{opacity:.85;font-size:13px;margin-top:10px}
+    .out{margin-top:14px}
+    code{background:rgba(0,0,0,.25);padding:2px 6px;border-radius:8px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .row .btn{flex:1;min-width:200px}
   </style>
 </head>
 <body>
-  <div class="card">
-    <h2>Coop starten (OrgL)</h2>
-    <div class="muted">
-      Wichtig: BaseURL muss <b>HTTPS</b> sein (iOS blockt sonst). Beispiel: <code>https://192.168.178.133:3443</code>
-    </div>
+  <div class="wrap">
+    <div class="card">
+      <h1>Coop, Übung starten</h1>
 
-    <label>Coop-Server BaseURL</label>
-    <input id="baseUrl" placeholder="https://192.168.x.x:3443" />
+      <label>Server URL</label>
+      <input id="base" />
 
-    <button id="btnCreate">Übung erstellen</button>
+      <button id="create" class="btn" type="button">Übung erstellen</button>
 
-    <div id="out" style="margin-top:12px"></div>
-    <div id="qr"></div>
+      <div class="muted">
+        Tipp. Im Raspberry Hotspot ist das meist <code>http://192.168.4.1:3000</code>
+      </div>
 
-    <div class="row" style="margin-top:12px">
-      <button id="btnAblage" style="background:#e53935">Zur Ablage (OrgL)</button>
-      <button id="btnLeave" style="background:#444">Coop verlassen</button>
-    </div>
-
-    <div class="muted" style="margin-top:10px">
-      Tipp: Zertifikat einmalig auf iPad vertrauen, indem du die BaseURL in Safari öffnest.
+      <div id="out" class="out"></div>
     </div>
   </div>
 
-  <!-- QR lib (für Test per CDN ok). Später kannst du die Datei lokal mitliefern. -->
-  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-
-  <script src="/coop-client.js" defer></script>
   <script>
-    function $(id){return document.getElementById(id);}
-    function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));}
+    function guessBaseUrl(){
+      const host = location.hostname;
+      if (host && host !== 'localhost' && host !== '127.0.0.1') return `http://${host}:3000`;
+      return 'http://192.168.4.1:3000';
+    }
 
-    // Prefill aus localStorage
-    const last = localStorage.getItem('coop_last_baseurl');
-    if (last) $('baseUrl').value = last;
+    (function(){
+      const out = document.getElementById('out');
+      const base = document.getElementById('base');
+      base.value = guessBaseUrl();
 
-    $('btnAblage').onclick = ()=> location.href = 'ablage1.html';
-    $('btnLeave').onclick = ()=>{
-      try{ window.Coop?.clearSession?.(); }catch{}
-      $('out').innerHTML = '<div class="warn">Session gelöscht.</div>';
-      $('qr').innerHTML = '';
-    };
+      document.getElementById('create').onclick = async () => {
+        out.textContent = 'Erstelle Übung';
+        try{
+          const baseUrl = base.value.trim().replace(/\/$/,'');
+          const res = await fetch(baseUrl + '/incident/create', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({})
+          });
 
-    $('btnCreate').onclick = async ()=>{
-      const baseUrl = $('baseUrl').value.trim().replace(/\/$/,'');
-      if(!baseUrl){ $('out').innerHTML='<div class="warn">Bitte BaseURL eingeben.</div>'; return; }
+          const data = await res.json().catch(()=>null);
+          if(!res.ok || !data || !data.ok) throw new Error(data && data.error ? data.error : 'create_failed');
 
-      localStorage.setItem('coop_last_baseurl', baseUrl);
+          localStorage.setItem('coop_session_v1', JSON.stringify({
+            baseUrl,
+            incident_id: data.incident_id,
+            token: data.token,
+            role: 'INSTRUKTOR'
+          }));
 
-      try{
-        // create incident
-        const res = await fetch(baseUrl + '/incident/create', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({})
-        });
-        const data = await res.json().catch(()=>null);
-        if(!res.ok || !data?.ok) throw new Error(data?.error || ('http_'+res.status));
-
-        // Session speichern (OrgL)
-        window.Coop?.saveSession?.({
-          baseUrl,
-          incident_id: data.incident_id,
-          token: data.token,
-          role: 'ORGL'
-        });
-
-        const joinCode = data.join_code;
-        const joinUrl  = location.origin + '/coop-join.html'
-          + '?base=' + encodeURIComponent(baseUrl)
-          + '&code=' + encodeURIComponent(joinCode);
-
-        $('out').innerHTML = `
-          <div class="ok"><b>Übung erstellt!</b></div>
-          <div>Join-Code: <b>${escapeHtml(joinCode)}</b></div>
-          <div class="muted">QR / Link für RTW: <a href="${joinUrl}">${joinUrl}</a></div>
-        `;
-
-        $('qr').innerHTML = '';
-        new QRCode($('qr'), { text: joinUrl, width: 220, height: 220 });
-
-      }catch(e){
-        $('out').innerHTML = `<div class="warn">Fehler: ${escapeHtml(e.message || e)}</div>
-          <div class="muted">
-            Wenn das iPad “load failed” sagt: Zertifikat/HTTPS prüfen.
-          </div>`;
-        $('qr').innerHTML = '';
-      }
-    };
+          const code = data.join_code;
+          out.innerHTML =
+            `<div class="card" style="margin-top:12px">
+              <div style="font-weight:900;font-size:18px">Join Code</div>
+              <div style="font-weight:900;font-size:28px;margin-top:6px">${code}</div>
+              <div class="muted" style="margin-top:10px">
+                RTW oder NEF joinen über <code>coop_join.html?code=${code}</code>
+              </div>
+              <div class="row">
+                <button class="btn" type="button" onclick="location.href='ablage1.html'">Zur Ablage live</button>
+                <button class="btn" type="button" onclick="location.href='Instruktor.html'">Zurück</button>
+              </div>
+            </div>`;
+        }catch(e){
+          out.textContent = 'Fehler: ' + (e && e.message ? e.message : String(e));
+        }
+      };
+    })();
   </script>
 </body>
 </html>
