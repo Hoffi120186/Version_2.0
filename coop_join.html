@@ -3,92 +3,148 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Coop beitreten</title>
+  <title>Coop, Beitreten</title>
   <style>
-    body{font-family:system-ui;margin:18px;background:#0b0f1a;color:#fff}
-    .card{max-width:720px;margin:0 auto;background:rgba(255,255,255,.08);padding:16px;border-radius:14px}
-    input,select,button{width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.25);color:#fff;margin-top:10px}
-    button{background:#0B5FFF;border:none;font-weight:800;cursor:pointer}
-    .muted{opacity:.8;font-size:13px}
-    .ok{color:#7CFC98}
-    .warn{color:#FFD27A}
+    :root{
+      --radius:14px;
+      --shadow:0 6px 14px rgba(0,0,0,.2);
+      --glass:rgba(255,255,255,.12);
+      --glass2:rgba(255,255,255,.22);
+      --border:rgba(255,255,255,.25);
+      --txt:#f5f7ff;
+      --space:14px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0}
+    body{
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:#0b0f1a;
+      color:var(--txt);
+      padding:calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 16px);
+    }
+    .wrap{max-width:520px;margin:0 auto}
+    .card{
+      background:var(--glass);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:16px;
+      backdrop-filter:blur(10px);
+    }
+    h1{margin:0 0 12px;font-size:22px}
+    label{display:block;margin:10px 0 6px;font-weight:700}
+    input,select{
+      width:100%;
+      padding:12px 12px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.22);
+      background:rgba(0,0,0,.25);
+      color:var(--txt);
+      outline:none;
+    }
+    input:focus,select:focus{border-color:rgba(255,255,255,.45)}
+    .btn{
+      width:100%;
+      margin-top:12px;
+      padding:14px 16px;
+      background:var(--glass);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      color:var(--txt);
+      font-weight:800;
+      cursor:pointer;
+      box-shadow:var(--shadow);
+      transition:.2s;
+    }
+    .btn:hover{background:var(--glass2)}
+    .out{margin-top:14px}
+    .muted{opacity:.85;font-size:13px;margin-top:10px}
   </style>
 </head>
 <body>
-  <div class="card">
-    <h2>Coop beitreten</h2>
-    <div class="muted">Wenn du per QR hier bist, sind BaseURL & Join-Code schon gesetzt.</div>
+  <div class="wrap">
+    <div class="card">
+      <h1>Coop, Beitreten</h1>
 
-    <label>Server BaseURL (HTTPS)</label>
-    <input id="baseUrl" placeholder="https://192.168.x.x:3443" />
+      <label>Server URL</label>
+      <input id="base" />
 
-    <label>Join-Code</label>
-    <input id="code" placeholder="ABC123" />
+      <label>Join Code</label>
+      <input id="code" autocomplete="one-time-code" />
 
-    <label>Rolle</label>
-    <select id="role">
-      <option value="RTW">RTW</option>
-      <option value="NEF">NEF</option>
-      <option value="ORGL">OrgL</option>
-    </select>
+      <label>Rolle</label>
+      <select id="role">
+        <option value="RTW">RTW</option>
+        <option value="NEF">NEF</option>
+        <option value="ORGL">OrgL</option>
+      </select>
 
-    <label>Name (optional)</label>
-    <input id="name" placeholder="RTW 1" />
+      <button id="join" class="btn" type="button">Beitreten</button>
 
-    <button id="btnJoin">Beitreten</button>
+      <div class="muted">
+        Hinweis. Es ist nur ein OrgL erlaubt. Insgesamt maximal 5 Geräte pro Übung.
+      </div>
 
-    <div id="out" style="margin-top:12px"></div>
+      <div id="out" class="out"></div>
+    </div>
   </div>
 
-  <script src="/coop-client.js" defer></script>
   <script>
-    function $(id){return document.getElementById(id);}
-    function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));}
+    function guessBaseUrl(){
+      const host = location.hostname;
+      if (host && host !== 'localhost' && host !== '127.0.0.1') return `http://${host}:3000`;
+      return 'http://192.168.4.1:3000';
+    }
 
-    // Params übernehmen
-    const qs = new URLSearchParams(location.search);
-    const base = qs.get('base'); const code = qs.get('code');
-    if (base) $('baseUrl').value = base;
-    if (code) $('code').value = code;
+    (function(){
+      const qs = new URLSearchParams(location.search);
+      document.getElementById('base').value = guessBaseUrl();
 
-    $('btnJoin').onclick = async ()=>{
-      const baseUrl = $('baseUrl').value.trim().replace(/\/$/,'');
-      const join_code = $('code').value.trim().toUpperCase();
-      const role = $('role').value;
-      const name = $('name').value.trim();
+      const pre = (qs.get('code') || '').trim();
+      if (pre) document.getElementById('code').value = pre.toUpperCase();
 
-      if(!baseUrl || !join_code){
-        $('out').innerHTML = '<div class="warn">Bitte BaseURL und Join-Code ausfüllen.</div>';
-        return;
-      }
+      const out = document.getElementById('out');
 
-      try{
-        const res = await fetch(baseUrl + '/incident/join', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ join_code, role, name })
-        });
-        const data = await res.json().catch(()=>null);
-        if(!res.ok || !data?.ok) throw new Error(data?.error || ('http_'+res.status));
+      document.getElementById('join').onclick = async () => {
+        out.textContent = 'Trete bei';
+        try{
+          const baseUrl = document.getElementById('base').value.trim().replace(/\/$/,'');
+          const join_code = document.getElementById('code').value.trim().toUpperCase();
+          const role = document.getElementById('role').value;
 
-        // Session speichern
-        window.Coop?.saveSession?.({
-          baseUrl,
-          incident_id: data.incident_id,
-          token: data.token,
-          role
-        });
+          if (!join_code) throw new Error('join_code_fehlt');
 
-        $('out').innerHTML = `<div class="ok"><b>Verbunden.</b></div>
-          <div class="muted">Du kannst jetzt in die App zurück.</div>`;
+          const res = await fetch(baseUrl + '/incident/join', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ join_code, role })
+          });
 
-        // RTW: zurück in Haupt-App (oder patienten-qr / index1)
-        setTimeout(()=> location.href = 'index1.html', 500);
+          const data = await res.json().catch(()=>null);
+          if(!res.ok || !data || !data.ok) throw new Error(data && data.error ? data.error : 'join_failed');
 
-      }catch(e){
-        $('out').innerHTML = `<div class="warn">Fehler: ${escapeHtml(e.message || e)}</div>`;
-      }
-    };
+          localStorage.setItem('coop_session_v1', JSON.stringify({
+            baseUrl,
+            incident_id: data.incident_id,
+            token: data.token,
+            role: data.role || role,
+            callsign: data.callsign || ''
+          }));
+
+          const callsign = data.callsign ? ` als ${data.callsign}` : '';
+          out.innerHTML =
+            `<div class="card" style="margin-top:12px">
+              <div style="font-weight:900">✅ Beigetreten${callsign}</div>
+              <div class="muted" style="margin-top:10px">
+                Du kannst jetzt in die App wechseln.
+              </div>
+              <button class="btn" type="button" onclick="location.href='index1.html'">Start</button>
+            </div>`;
+        }catch(e){
+          out.textContent = 'Fehler: ' + (e && e.message ? e.message : String(e));
+        }
+      };
+    })();
   </script>
 </body>
 </html>
