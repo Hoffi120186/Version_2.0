@@ -102,15 +102,23 @@
     <button id="lockManage" class="chip" type="button">🔒 Schutz verwalten</button>
   </div>
 
-  <div class="button-container">
+    <div class="button-container">
     <button class="btn" type="button" onclick="safeGo('/szenario.html')">Szenario auswählen</button>
     <button class="btn" type="button" onclick="safeGo('/patienten.html')">Patientenübersicht</button>
-    <button class="btn" type="button" onclick="safeGo('/qr.html')">QR-Codes Patienten/Szenarien</button>
+    <button class="btn" type="button" onclick="safeGo('/qr.html')">QR-Codes Patienten,Szenarien</button>
     <button class="btn" type="button" onclick="safeGo('/feedback.html')">Feedback und Bewertung der App</button>
-    <button class="btn" type="button" onclick="safeGo('/last-run.html')">Letzte Übung anzeigen
-      <button class="btn" onclick="location.href='coop_start.html'">Coop-Übung starten</button>
 
-      </button>
+    <button class="btn" type="button" onclick="safeGo('/last-run.html')">Letzte Übung anzeigen</button>
+
+    <button class="btn" type="button" onclick="safeGo('/coop_start.html')">Coop-Übung starten</button>
+
+    <button id="pushBtn" class="btn" type="button">Benachrichtigungen aktivieren</button>
+
+    <button id="msgBtn" class="btn" type="button" onclick="safeGo('/nachrichten.html')">
+      Nachrichten <span id="msgBadge"></span>
+    </button>
+  </div>
+
     <!-- Push -->
     <button id="pushBtn" class="btn" type="button">Benachrichtigungen aktivieren</button>
 
@@ -656,12 +664,8 @@
     if (getHash()) showModal('verify'); else closeModal();
   });
 </script>
-<script src="/coop-client.js" defer></script>
-<script src="/coop-bridge.js" defer></script>
 
 
  <script src="/metrics.js" defer></script>
 </body>
 </html>
-
-
