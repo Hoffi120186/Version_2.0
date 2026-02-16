@@ -1,51 +1,52 @@
-/* =========================================================
-   1Rettungsmittel · ablage.js  (v10: Start nur beim Betreten)
-   ========================================================= */
-(function () {
+(function(){
   'use strict';
 
-  // ----- Storage Keys
-  var LS_ACTIVE   = 'ablage.active.v1';
-  var LS_HISTORY  = 'ablage.history.v1';
-  var LS_SESSION  = 'ablage.sessionStart.v1';
-  var LS_DONE     = 'ablage.done.v1';
+  var LS_ACTIVE  = 'ablage.active.v1';
+  var LS_HISTORY = 'ablage.history.v1';
+  var LS_DONE    = 'ablage.done.v1';
+  var LS_SESSION = 'ablage.session.start.v1';
 
-  // ----- Utils
   function now(){ return Date.now(); }
-  function safeParse(s,f){ try{ return JSON.parse(s); }catch(_){ return f; } }
-  function load(k,f){ return safeParse(localStorage.getItem(k), f); }
-  function save(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } }
-  function asArray(x){ return Array.isArray(x) ? x : []; }
 
-  function getActive(){  return asArray(load(LS_ACTIVE,  [])); }
-  function getHistory(){ return asArray(load(LS_HISTORY, [])); }
-  function getDone(){    return asArray(load(LS_DONE,    [])); }
-  function setActive(a){  save(LS_ACTIVE,  asArray(a)); }
-  function setHistory(h){ save(LS_HISTORY, asArray(h)); }
-  function setDone(d){    save(LS_DONE,    asArray(d)); }
-
-  // Session-Start (einmal pro Einsatz, falls noch nicht vorhanden)
-  function ensureSessionStart(){
-    var t = Number(localStorage.getItem(LS_SESSION) || 0);
-    if(!t){
-      t = now();
-      try{ localStorage.setItem(LS_SESSION, String(t)); }catch(_){}
+  function read(key, fallback){
+    try{
+      var raw = localStorage.getItem(key);
+      if(!raw) return fallback;
+      return JSON.parse(raw);
+    }catch(_){
+      return fallback;
     }
-    return t;
+  }
+  function write(key, val){
+    try{ localStorage.setItem(key, JSON.stringify(val)); }catch(_){}
   }
 
-  // Zeitformat
+  function getActive(){ return read(LS_ACTIVE, []); }
+  function setActive(list){ write(LS_ACTIVE, list || []); }
+
+  function getHistory(){ return read(LS_HISTORY, []); }
+  function setHistory(list){ write(LS_HISTORY, list || []); }
+
+  function getDone(){ return read(LS_DONE, []); }
+  function setDone(list){ write(LS_DONE, list || []); }
+
+  function ensureSessionStart(){
+    try{
+      var st = parseInt(localStorage.getItem(LS_SESSION) || '0', 10);
+      if(!st){ localStorage.setItem(LS_SESSION, String(now())); }
+    }catch(_){}
+  }
+
   function fmt(ms){
-    if(ms<0) ms=0;
-    var s=Math.floor(ms/1000),
-        hh=Math.floor(s/3600),
+    ms = Math.max(0, Number(ms||0));
+    var s = Math.floor(ms/1000);
+    var hh=Math.floor(s/3600),
         mm=Math.floor((s%3600)/60),
         ss=s%60;
     var pad=function(n){ return String(n).padStart(2,'0'); };
     return hh>0 ? (pad(hh)+':'+pad(mm)+':'+pad(ss)) : (pad(mm)+':'+pad(ss));
   }
 
-  // Migration alter Schemata
   function migrateActive(list){
     var changed = false;
     for (var i=0;i<list.length;i++){
@@ -60,7 +61,6 @@
     return changed;
   }
 
-  // ---- WICHTIG: Start NUR beim Betreten dieser Seite
   function startTimersOnEntry(){
     ensureSessionStart();
     var a = getActive();
@@ -76,7 +76,6 @@
     if (changed) setActive(a);
   }
 
-  // ----- Patienten-Management (legt nur vor, startet NICHT)
   function ensurePatient(id, name, prio){
     if(!id) return;
     if(getDone().includes(id)) return;
@@ -87,13 +86,12 @@
       name: name || ("Patient "+String(id).replace(/\D/g,'')),
       prio: prio || '',
       queuedAt: now(),
-      startAt: null,  // Start passiert ausschließlich in startTimersOnEntry()
+      startAt: null,
       offset: 0
     });
     setActive(a);
   }
 
-  // ----- Stop / Abschluss
   function stopPatient(id, ziel, idVal){
     var a = getActive(), idx = -1;
     for(var i=0;i<a.length;i++){ if(String(a[i].id)===String(id)){ idx=i; break; } }
@@ -101,11 +99,10 @@
 
     var p = a[idx], endedAt = now();
 
-    // Migration falls nötig
     if (typeof p.startedAt === 'number' && typeof p.startAt !== 'number') {
       p.startAt = p.startedAt; delete p.startedAt;
     }
-    var startAt = Number(p.startAt || now()); // falls nie gestartet wurde, dann 0 Dauer
+    var startAt = Number(p.startAt || now());
     var offset  = Number(p.offset || 0);
 
     var entry = {
@@ -121,6 +118,25 @@
     a.splice(idx,1); setActive(a);
     var h = getHistory(); h.push(entry); setHistory(h);
     var d = getDone(); d.push(p.id); setDone(d);
+
+    try{
+      var sess = JSON.parse(localStorage.getItem('coop_session_v1') || 'null');
+      var base = (sess && sess.base) ? String(sess.base) : '';
+      var incident_id = sess && sess.incident_id;
+      var token = sess && sess.token;
+      if(base && incident_id && token){
+        fetch(base + '/incident/event', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-coop-incident': incident_id,
+            'x-coop-token': token
+          },
+          body: JSON.stringify({ type: 'donePatient', payload: { id: String(id).toLowerCase() } })
+        }).catch(function(){});
+      }
+    }catch(_){}
+
     return true;
   }
 
@@ -129,7 +145,6 @@
     try{ localStorage.removeItem(LS_SESSION); }catch(_){}
   }
 
-  // ----- Timer-Rendering
   var tickers = new WeakMap();
 
   function hydrateCards(opts){
@@ -235,17 +250,17 @@
     state.rafId = requestAnimationFrame(step);
   }
 
-  // ---------- Public API ----------
   window.Ablage = {
-    hydrateCards, stopPatient, resetAll,
-    _getActive:getActive, _getHistory:getHistory, _getDone:getDone
+    hydrateCards: hydrateCards,
+    stopPatient: stopPatient,
+    resetAll: resetAll,
+    _getActive: getActive,
+    _getHistory: getHistory,
+    _getDone: getDone
   };
 
-  // ----- Auto-Init: Start nur beim Betreten
   function autoInit(){
-    // 1) Alle vorhandenen, noch nicht gestarteten Einträge starten
     startTimersOnEntry();
-    // 2) (Dein Code ruft irgendwo hydrateCards(...) auf)
   }
 
   if (document.readyState === 'complete' || document.readyState === 'interactive') {
@@ -253,7 +268,6 @@
   } else {
     document.addEventListener('DOMContentLoaded', autoInit, { once:true });
   }
-  // iOS bfcache: beim „Zurück“-Navigieren erneut auslösen (neue Session im Sinne der Seite)
   window.addEventListener('pageshow', autoInit);
 
 })();
