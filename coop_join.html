@@ -89,8 +89,10 @@
       border:1px solid rgba(255,255,255,.18);
       background:rgba(0,0,0,.28);
       color:#fff;
+      font-size:16px;
     }
     .footer{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap}
+    .hint{margin-top:10px;font-size:13px;color:rgba(255,255,255,.7)}
   </style>
 </head>
 <body>
@@ -112,7 +114,16 @@
         <div class="row" style="gap:12px">
           <div style="flex:1; min-width:220px">
             <div class="muted" style="margin-bottom:6px">Join Code</div>
-            <input id="codeIn" inputmode="numeric" autocomplete="one-time-code" placeholder="z.B. 123456" />
+            <input
+              id="codeIn"
+              type="text"
+              inputmode="text"
+              autocomplete="off"
+              autocapitalize="characters"
+              autocorrect="off"
+              spellcheck="false"
+              placeholder="z.B. A1B2C3"
+            />
           </div>
           <div style="flex:1; min-width:220px">
             <div class="muted" style="margin-bottom:6px">Name</div>
@@ -127,6 +138,7 @@
         </div>
 
         <div id="msg" class="msg muted"></div>
+        <div class="hint">Tipp. Am einfachsten per QR Code. Dann ist der Join Code schon eingetragen.</div>
       </div>
 
       <div class="box">
@@ -174,11 +186,9 @@
       try { return JSON.parse(localStorage.getItem("coop_session_v1") || "null"); }
       catch { return null; }
     }
-
     function writeSession(s){
       localStorage.setItem("coop_session_v1", JSON.stringify(s));
     }
-
     function clearSession(){
       localStorage.removeItem("coop_session_v1");
     }
@@ -193,11 +203,26 @@
       const active = !!(s && s.baseUrl && s.incident_id && s.token);
       setStatus(active);
 
-      incidentOut.textContent = s?.incident_id || "leer";
-      roleOut.textContent = s?.role || "leer";
-      tokenOut.textContent = s?.token ? (String(s.token).slice(0,6) + "…") : "leer";
+      incidentOut.textContent = s && s.incident_id ? s.incident_id : "leer";
+      roleOut.textContent = s && s.role ? s.role : "leer";
+      tokenOut.textContent = s && s.token ? (String(s.token).slice(0,6) + "…") : "leer";
 
       btnEnd.disabled = !active;
+    }
+
+    function prefillFromUrl(){
+      try{
+        const u = new URL(location.href);
+        const code = (u.searchParams.get("code") || "").trim();
+        const name = (u.searchParams.get("name") || "").trim();
+        if (code) codeIn.value = code.toUpperCase();
+        if (name) nameIn.value = name;
+
+        const auto = (u.searchParams.get("auto") || "").trim();
+        if (auto === "1" && code) {
+          setTimeout(() => btnJoin.click(), 250);
+        }
+      }catch{}
     }
 
     async function ping(){
@@ -211,7 +236,7 @@
         pingMsg.textContent = "OK " + t;
       }catch(e){
         pingMsg.className = "msg bad";
-        pingMsg.textContent = "Ping fehlgeschlagen. " + (e?.message || e);
+        pingMsg.textContent = "Ping fehlgeschlagen. " + (e && e.message ? e.message : e);
       }
     }
 
@@ -222,12 +247,12 @@
       msg.textContent = "Beitritt läuft";
       btnJoin.disabled = true;
 
-      const code = String(codeIn.value || "").trim();
+      const code = String(codeIn.value || "").trim().toUpperCase();
       const displayName = String(nameIn.value || "").trim() || "Teilnehmer";
 
-      if (!/^\d{4,10}$/.test(code)){
+      if (!/^[A-Z0-9]{4,24}$/.test(code)){
         msg.className = "msg bad";
-        msg.textContent = "Join Code ist ungültig.";
+        msg.textContent = "Join Code ist ungültig. Erlaubt sind Buchstaben und Zahlen. Länge 4 bis 24.";
         btnJoin.disabled = false;
         return;
       }
@@ -255,7 +280,7 @@
         render();
       }catch(e){
         msg.className = "msg bad";
-        msg.textContent = "Fehler. " + (e?.message || e);
+        msg.textContent = "Fehler. " + (e && e.message ? e.message : e);
       }finally{
         btnJoin.disabled = false;
       }
@@ -272,6 +297,7 @@
       history.back();
     });
 
+    prefillFromUrl();
     render();
   </script>
 </body>
