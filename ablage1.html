@@ -209,6 +209,10 @@ h2{
   <div class="lightbox" id="lightbox" aria-hidden="true" title="Zum Schließen klicken">
     <img id="lightboxImg" src="" alt="Patientenfoto">
   </div>
+<script src="/coop-client.js"></script>
+<script src="/coop-bridge.js"></script>
+<script src="/ablage.js?v=8"></script>
+
 
 <script type="module">
 'use strict';
@@ -244,6 +248,14 @@ function normGender(g){
   if (x === 'd' || /divers|non[-\s]?binary/.test(x))                                   return 'divers';
   return null;
 }
+let __coopReloadT = 0;
+window.addEventListener('coop:changed', () => {
+  clearTimeout(__coopReloadT);
+  __coopReloadT = setTimeout(() => {
+    try { load(); } catch {}
+  }, 150);
+});
+
 
 /* ===== Datenquellen ===== */
 function getPatMeta(){ try { return JSON.parse(localStorage.getItem('patMeta') || '{}'); } catch { return {}; } }
@@ -820,6 +832,6 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 </script>
 
 <script src="/metrics.js" defer></script>
-<script src="/ablage.js?v=8"></script>
+
 </body>
 </html>
