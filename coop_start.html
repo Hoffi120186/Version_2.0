@@ -1,137 +1,268 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Coop, Übung starten</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Coop Übung starten</title>
+
   <style>
     :root{
+      --bg:#0b0f1a;
+      --card:rgba(255,255,255,.10);
+      --border:rgba(255,255,255,.20);
+      --ok:#22c55e;
+      --bad:#ef4444;
+      --muted:rgba(255,255,255,.75);
+      --shadow:0 10px 26px rgba(0,0,0,.28);
       --radius:14px;
-      --shadow:0 6px 14px rgba(0,0,0,.2);
-      --glass:rgba(255,255,255,.12);
-      --glass2:rgba(255,255,255,.22);
-      --border:rgba(255,255,255,.25);
-      --txt:#f5f7ff;
-      --bg:rgba(0,0,0,.55);
-      --space:14px;
     }
     *{box-sizing:border-box}
     html,body{height:100%;margin:0}
     body{
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:#0b0f1a;
-      color:var(--txt);
-      padding:calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 16px);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
     }
-    .wrap{max-width:520px;margin:0 auto}
+    .wrap{width:min(720px,100%)}
     .card{
-      background:var(--glass);
+      background:var(--card);
       border:1px solid var(--border);
       border-radius:var(--radius);
       box-shadow:var(--shadow);
-      padding:16px;
-      backdrop-filter:blur(10px);
+      padding:18px;
+      backdrop-filter: blur(10px);
     }
-    h1{margin:0 0 12px;font-size:22px}
-    label{display:block;margin:10px 0 6px;font-weight:700}
+    h1{margin:0 0 10px;font-size:22px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .pill{
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+      padding:8px 12px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.08);
+      font-weight:700;
+    }
+    .dot{width:10px;height:10px;border-radius:50%}
+    .dot.ok{background:var(--ok)}
+    .dot.bad{background:var(--bad)}
+    .muted{color:var(--muted)}
+    .box{
+      background:rgba(0,0,0,.25);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:12px;
+      padding:12px;
+      margin-top:12px;
+    }
+    .kv{display:grid;grid-template-columns:140px 1fr;gap:8px 12px;align-items:center}
+    .kv div{padding:2px 0}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+    .btn{
+      appearance:none;
+      border:1px solid rgba(255,255,255,.22);
+      background:rgba(255,255,255,.12);
+      color:#fff;
+      padding:12px 14px;
+      border-radius:12px;
+      font-weight:800;
+      cursor:pointer;
+      box-shadow:0 6px 14px rgba(0,0,0,.22);
+      transition:.15s;
+    }
+    .btn:active{transform:translateY(1px)}
+    .btn.primary{border-color:rgba(34,197,94,.55);background:rgba(34,197,94,.18)}
+    .btn.danger{border-color:rgba(239,68,68,.6);background:rgba(239,68,68,.16)}
+    .btn.ghost{background:transparent}
+    .btn[disabled]{opacity:.6;cursor:not-allowed;transform:none}
+    .msg{margin-top:10px;font-weight:700}
+    .msg.ok{color:#86efac}
+    .msg.bad{color:#fca5a5}
     input{
       width:100%;
       padding:12px 12px;
       border-radius:12px;
-      border:1px solid rgba(255,255,255,.22);
-      background:rgba(0,0,0,.25);
-      color:var(--txt);
-      outline:none;
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(0,0,0,.28);
+      color:#fff;
     }
-    input:focus{border-color:rgba(255,255,255,.45)}
-    .btn{
-      width:100%;
-      margin-top:12px;
-      padding:14px 16px;
-      background:var(--glass);
-      border:1px solid var(--border);
-      border-radius:var(--radius);
-      color:var(--txt);
-      font-weight:800;
-      cursor:pointer;
-      box-shadow:var(--shadow);
-      transition:.2s;
-    }
-    .btn:hover{background:var(--glass2)}
-    .muted{opacity:.85;font-size:13px;margin-top:10px}
-    .out{margin-top:14px}
-    code{background:rgba(0,0,0,.25);padding:2px 6px;border-radius:8px}
-    .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
-    .row .btn{flex:1;min-width:200px}
+    a{color:#fff}
+    .footer{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap}
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
-      <h1>Coop, Übung starten</h1>
-
-      <label>Server URL</label>
-      <input id="base" />
-
-      <button id="create" class="btn" type="button">Übung erstellen</button>
-
-      <div class="muted">
-        Tipp. Im Raspberry Hotspot ist das meist <code>http://192.168.4.1:3000</code>
+      <div class="row" style="justify-content:space-between">
+        <h1>Coop Übung starten</h1>
+        <div id="statusPill" class="pill">
+          <span id="statusDot" class="dot bad"></span>
+          <span id="statusText">Coop inaktiv</span>
+        </div>
       </div>
 
-      <div id="out" class="out"></div>
+      <div class="muted">
+        Server Ziel ist fest auf <span class="mono" id="baseShow"></span>
+      </div>
+
+      <div class="box">
+        <div class="kv">
+          <div class="muted">Incident</div><div class="mono" id="incidentOut">leer</div>
+          <div class="muted">Join Code</div><div class="mono" id="codeOut">leer</div>
+          <div class="muted">Token</div><div class="mono" id="tokenOut">leer</div>
+        </div>
+
+        <div class="footer">
+          <button id="btnCreate" class="btn primary" type="button">Session erstellen</button>
+          <button id="btnCopy" class="btn" type="button" disabled>Join Code kopieren</button>
+          <button id="btnEnd" class="btn danger" type="button" disabled>Coop beenden</button>
+          <button id="btnBack" class="btn ghost" type="button">Zurück</button>
+        </div>
+
+        <div id="msg" class="msg muted"></div>
+      </div>
+
+      <div class="box">
+        <div class="row" style="justify-content:space-between">
+          <div class="muted">Kurztest</div>
+          <button id="btnPing" class="btn" type="button">Ping prüfen</button>
+        </div>
+        <div id="pingMsg" class="msg muted"></div>
+      </div>
     </div>
   </div>
 
   <script>
-    function guessBaseUrl(){
-  return 'https://192.168.4.1:3443';
-}
+    const BASEURL = "https://192.168.4.1:3443";
 
+    const baseShow = document.getElementById("baseShow");
+    const incidentOut = document.getElementById("incidentOut");
+    const codeOut = document.getElementById("codeOut");
+    const tokenOut = document.getElementById("tokenOut");
 
-    (function(){
-      const out = document.getElementById('out');
-      const base = document.getElementById('base');
-      base.value = guessBaseUrl();
+    const statusDot = document.getElementById("statusDot");
+    const statusText = document.getElementById("statusText");
+    const msg = document.getElementById("msg");
+    const pingMsg = document.getElementById("pingMsg");
 
-      document.getElementById('create').onclick = async () => {
-        out.textContent = 'Erstelle Übung';
-        try{
-          const baseUrl = base.value.trim().replace(/\/$/,'');
-          const res = await fetch(baseUrl + '/incident/create', {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({})
-          });
+    const btnCreate = document.getElementById("btnCreate");
+    const btnCopy = document.getElementById("btnCopy");
+    const btnEnd = document.getElementById("btnEnd");
+    const btnBack = document.getElementById("btnBack");
+    const btnPing = document.getElementById("btnPing");
 
-          const data = await res.json().catch(()=>null);
-          if(!res.ok || !data || !data.ok) throw new Error(data && data.error ? data.error : 'create_failed');
+    baseShow.textContent = BASEURL;
 
-          localStorage.setItem('coop_session_v1', JSON.stringify({
-            baseUrl,
-            incident_id: data.incident_id,
-            token: data.token,
-            role: 'INSTRUKTOR'
-          }));
+    function readSession(){
+      try { return JSON.parse(localStorage.getItem("coop_session_v1") || "null"); }
+      catch { return null; }
+    }
 
-          const code = data.join_code;
-          out.innerHTML =
-            `<div class="card" style="margin-top:12px">
-              <div style="font-weight:900;font-size:18px">Join Code</div>
-              <div style="font-weight:900;font-size:28px;margin-top:6px">${code}</div>
-              <div class="muted" style="margin-top:10px">
-                RTW oder NEF joinen über <code>coop_join.html?code=${code}</code>
-              </div>
-              <div class="row">
-                <button class="btn" type="button" onclick="location.href='ablage1.html'">Zur Ablage live</button>
-                <button class="btn" type="button" onclick="location.href='Instruktor.html'">Zurück</button>
-              </div>
-            </div>`;
-        }catch(e){
-          out.textContent = 'Fehler: ' + (e && e.message ? e.message : String(e));
-        }
-      };
-    })();
+    function writeSession(s){
+      localStorage.setItem("coop_session_v1", JSON.stringify(s));
+    }
+
+    function clearSession(){
+      localStorage.removeItem("coop_session_v1");
+    }
+
+    function setStatus(active){
+      statusDot.className = "dot " + (active ? "ok" : "bad");
+      statusText.textContent = active ? "Coop aktiv" : "Coop inaktiv";
+    }
+
+    function render(){
+      const s = readSession();
+      const active = !!(s && s.baseUrl && s.incident_id && s.token);
+      setStatus(active);
+
+      incidentOut.textContent = s?.incident_id || "leer";
+      codeOut.textContent = s?.join_code || "leer";
+      tokenOut.textContent = s?.token ? (String(s.token).slice(0,6) + "…") : "leer";
+
+      btnCopy.disabled = !(s && s.join_code);
+      btnEnd.disabled = !active;
+    }
+
+    async function ping(){
+      pingMsg.className = "msg muted";
+      pingMsg.textContent = "Ping läuft";
+      try{
+        const r = await fetch(BASEURL + "/ping?ts=" + Date.now(), { cache:"no-store" });
+        const t = await r.text();
+        if (!r.ok) throw new Error("HTTP " + r.status + " " + t);
+        pingMsg.className = "msg ok";
+        pingMsg.textContent = "OK " + t;
+      }catch(e){
+        pingMsg.className = "msg bad";
+        pingMsg.textContent = "Ping fehlgeschlagen. " + (e?.message || e);
+      }
+    }
+
+    btnPing.addEventListener("click", ping);
+
+    btnCreate.addEventListener("click", async ()=>{
+      msg.className = "msg muted";
+      msg.textContent = "Erstelle Session";
+      btnCreate.disabled = true;
+
+      try{
+        const r = await fetch(BASEURL + "/incident/create", {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({})
+        });
+        const j = await r.json().catch(()=>null);
+        if (!r.ok || !j) throw new Error("Create fehlgeschlagen");
+
+        writeSession({
+          incident_id: j.incident_id,
+          join_code: j.join_code,
+          token: j.token,
+          baseUrl: BASEURL,
+          base: BASEURL
+        });
+
+        msg.className = "msg ok";
+        msg.textContent = "Session erstellt. Join Code ist bereit.";
+        render();
+      }catch(e){
+        msg.className = "msg bad";
+        msg.textContent = "Fehler. " + (e?.message || e);
+      }finally{
+        btnCreate.disabled = false;
+      }
+    });
+
+    btnCopy.addEventListener("click", async ()=>{
+      const s = readSession();
+      if (!s?.join_code) return;
+      try{
+        await navigator.clipboard.writeText(String(s.join_code));
+        msg.className = "msg ok";
+        msg.textContent = "Join Code kopiert.";
+      }catch{
+        msg.className = "msg bad";
+        msg.textContent = "Konnte nicht kopieren. Bitte manuell abtippen.";
+      }
+    });
+
+    btnEnd.addEventListener("click", ()=>{
+      clearSession();
+      msg.className = "msg ok";
+      msg.textContent = "Coop beendet. LocalStorage Session wurde gelöscht.";
+      render();
+    });
+
+    btnBack.addEventListener("click", ()=>{
+      history.back();
+    });
+
+    render();
   </script>
 </body>
 </html>
