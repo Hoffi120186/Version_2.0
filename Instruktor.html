@@ -101,7 +101,7 @@
   <div class="button-container">
     <button class="btn" type="button" onclick="safeGo('/szenario.html')">Szenario auswählen</button>
     <button class="btn" type="button" onclick="safeGo('/patienten.html')">Patientenübersicht</button>
-    <button class="btn" type="button" onclick="safeGo('/qr.html')">QR Codes Patienten,Szenarien</button>
+    <button class="btn" type="button" onclick="safeGo('/qr.html')">QR-Codes Patienten,Szenarien</button>
     <button class="btn" type="button" onclick="safeGo('/feedback.html')">Feedback und Bewertung der App</button>
     <button class="btn" type="button" onclick="safeGo('/last-run.html')">Letzte Übung anzeigen</button>
 
@@ -119,12 +119,12 @@
 
   <div id="pinModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal">
-      <h3 id="modalTitle">Instruktor Schutz</h3>
+      <h3 id="modalTitle">Instruktor-Schutz</h3>
       <p class="small muted" id="modalHint"></p>
 
       <div id="viewLogin">
         <div class="row">
-          <input id="pinLogin" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" type="password" placeholder="PIN (4 bis 8 Ziffern)" />
+          <input id="pinLogin" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" type="password" placeholder="PIN (4–8 Ziffern)" />
           <button id="btnLogin" class="btn" type="button" style="min-width:120px">Entsperren</button>
         </div>
         <div id="msgLogin" class="bad" aria-live="polite"></div>
@@ -146,7 +146,7 @@
 
       <div id="viewSetup" style="display:none">
         <div class="row">
-          <input id="pinNew1" inputmode="numeric" type="password" placeholder="Neue PIN (optional, 4 bis 8 Ziffern)" />
+          <input id="pinNew1" inputmode="numeric" type="password" placeholder="Neue PIN (optional, 4–8 Ziffern)" />
         </div>
         <div class="row">
           <input id="pinNew2" inputmode="numeric" type="password" placeholder="PIN wiederholen" />
@@ -186,7 +186,6 @@
     async function safeGo(path){
       const go = async () => {
         const target = new URL(path, location.origin).pathname;
-
         try {
           sessionStorage.setItem('nav_from', location.pathname);
           sessionStorage.setItem('nav_to',   target);
@@ -211,8 +210,16 @@
     }
 
     const COOP_BASE = "http://192.168.4.1:3000";
-    function goCoopStart(){ location.href = COOP_BASE + "/coop_start.html"; }
-    function goCoopJoin(){ location.href = COOP_BASE + "/coop_join.html"; }
+
+    function goCoopStart(){
+      const ret = encodeURIComponent(location.origin + "/instruktor.html");
+      location.href = COOP_BASE + "/coop_start.html?return=" + ret;
+    }
+
+    function goCoopJoin(){
+      const ret = encodeURIComponent(location.origin + "/instruktor.html");
+      location.href = COOP_BASE + "/coop_join.html?return=" + ret;
+    }
   </script>
 
   <script>
@@ -293,7 +300,7 @@
       const KEY = 'push_device_id_v1';
       let id = localStorage.getItem(KEY);
       if (!id) {
-        id = (crypto?.randomUUID?.() || (Math.random().toString(36).slice(2) + Date.now()));
+        id = (crypto && crypto.randomUUID ? crypto.randomUUID() : (Math.random().toString(36).slice(2) + Date.now()));
         localStorage.setItem(KEY, id);
       }
       return id;
@@ -303,7 +310,7 @@
       const btn=document.getElementById('pushBtn');
       const license = await getLicenseState();
       if (!license.active){
-        btn.textContent = 'Lizenz abgelaufen, Benachrichtigungen deaktiviert';
+        btn.textContent = 'Lizenz abgelaufen. Benachrichtigungen deaktiviert';
         btn.disabled = true;
         return;
       }
@@ -326,6 +333,7 @@
       const btn=document.getElementById('pushBtn');
       const license = await getLicenseState();
       if (!license.active){ return; }
+
       try{
         const perm=await Notification.requestPermission();
         if(perm!=='granted') return;
@@ -334,7 +342,7 @@
         const existing=await reg.pushManager.getSubscription();
 
         const deviceId = getDeviceId();
-        const licenseType = license?.type || license?.plan || '';
+        const licenseType = license && (license.type || license.plan) ? (license.type || license.plan) : '';
         const appId = 'prod';
 
         if (existing) {
@@ -503,7 +511,7 @@
       viewSetup.style.display = 'none';
 
       if (which === 'login'){
-        modalTitle.textContent = 'Instruktor Schutz';
+        modalTitle.textContent = 'Instruktor-Schutz';
         modalHint.textContent  = 'Gib die PIN ein, um dieses Menü zu öffnen.';
         viewLogin.style.display = '';
         modal.style.display = 'flex';
@@ -516,7 +524,7 @@
         setTimeout(()=>pinVerify.focus(), 0);
       } else if (which === 'setup'){
         modalTitle.textContent = 'Schutz verwalten';
-        modalHint.textContent  = 'PIN ändern (optional) und Schutz ein oder ausschalten.';
+        modalHint.textContent  = 'PIN ändern (optional) und Schutz ein oder aus schalten.';
         chkEnabled.checked = isEnabled();
         pinNew1.value = ''; pinNew2.value = '';
         viewSetup.style.display = '';
@@ -559,7 +567,7 @@
     btnLogin.addEventListener('click', async ()=>{
       msgLogin.textContent = '';
       const pin = (pinLogin.value || '').trim();
-      if (!/^\d{4,8}$/.test(pin)){ msgLogin.textContent='Ungültige PIN (4 bis 8 Ziffern).'; return; }
+      if (!/^\d{4,8}$/.test(pin)){ msgLogin.textContent='Ungültige PIN (4–8 Ziffern).'; return; }
       const ok = await sha256Hex(pin) === getHash();
       if (!ok){ msgLogin.textContent='Falsche PIN.'; return; }
       closeModal();
@@ -593,13 +601,13 @@
       }
 
       if (wantEnabled && !getHash() && !(new1 && new2)) {
-        msgSetup.textContent = 'Zum Aktivieren bitte eine neue PIN (4 bis 8 Ziffern) setzen und wiederholen.';
+        msgSetup.textContent = 'Zum Aktivieren bitte eine neue PIN (4–8 Ziffern) setzen und wiederholen.';
         return;
       }
 
       if (new1 || new2){
         if (!/^\d{4,8}$/.test(new1) || new1 !== new2){
-          msgSetup.textContent = 'PIN muss 4 bis 8 Ziffern lang sein und übereinstimmen.';
+          msgSetup.textContent = 'PIN muss 4–8 Ziffern lang sein und übereinstimmen.';
           return;
         }
         const h = await sha256Hex(new1);
