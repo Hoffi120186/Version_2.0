@@ -166,61 +166,53 @@
   <script type="module" src="/freigabe.js?cache=9"></script>
   <script defer src="/warmup.js?v=2025-08-22-1"></script>
 
-  <script>
-    window.__NAV_READY__ = false;
-    (async function(){
-      if (!('serviceWorker' in navigator)) { window.__NAV_READY__ = true; return; }
-      if (!navigator.serviceWorker.controller) {
-        navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
-        setTimeout(()=>window.__NAV_READY__=true, 1500);
-        return;
-      }
-      try{ await navigator.serviceWorker.ready; }catch{}
-      const markReady = () => (window.__NAV_READY__ = true);
-      if (document.readyState === 'complete') {
-        let t=setTimeout(markReady, 1000);
-        addEventListener('warmup:done', ()=>{ clearTimeout(t); markReady(); }, { once:true });
-      } else addEventListener('load', markReady, { once:true });
-    })();
-
-    async function safeGo(path){
-      const go = async () => {
-        const target = new URL(path, location.origin).pathname;
-        try {
-          sessionStorage.setItem('nav_from', location.pathname);
-          sessionStorage.setItem('nav_to',   target);
-          if (location.pathname === '/index.html' && target === '/instruktor.html') {
-            sessionStorage.setItem('needInstrPIN', '1');
-          }
-        } catch {}
-
-        try{
-          const names = await caches.keys();
-          const name = names.find(n=>n.startsWith('mein-pwa-cache-')) || names[0];
-          if (name){
-            const c = await caches.open(name);
-            const hit = await c.match(target);
-            if (hit){ location.assign(target); return; }
-          }
-        }catch{}
-        location.assign(target);
-      };
-      if (window.__NAV_READY__) return go();
-      addEventListener('controllerchange', go, { once:true });
+ <script>
+  window.__NAV_READY__ = false;
+  (async function(){
+    if (!('serviceWorker' in navigator)) { window.__NAV_READY__ = true; return; }
+    if (!navigator.serviceWorker.controller) {
+      navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
+      setTimeout(()=>window.__NAV_READY__=true, 1500);
+      return;
     }
+    try{ await navigator.serviceWorker.ready; }catch{}
+    const markReady = () => (window.__NAV_READY__ = true);
+    if (document.readyState === 'complete') {
+      let t=setTimeout(markReady, 1000);
+      addEventListener('warmup:done', ()=>{ clearTimeout(t); markReady(); }, { once:true });
+    } else addEventListener('load', markReady, { once:true });
+  })();
 
-    const COOP_BASE = "https://192.168.4.1:3443";
+  async function safeGo(path){
+    const go = async () => {
+      const target = new URL(path, location.origin).pathname;
 
-    function goCoopStart(){
-      const ret = encodeURIComponent(location.origin + "/instruktor.html");
-      location.href = COOP_BASE + "/coop_start.html?return=" + ret;
-    }
+      try {
+        sessionStorage.setItem('nav_from', location.pathname);
+        sessionStorage.setItem('nav_to',   target);
+        if (location.pathname === '/index.html' && target === '/instruktor.html') {
+          sessionStorage.setItem('needInstrPIN', '1');
+        }
+      } catch {}
 
-    function goCoopJoin(){
-      const ret = encodeURIComponent(location.origin + "/instruktor.html");
-      location.href = COOP_BASE + "/coop_join.html?return=" + ret;
-    }
-  </script>
+      try{
+        const names = await caches.keys();
+        const name = names.find(n=>n.startsWith('mein-pwa-cache-')) || names[0];
+        if (name){
+          const c = await caches.open(name);
+          const hit = await c.match(target);
+          if (hit){ location.assign(target); return; }
+        }
+      }catch{}
+      location.assign(target);
+    };
+    if (window.__NAV_READY__) return go();
+    addEventListener('controllerchange', go, { once:true });
+  }
+
+  function goCoopStart(){ safeGo('/coop_start.html'); }
+  function goCoopJoin(){  safeGo('/coop_join.html'); }
+</script>
 
   <script>
     const VAPID_PUBLIC='BGfo_fq3L9NVou1-0HAWd2s1_Crd6BMLLGswUQHulrs1NUINsoBh5ak1pwosrOr8NF55ITsVn6ZCpZd_CDXjRCQ';
@@ -627,5 +619,6 @@
   <script src="/metrics.js" defer></script>
 </body>
 </html>
+
 
 
