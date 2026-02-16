@@ -243,48 +243,54 @@
     btnPing.addEventListener("click", ping);
 
     btnJoin.addEventListener("click", async ()=>{
-      msg.className = "msg muted";
-      msg.textContent = "Beitritt läuft";
-      btnJoin.disabled = true;
+  msg.className = "msg muted";
+  msg.textContent = "Beitritt läuft";
+  btnJoin.disabled = true;
 
-      const code = String(codeIn.value || "").trim().toUpperCase();
-      const displayName = String(nameIn.value || "").trim() || "Teilnehmer";
+  const join_code = String(codeIn.value || "").trim().toUpperCase();
 
-      if (!/^[A-Z0-9]{4,24}$/.test(code)){
-        msg.className = "msg bad";
-        msg.textContent = "Join Code ist ungültig. Erlaubt sind Buchstaben und Zahlen. Länge 4 bis 24.";
-        btnJoin.disabled = false;
-        return;
-      }
+  const roleRaw = String(nameIn.value || "").trim().toUpperCase();
+  const role = (roleRaw.includes("ORGL") ? "ORGL" : roleRaw.includes("NEF") ? "NEF" : "RTW");
 
-      try{
-        const r = await fetch(BASEURL + "/incident/join", {
-          method:"POST",
-          headers:{ "Content-Type":"application/json" },
-          body: JSON.stringify({ code, displayName })
-        });
-        const j = await r.json().catch(()=>null);
-        if (!r.ok || !j) throw new Error("Join fehlgeschlagen");
+  if (!/^[A-Z0-9]{6}$/.test(join_code)){
+    msg.className = "msg bad";
+    msg.textContent = "Join Code ist ungültig. Er hat 6 Zeichen, Buchstaben und Zahlen.";
+    btnJoin.disabled = false;
+    return;
+  }
 
-        writeSession({
-          incident_id: j.incident_id,
-          token: j.token,
-          role: j.role,
-          displayName: j.displayName || displayName,
-          baseUrl: BASEURL,
-          base: BASEURL
-        });
-
-        msg.className = "msg ok";
-        msg.textContent = "Beigetreten. Du kannst jetzt normal sichten.";
-        render();
-      }catch(e){
-        msg.className = "msg bad";
-        msg.textContent = "Fehler. " + (e && e.message ? e.message : e);
-      }finally{
-        btnJoin.disabled = false;
-      }
+  try{
+    const r = await fetch(BASEURL + "/incident/join", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ join_code, role })
     });
+    const j = await r.json().catch(()=>null);
+    if (!r.ok || !j || j.ok !== true) {
+      const err = j && j.error ? j.error : ("HTTP " + r.status);
+      throw new Error(err);
+    }
+
+    writeSession({
+      incident_id: j.incident_id,
+      token: j.token,
+      role: j.role,
+      displayName: j.displayName || role,
+      baseUrl: BASEURL,
+      base: BASEURL
+    });
+
+    msg.className = "msg ok";
+    msg.textContent = "Beigetreten. Du kannst jetzt normal sichten.";
+    render();
+  }catch(e){
+    msg.className = "msg bad";
+    msg.textContent = "Fehler. " + (e?.message || e);
+  }finally{
+    btnJoin.disabled = false;
+  }
+});
+
 
     btnEnd.addEventListener("click", ()=>{
       clearSession();
