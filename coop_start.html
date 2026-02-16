@@ -85,10 +85,9 @@
 
   <script>
     function guessBaseUrl(){
-      const host = location.hostname;
-      if (host && host !== 'localhost' && host !== '127.0.0.1') return `http://${host}:3000`;
-      return 'http://192.168.4.1:3000';
-    }
+  return 'https://192.168.4.1:3443';
+}
+
 
     (function(){
       const out = document.getElementById('out');
