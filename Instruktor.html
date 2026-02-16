@@ -209,7 +209,7 @@
       addEventListener('controllerchange', go, { once:true });
     }
 
-    const COOP_BASE = "http://192.168.4.1:3000";
+    const COOP_BASE = "http://192.168.4.1:3443";
 
     function goCoopStart(){
       const ret = encodeURIComponent(location.origin + "/instruktor.html");
@@ -627,3 +627,4 @@
   <script src="/metrics.js" defer></script>
 </body>
 </html>
+
