@@ -176,7 +176,32 @@ h2{
 .btn-assign-clinic:active{ transform:scale(.99); }
 
 @media print{ header{display:none !important} .stats{display:none !important} }
-  </style>
+
+.toast{
+  pointer-events:none;
+  min-width:min(92vw,520px);
+  max-width:min(92vw,520px);
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  padding:12px 14px;
+  border-radius:16px;
+  background:rgba(17,24,39,.92);
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 16px 34px rgba(0,0,0,.55);
+  backdrop-filter: blur(10px);
+}
+.toast .dot{
+  width:12px;height:12px;border-radius:999px;margin-top:4px;flex:0 0 auto;
+}
+.toast .t-title{ font-weight:900; margin:0; font-size:14px; }
+.toast .t-msg{ margin:2px 0 0 0; opacity:.92; font-size:13px; line-height:1.25; }
+.toast-rot .dot{ background:#e53935; }
+.toast-gelb .dot{ background:#f3fc02; }
+.toast-gruen .dot{ background:#2e7d32; }
+.toast-schwarz .dot{ background:#111; border:1px solid rgba(255,255,255,.18); }
+
+</style>
 
   <link rel="stylesheet" href="/app-flow.css">
 </head>
@@ -209,6 +234,10 @@ h2{
   <div class="lightbox" id="lightbox" aria-hidden="true" title="Zum Schließen klicken">
     <img id="lightboxImg" src="" alt="Patientenfoto">
   </div>
+
+
+
+  <div id="toastWrap" style="position:fixed;left:0;right:0;bottom:18px;display:flex;justify-content:center;pointer-events:none;z-index:9999;"></div>
 
 <script type="module">
 'use strict';
@@ -719,6 +748,55 @@ async function load(){
 load();
 
 
+
+function showToastDeterioration(patientLabel, fromCat, toCat){
+  const wrap = document.getElementById('toastWrap');
+  if(!wrap) return;
+
+  const cls = 'toast toast-' + (toCat || 'rot');
+  const el = document.createElement('div');
+  el.className = cls;
+
+  const fromTxt = fromCat ? __labelFromCat(fromCat) : '—';
+  const toTxt = toCat ? __labelFromCat(toCat) : '—';
+
+  el.innerHTML = `<div class="dot"></div>
+    <div>
+      <p class="t-title">Verschlechterung</p>
+      <p class="t-msg">${patientLabel || ''} ${fromTxt} zu ${toTxt}</p>
+    </div>`;
+
+  wrap.innerHTML = '';
+  wrap.appendChild(el);
+
+  try{ playWarnBeep(); }catch{}
+  try{ if(navigator.vibrate) navigator.vibrate([80,50,80]); }catch{}
+
+  setTimeout(()=>{ if(wrap.contains(el)) wrap.innerHTML=''; }, 2400);
+}
+
+function playWarnBeep(){
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = 'sine';
+  o.frequency.value = 880;
+  g.gain.value = 0.0001;
+
+  o.connect(g);
+  g.connect(ctx.destination);
+
+  const t = ctx.currentTime;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.12, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+
+  o.start(t);
+  o.stop(t + 0.23);
+
+  o.onended = ()=>{ try{ ctx.close(); }catch{} };
+}
+
 /* ===== Verschlechterung in Ablage ===== */
 const LS_ACTIVE = 'ablage.active.v1';
 const LS_DET_GLOBAL = 'ablage.deterioration.global.v1';
@@ -814,11 +892,22 @@ function checkDeteriorationTick(){
       if(elapsedSec < rule.afterSec) break;
       if(current === rule.to) break;
 
+      const fromCat = current;
       current = rule.to;
       sMap[pid] = current;
       changed = true;
 
+      let pLabel = '';
       try{
+        const num = pid.replace('patient','');
+        pLabel = 'Patient ' + num;
+        const found = (window.__PAT_DATA__ || []).find(x=>x.id===pid);
+        if(found && found.label) pLabel = found.label;
+      }catch{}
+
+      showToastDeterioration(pLabel, fromCat, current);
+
+try{
         const key = 'sicht_' + pid;
         const flags = __readTogglePayload(pid) || {};
         if(current !== 'rot') flags.t = false;
@@ -857,7 +946,9 @@ function checkDeteriorationTick(){
 
     updateStats();
   }
+
 }
+
 setInterval(checkDeteriorationTick, 2000);
 
 
