@@ -1047,7 +1047,7 @@ function checkDeteriorationTick(){
         if(found && found.label) pLabel = found.label;
       }catch{}
 
-      showToastDeterioration(pLabel, fromCat, current);
+      enqueueDetAlert({ id: pid, label: pLabel, from: fromCat, to: current, ts: Date.now() });
 
 try{
         const key = 'sicht_' + pid;
