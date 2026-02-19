@@ -2,1105 +2,904 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 <title>Patienten – Übersicht</title>
+
 <link rel="manifest" href="/manifest.json" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
 <style>
   :root{
-    --card-w: min(92vw, 560px);
-    --card-h: clamp(160px, 38vh, 240px);
+    --w: min(94vw, 1120px);
+    --cardW: min(92vw, 560px);
     --gap: 14px;
     --radius: 16px;
-    --shadow: 0 12px 30px rgba(0,0,0,.25);
-    --blur: 10px;
+    --shadow: 0 14px 36px rgba(0,0,0,.45);
+    --glass: rgba(255,255,255,.14);
+    --glass2: rgba(255,255,255,.20);
+    --border: rgba(255,255,255,.22);
 
-    --ink:#fff;
-    --muted: rgba(255,255,255,.75);
-    --line: rgba(255,255,255,.22);
+    --rot: #e53935;
+    --gelb:#f3fc02;
+    --gruen:#2e7d32;
+    --schwarz:#111;
 
-    /* Accent Colors (bleiben!) */
-    --blue:#3b82f6;
-    --blue2:#2563eb;
-    --danger:#e53935;
-
-    --card-bg: rgba(255,255,255,.12);
-    --glass: rgba(0,0,0,.28);
+    --stickyH: 0px;
   }
 
-  *{ box-sizing: border-box; }
-  html, body { height: 100%; }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
   body{
     margin:0;
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    background:#0b0f1a url("fotos/Patientenkarte.jpg") center/cover no-repeat;
+    font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
     color:#fff;
-    min-height:100dvh;
-    padding: calc(env(safe-area-inset-top) + 10px) 12px calc(env(safe-area-inset-bottom) + 12px);
+    background:#0b0f1a url("fotos/Patientenkarte.jpg") center/cover no-repeat fixed;
+    min-height:100vh;
   }
-  body::before{ content:""; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:-1; }
-
-  header{
-    display:flex; align-items:center; justify-content:space-between;
-    max-width: 960px; margin: 0 auto 8px;
-    gap: 8px;
-  }
-  .title{ font-weight:800; font-size: clamp(18px, 5vw, 28px); text-align:center; }
-
-  .actions{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-
-  /* ===== Buttons / Links (App-Flow, aber Farben bleiben als Akzent) ===== */
-  .back,
-  .to-ablage{
-    text-decoration:none;
-    color:#fff;
-    padding:10px 14px;
-    border-radius:12px;
-    white-space: nowrap;
-
-    background: rgba(255,255,255,.10);
-    border: 1px solid rgba(255,255,255,.18);
-    box-shadow:0 6px 14px rgba(0,0,0,.22);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-
-    transition: transform .12s ease, box-shadow .2s ease, border-color .2s ease, filter .2s ease;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .back:hover,
-  .to-ablage:hover{
-    transform: translateY(-1px);
-    box-shadow:0 10px 26px rgba(0,0,0,.32);
-    filter: brightness(1.04);
-  }
-  .back:active,
-  .to-ablage:active{ transform: scale(.985); }
-
-  /* Akzent statt Vollfläche */
-  .back{
-    border-color: rgba(229,57,53,.65);
-    background: rgba(229,57,53,.16);
-  }
-  .to-ablage{
-    border-color: rgba(59,130,246,.65);
-    background: rgba(59,130,246,.16);
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background: rgba(0,0,0,.52);
+    z-index:-1;
   }
 
-  .toolbar{
-    max-width:960px; margin: 8px auto 10px;
-    display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-start;
-  }
-  .pill{
-    background: rgba(255,255,255,.12);
-    border: 1px solid var(--line);
-    border-radius: 999px; padding: 8px 12px;
-    font-weight:700; box-shadow: 0 6px 14px rgba(0,0,0,.18);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-  }
-  .pill small{ opacity:.85; font-weight:700; }
-
-  .trainbar{
-    max-width:960px; margin: 8px auto 10px; padding:12px;
-    border-radius:12px;
-    border:1px solid rgba(59,130,246,.45);
-    background: rgba(59,130,246,.14);
-    box-shadow: 0 10px 26px rgba(0,0,0,.18) inset;
-    display:flex; flex-direction:column; gap:10px; align-items:stretch; justify-content:center;
-    text-align:center;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-  }
-  .trainbar .row{
-    display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap;
-  }
-  .trainbar .label{
-    font-weight:900; opacity:.95;
-    background: rgba(0,0,0,.22);
-    border: 1px solid rgba(255,255,255,.18);
-    padding: 7px 10px;
-    border-radius: 999px;
-  }
-
-  /* ===== Base Button ===== */
-  .btn{
-    appearance:none;
-    border:1px solid rgba(255,255,255,.22);
-    background: rgba(255,255,255,.10);
-    color:#fff;
-    padding:10px 14px;
-    border-radius:12px;
-    font-weight:800;
-    cursor:pointer;
-
-    box-shadow:0 6px 14px rgba(0,0,0,.22);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-
-    transition: transform .12s ease, box-shadow .2s ease, border-color .2s ease, filter .2s ease;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .btn:hover{
-    transform: translateY(-1px);
-    box-shadow:0 10px 26px rgba(0,0,0,.32);
-    filter: brightness(1.04);
-  }
-  .btn:active{ transform: scale(.985); }
-
-  /* Primary: Blau bleibt, aber als Akzent/Glow (nicht Vollfläche) */
-  .btn.primary{
-    background: linear-gradient(180deg, rgba(59,130,246,.26), rgba(37,99,235,.22));
-    border-color: rgba(59,130,246,.65);
-  }
-  .btn.primary:hover{
-    box-shadow:
-      0 10px 26px rgba(59,130,246,.22),
-      0 10px 26px rgba(0,0,0,.32);
-  }
-
-  .btn.active{ outline:2px solid rgba(59,130,246,.55); }
-
-  .btn.mini{ padding:8px 10px; border-radius:999px; font-size:13px; font-weight:900; }
-  .btn.preset{ min-width:54px; }
-
-  select{
-    border:1px solid rgba(255,255,255,.22);
-    background: rgba(0,0,0,.28);
-    color:#fff;
-    border-radius: 12px;
-    padding: 9px 12px;
-    font-weight:800;
-    cursor:pointer;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-  }
-
-  .viewport{
-    max-width: 960px;
-    height: calc(100dvh - 280px);
+  .wrap{
+    width: var(--w);
     margin: 0 auto;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    scroll-snap-type: y mandatory;
-    -webkit-overflow-scrolling: touch;
-    perspective: 1000px;
+    padding: 10px 10px 18px;
   }
 
-  .spacer{ height: 12vh; }
+  .topbar{
+    position: sticky;
+    top: 0;
+    z-index: 80;
+    width: min(92vw, 980px);
+    margin: 10px auto 8px;
+    padding: 10px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    background: rgba(0,0,0,.55);
+    border:1px solid rgba(255,255,255,.22);
+    border-radius: 18px;
+    backdrop-filter: blur(8px);
+    box-shadow: var(--shadow);
+  }
+
+  .tb-left,.tb-right{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .tb-title{
+    font-weight: 1000;
+    letter-spacing: .2px;
+    opacity: .95;
+    text-align:center;
+    min-width: 160px;
+  }
+
+  .btn{
+    border:1px solid rgba(255,255,255,.22);
+    background: rgba(255,255,255,.10);
+    color:#fff;
+    padding: 10px 12px;
+    border-radius: 14px;
+    font-weight: 900;
+    cursor:pointer;
+    transition: transform .12s ease, filter .12s ease, background .12s ease;
+    user-select:none;
+  }
+  .btn:hover{ filter: brightness(1.08); transform: translateY(-1px); }
+  .btn:active{ transform: translateY(1px) scale(.99); }
+
+  .btn.primary{
+    border:none;
+    background: linear-gradient(180deg, #0B5FFF, #0647b8);
+    box-shadow: 0 14px 30px rgba(0,0,0,.35);
+  }
+  .btn.danger{
+    border:none;
+    background: linear-gradient(180deg, #e53935, #b71c1c);
+  }
+  .chip{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border:1px solid rgba(255,255,255,.18);
+    background: rgba(255,255,255,.10);
+    font-weight: 1000;
+  }
+  .chip strong{ font-variant-numeric: tabular-nums; }
+
+  .page{
+    padding-top: calc(var(--stickyH) + 8px);
+  }
+
+  .training-panel{
+    position: sticky;
+    top: 68px;
+    z-index: 70;
+    width: min(92vw, 980px);
+    margin: 0 auto 10px;
+    background: rgba(0,0,0,.40);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(10px);
+    overflow:hidden;
+  }
+
+  .training-head{
+    padding: 10px 12px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .training-head .left{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .training-title{
+    font-weight: 1000;
+    letter-spacing: .2px;
+  }
+  .state-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-weight:1000;
+    border:1px solid rgba(255,255,255,.18);
+    background: rgba(255,255,255,.10);
+  }
+  .state-pill.on{
+    border-color: rgba(34,197,94,.45);
+    background: rgba(34,197,94,.18);
+    color:#bbf7d0;
+  }
+
+  .training-body{
+    border-top: 1px solid rgba(255,255,255,.12);
+    padding: 10px 12px 12px;
+  }
+
+  .row{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    flex-wrap:wrap;
+  }
+
+  .row .label{
+    font-weight: 1000;
+    opacity: .92;
+    padding: 8px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.14);
+  }
+
+  .quick-row{
+    display:flex;
+    gap:10px;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    padding-bottom: 6px;
+  }
+  .quick-row::-webkit-scrollbar{ height:6px; }
+  .quick-row::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.18); border-radius: 999px; }
+  .btn.mini{ padding: 10px 14px; border-radius: 999px; min-width: 70px; }
+
+  .select{
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.22);
+    background: rgba(0,0,0,.25);
+    color:#fff;
+    font-weight: 900;
+    outline:none;
+  }
+
+  .training-panel.collapsed .training-body{ display:none; }
+
+  .grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    gap: var(--gap);
+    align-items: start;
+  }
+
+  body.training-on .grid{
+    grid-template-columns: 1fr;
+  }
 
   .card{
-    position: relative;
-    width: var(--card-w);
-    min-height: var(--card-h);
-    margin: var(--gap) auto;
-    padding: 14px 16px 86px;
+    background: var(--glass);
+    border: 1px solid var(--border);
     border-radius: var(--radius);
-    background: var(--card-bg);
-    border: 1px solid var(--line);
     box-shadow: var(--shadow);
-    backdrop-filter: blur(var(--blur));
-    -webkit-backdrop-filter: blur(var(--blur));
-    scroll-snap-align: center;
+    overflow:hidden;
+    position:relative;
+  }
+  .card::before{
+    content:"";
+    position:absolute;
+    left:0;
+    top:0;
+    bottom:0;
+    width: 10px;
+    background: rgba(255,255,255,.18);
+  }
+  .k-rot::before{ background: var(--rot); }
+  .k-gelb::before{ background: var(--gelb); }
+  .k-gruen::before{ background: var(--gruen); }
+  .k-schwarz::before{ background: var(--schwarz); }
+
+  .card-inner{
+    padding: 14px 14px 12px 18px;
+    display:grid;
+    gap: 10px;
+  }
+
+  .title{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:wrap;
+    font-weight: 1000;
+    font-size: 20px;
+  }
+  .meta{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 10px;
+    font-weight: 800;
+    opacity: .95;
+  }
+  .meta div{ white-space: nowrap; overflow:hidden; text-overflow: ellipsis; }
+
+  .injury{
+    font-weight: 900;
+    opacity: .98;
+    line-height: 1.25;
+  }
+
+  .skbar{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+  }
+  .skpill{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-weight: 1000;
+    border: 1px solid rgba(255,255,255,.18);
+    background: rgba(0,0,0,.22);
+  }
+  .skpill.rot{ background: rgba(229,57,53,.25); border-color: rgba(229,57,53,.55); }
+  .skpill.gelb{ background: rgba(243,252,2,.22); border-color: rgba(243,252,2,.60); color:#111; }
+  .skpill.gruen{ background: rgba(46,125,50,.22); border-color: rgba(46,125,50,.60); }
+  .skpill.schwarz{ background: rgba(17,17,17,.36); border-color: rgba(255,255,255,.20); }
+
+  .actions{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+  }
+
+  .toggle{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-weight: 1000;
+  }
+  .toggle input{ width: 20px; height: 20px; }
+
+  details.opts{
+    border-top: 1px solid rgba(255,255,255,.12);
+    background: rgba(0,0,0,.18);
+  }
+  details.opts summary{
     cursor:pointer;
+    padding: 12px 14px;
+    font-weight: 1000;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    list-style:none;
   }
-  .card:hover{ outline:2px solid rgba(255,255,255,.12) }
-
-  .card.rot     { border-left: 10px solid #e53935; }
-  .card.gelb    { border-left: 10px solid #f3fc02; }
-  .card.gruen   { border-left: 10px solid #2e7d32; }
-  .card.schwarz { border-left: 10px solid #111; }
-
-  .card h2{ margin: 0 0 6px; font-size: clamp(18px, 4.6vw, 22px); font-weight: 800; }
-  .meta{ display:flex; flex-wrap:wrap; gap: 8px 14px; font-size: clamp(14px, 3.6vw, 16px); }
-  .meta b{ opacity:.9; }
-
-  .sichtung{
-    display:inline-block; margin-top:8px; padding: 5px 10px; border-radius: 999px;
-    font-weight: 800; font-size: clamp(12px, 3.2vw, 14px);
-    box-shadow: 0 6px 14px rgba(0,0,0,.24);
+  details.opts summary::-webkit-details-marker{ display:none; }
+  .opt-body{
+    padding: 12px 14px 14px;
+    display:grid;
+    gap: 12px;
   }
-  .card.rot  .sichtung{ background:#e53935; color:#fff; }
-  .card.gelb .sichtung{ background:#f3fc02; color:#111; }
-  .card.gruen .sichtung{ background:#2e7d32; color:#fff; }
-  .card.schwarz .sichtung{ background:#111; color:#fff; }
 
-  /* Vorschau Button: dezent */
-  .open{
-    background: rgba(255,255,255,.10);
-    color:#fff;
-    border:1px solid rgba(255,255,255,.20);
-    padding:6px 10px;
-    border-radius:10px;
-    font-weight:800;
-    cursor:pointer;
-    margin-top:10px;
-    box-shadow:0 6px 14px rgba(0,0,0,.18);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    transition: transform .12s ease, box-shadow .2s ease, filter .2s ease;
-  }
-  .open:hover{
-    transform: translateY(-1px);
-    box-shadow:0 10px 22px rgba(0,0,0,.28);
-    filter: brightness(1.04);
-  }
-  .open:active{ transform: scale(.985); }
+  body.training-on details.opts:not([open]) .opt-body{ display:none; }
 
-  .train-controls{
-    position:absolute; left:14px; right:14px; bottom:12px;
-    display:none; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
-    padding:8px 10px; border-radius:10px;
-    background: rgba(0,0,0,.35);
+  .opt-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .pill{
+    padding: 6px 10px;
+    border-radius: 999px;
     border:1px solid rgba(255,255,255,.18);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: rgba(255,255,255,.10);
+    font-weight:1000;
   }
-  .train-controls.show{ display:flex; }
-  .group{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
 
-  .check{ display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none; font-weight:800; }
-  .check input{ width:18px; height:18px; accent-color:#3b82f6; }
-
-  /* Segment Buttons: Farben bleiben, aber weniger Vollfläche */
-  .seg{ display:flex; gap:6px; }
-  .seg button{
-    border:1px solid rgba(255,255,255,.22);
-    background: rgba(0,0,0,.35);
+  .sel-min,.sel-to{
+    -webkit-appearance:none;
+    appearance:none;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.22);
+    background: rgba(0,0,0,.24);
     color:#fff;
-    border-radius:999px;
-    padding:6px 10px;
-    font-weight:900;
-    cursor:pointer;
-    font-size:12px;
-    transition: transform .12s ease, box-shadow .2s ease, filter .2s ease, border-color .2s ease;
+    font-weight: 1000;
+    outline:none;
   }
-  .seg button:hover{
-    transform: translateY(-1px);
-    box-shadow:0 10px 18px rgba(0,0,0,.28);
-    filter: brightness(1.05);
-  }
+  .sel-min{ min-width: 140px; }
+  .sel-to{ min-width: 170px; }
 
-  /* Akzentfarben (nicht komplett knallig) */
-  .seg button[data-sk="rot"]{ background: rgba(229,57,53,.16); border-color: rgba(229,57,53,.70); }
-  .seg button[data-sk="gelb"]{ background: rgba(243,252,2,.16); border-color: rgba(243,252,2,.70); color:#111; }
-  .seg button[data-sk="gruen"]{ background: rgba(46,125,50,.16); border-color: rgba(46,125,50,.70); }
-  .seg button[data-sk="schwarz"]{ background: rgba(17,17,17,.24); border-color: rgba(255,255,255,.25); }
+  .sel-to.to-rot{ background: rgba(229,57,53,.85); border-color: rgba(229,57,53,.85); }
+  .sel-to.to-gelb{ background: rgba(243,252,2,.92); border-color: rgba(243,252,2,.92); color:#111; }
+  .sel-to.to-gruen{ background: rgba(46,125,50,.85); border-color: rgba(46,125,50,.85); }
+  .sel-to.to-schwarz{ background: rgba(17,17,17,.90); border-color: rgba(17,17,17,.90); }
 
-  .seg button.active{
-    outline:2px solid rgba(255,255,255,.65);
-    box-shadow: 0 10px 22px rgba(0,0,0,.25);
+  .bulkbar{
+    width: min(92vw, 980px);
+    margin: 0 auto 10px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:wrap;
   }
 
-  /* Flags: Farben bleiben, dezenter */
-  .flags { display:flex; gap:6px; align-items:center; }
-  .flags button{
-    border:1px solid rgba(255,255,255,.22);
-    background: rgba(0,0,0,.35);
-    color:#fff;
-    border-radius:999px;
-    padding:6px 10px;
-    font-weight:900;
-    cursor:pointer;
-    font-size:12px;
-    transition: transform .12s ease, box-shadow .2s ease, filter .2s ease, border-color .2s ease;
+  @media (max-width: 980px){
+    .topbar, .training-panel, .bulkbar{ width: min(94vw, 720px); }
+    .grid{ grid-template-columns: 1fr; }
   }
-  .flags button:hover{
-    transform: translateY(-1px);
-    box-shadow:0 10px 18px rgba(0,0,0,.28);
-    filter: brightness(1.05);
-  }
-  .flags button.active{ outline:2px solid rgba(255,255,255,.65); }
-  .flags .t { background: rgba(229,57,53,.16); border-color: rgba(229,57,53,.70); }
-  .flags .b { background: rgba(46,125,50,.16); border-color: rgba(46,125,50,.70); }
-
-  .savebar{
-    position: fixed; left:50%; transform:translateX(-50%);
-    bottom: calc(env(safe-area-inset-bottom) + 8px);
-    z-index: 50;
-    display:none; gap:10px; align-items:center;
-    background: rgba(0,0,0,.7);
-    border:1px solid var(--line);
-    padding:10px 12px; border-radius:14px;
-    box-shadow: 0 10px 26px rgba(0,0,0,.35);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-  }
-  .savebar.show{ display:flex; }
-  .savebar .info{ color:var(--muted); font-weight:700; }
-
-  .toast{
-    position: fixed; left:50%; transform: translateX(-50%);
-    bottom: calc(70px + env(safe-area-inset-bottom));
-    background: rgba(22,163,74,.95);
-    color:#fff; font-weight:800; padding:10px 14px; border-radius: 12px;
-    border:1px solid rgba(255,255,255,.25);
-    box-shadow: 0 10px 26px rgba(0,0,0,.35);
-    display:none; z-index:60;
-  }
-  .toast.show{ display:block; }
-
-  .bulk-actions{ margin-left:auto; display:none; gap:8px; align-items:center; flex-wrap:wrap; }
-  .bulk-actions.show{ display:flex; }
-
   @media (max-width: 520px){
-    header{ align-items: flex-start; }
-    .title{ order: 3; width: 100%; }
+    .tb-title{ display:none; }
+    .btn{ padding: 12px 14px; }
+    .training-panel{ top: 62px; }
+    .meta{ grid-template-columns: 1fr; }
+    .sel-min,.sel-to{ width: 100%; min-width: 0; }
+    .opt-row{ gap: 8px; }
   }
-
-  .opts{ width:100%; margin-top:10px; border:1px solid rgba(255,255,255,.18); border-radius:14px; background:rgba(0,0,0,.18); overflow:hidden; }
-  .opts-sum{ list-style:none; cursor:pointer; padding:10px 12px; font-weight:900; display:flex; align-items:center; justify-content:space-between; }
-  .opts-sum::-webkit-details-marker{ display:none; }
-  .opts-sum::after{ content:"▾"; opacity:.9; }
-  .opts[open] .opts-sum::after{ content:"▴"; }
-  .opts-body{ padding:10px 12px 12px; display:grid; gap:10px; }
-  @media (max-width:700px){
-    .train-controls{ gap:10px !important; }
-    .group.det{ display:grid !important; grid-template-columns:1fr 110px 1fr; gap:8px !important; align-items:center; }
-    .group.flags{ display:flex !important; gap:10px !important; flex-wrap:wrap; }
-    .opts{ margin-top:8px; }
-  }
-
-
-  .opt-details{ margin-top:10px; border-radius:14px; border:1px solid rgba(255,255,255,.16); background:rgba(0,0,0,.18); overflow:hidden; }
-  .opt-summary{ list-style:none; cursor:pointer; padding:12px 12px; font-weight:900; display:flex; align-items:center; justify-content:space-between; }
-  .opt-summary::-webkit-details-marker{ display:none; }
-  .opt-body{ padding:12px; padding-top:0; }
-
-.seg button[data-sk="rot"]{ border-color: rgba(229,57,53,.55); }
-  .seg button[data-sk="gelb"]{ border-color: rgba(243,252,2,.55); }
-  .seg button[data-sk="gruen"]{ border-color: rgba(46,125,50,.55); }
-  .seg button[data-sk="schwarz"]{ border-color: rgba(17,17,17,.75); }
-
-  .seg button[data-sk="rot"].active{ background:rgba(229,57,53,.85); color:#fff; }
-  .seg button[data-sk="gelb"].active{ background:rgba(243,252,2,.92); color:#111; }
-  .seg button[data-sk="gruen"].active{ background:rgba(46,125,50,.85); color:#fff; }
-  .seg button[data-sk="schwarz"].active{ background:rgba(17,17,17,.90); color:#fff; }
-
-  body.training-mode #list{ display:flex; flex-direction:column; gap:14px; }
-  body.training-mode article.card{ width:100%; max-width: 820px; margin:0 auto; }
-  body.training-mode .viewport{ padding-bottom: 140px; }
-  .det-to.to-rot{ background:rgba(229,57,53,.85) !important; border-color: rgba(229,57,53,.85) !important; }
-    .det-to.to-gelb{ background:rgba(243,252,2,.92) !important; border-color: rgba(243,252,2,.92) !important; color:#111 !important; }
-    .det-to.to-gruen{ background:rgba(46,125,50,.85) !important; border-color: rgba(46,125,50,.85) !important; }
-    .det-to.to-schwarz{ background:rgba(17,17,17,.90) !important; border-color: rgba(17,17,17,.90) !important; }
-
 </style>
 
-<script src="/freigabe.js?v=2025-09-11-REV2" defer></script>
-</head>
+<link rel="stylesheet" href="/app-flow.css">
 
+</head>
 <body>
-<header>
-  <div class="actions">
-    <a class="back" href="Instruktor.html">Zurück</a>
-    <a id="toAblage" class="to-ablage" href="/ablage1.html" aria-label="Direkt zur Patientenablage">
-      Direkt zur Pat. Ablage
-    </a>
+
+<header class="topbar">
+  <div class="tb-left">
+    <button class="btn" type="button" onclick="location.href='instruktor.html'">Zurück</button>
+    <button class="btn primary" type="button" onclick="location.href='ablage1.html'">Direkt zur Pat. Ablage</button>
   </div>
-  <div class="title">Patienten-Übersicht</div>
+
+  <div class="tb-title">Patienten Übersicht</div>
+
+  <div class="tb-right">
+    <span class="chip">Geladen <strong id="cntLoaded">0</strong></span>
+    <span class="chip">Ausgewählt <strong id="cntSelected">0</strong></span>
+  </div>
 </header>
 
-<style>
-  header { position: relative; z-index: 60; }
-  .savebar { z-index: 50; }
-</style>
+<div class="training-panel collapsed" id="trainingPanel">
+  <div class="training-head">
+    <div class="left">
+      <div class="training-title">Training Patientenablage</div>
+      <div class="state-pill" id="trainingState">Aus</div>
+    </div>
 
-<div class="toolbar">
-  <span class="pill">Patienten geladen: <span id="count">0</span></span>
-  <span class="pill" id="selPill" style="display:none">Ausgewählt: <b id="selCount">0</b></span>
+    <div class="row">
+      <button class="btn primary" id="trainingBtn" type="button" aria-pressed="false">Aktivieren</button>
+      <button class="btn" type="button" onclick="toggleTrainingPanel()">Optionen</button>
+    </div>
+  </div>
 
-  <span class="pill" id="mixPill" style="display:none">
-    <small>Auswahl:</small>
-    🔴 <b id="mixRot">0</b> &nbsp;🟡 <b id="mixGelb">0</b> &nbsp;🟢 <b id="mixGruen">0</b> &nbsp;⚫ <b id="mixSchwarz">0</b>
-  </span>
+  <div class="training-body">
+    <div class="row" style="margin-bottom:10px;">
+      <span class="label">Schnellauswahl</span>
+      <div class="quick-row" id="presetRow" aria-label="Schnellauswahl">
+        <button class="btn mini preset" data-count="10" type="button">10</button>
+        <button class="btn mini preset" data-count="15" type="button">15</button>
+        <button class="btn mini preset" data-count="20" type="button">20</button>
+        <button class="btn mini preset" data-count="25" type="button">25</button>
+        <button class="btn mini preset" data-count="30" type="button">30</button>
+        <button class="btn mini preset" data-count="35" type="button">35</button>
+        <button class="btn mini preset" data-count="40" type="button">40</button>
+      </div>
+    </div>
 
-  <div class="bulk-actions" id="bulk">
-    <button id="bulkSelectAll" class="btn">Alle auswählen</button>
-    <button id="bulkClear" class="btn">Auswahl löschen</button>
+    <div class="row">
+      <span class="label">Mix</span>
+      <select id="mixSelect" class="select">
+        <option value="20,30,50">Mix 20,30,50</option>
+        <option value="25,25,50">Mix 25,25,50</option>
+        <option value="33,33,34">Mix 33,33,34</option>
+      </select>
+      <button class="btn" id="mixBtn" type="button">Neu auswählen</button>
+    </div>
   </div>
 </div>
 
-<div class="trainbar">
+<div class="bulkbar">
   <div class="row">
-    <button id="trainingBtn" class="btn primary" type="button" aria-pressed="false">Training Patientenablage aktivieren</button>
+    <span class="chip">Auswahl Rot <strong id="selRot">0</strong></span>
+    <span class="chip">Gelb <strong id="selGelb">0</strong></span>
+    <span class="chip">Grün <strong id="selGruen">0</strong></span>
+    <span class="chip">Schwarz <strong id="selSchwarz">0</strong></span>
   </div>
 
-  <div class="row" id="presetRow" style="display:none">
-    <span class="label">Schnellauswahl</span>
-
-    <button class="btn mini preset" data-count="10" type="button">10</button>
-    <button class="btn mini preset" data-count="15" type="button">15</button>
-    <button class="btn mini preset" data-count="20" type="button">20</button>
-    <button class="btn mini preset" data-count="25" type="button">25</button>
-    <button class="btn mini preset" data-count="30" type="button">30</button>
-    <button class="btn mini preset" data-count="35" type="button">35</button>
-    <button class="btn mini preset" data-count="40" type="button">40</button>
-
-    <select id="mixMode" aria-label="Auswahlmodus">
-      <option value="mix" selected>Mix (20/30/50)</option>
-      <option value="only-rot">Nur ROT</option>
-      <option value="only-gelb">Nur GELB</option>
-      <option value="only-gruen">Nur GRÜN</option>
-      <option value="only-schwarz">Nur SCHWARZ</option>
-      <option value="manual">Manuell (nur selbst auswählen)</option>
-    </select>
-
-    <button id="reselectBtn" class="btn mini" type="button" title="Neue Auswahl (gleiche Anzahl)">
-      Neu auswählen
-    </button>
+  <div class="row">
+    <button class="btn" id="bulkSelectAll" type="button">Alle auswählen</button>
+    <button class="btn" id="bulkClear" type="button">Auswahl löschen</button>
+    <button class="btn primary" id="bulkToAblage" type="button">In Ablage übernehmen</button>
+    <button class="btn danger" id="bulkCancel" type="button">Abbrechen</button>
   </div>
 </div>
 
-<div class="viewport" id="viewport">
-  <div class="spacer" aria-hidden="true"></div>
-  <div id="list" aria-live="polite"></div>
-  <div class="spacer" aria-hidden="true"></div>
+<div class="wrap page">
+  <div class="grid" id="grid"></div>
 </div>
-
-<div id="savebar" class="savebar" role="region" aria-live="polite">
-  <span class="info"><span id="selCountBottom">0</span> ausgewählt</span>
-  <button id="saveBtn" class="btn primary" type="button">In Ablage übernehmen</button>
-  <button id="cancelBtn" class="btn" type="button">Abbrechen</button>
-</div>
-
-<div class="toast" id="toast">In Ablage übernommen</div>
 
 <script>
-"use strict";
+'use strict';
 
-/* ===== Storage Helpers ===== */
-const DET_MINUTES = [0,1,2,3,4,5,7,10,12,15,20,25,30,40,45,60];
+/* Keys */
+const LS_ACTIVE = 'ablage.active.v1';
+const LS_DET_PERPAT = 'ablage.deterioration.perPatient.v1';
+const LS_SICHT_MAP = 'sichtungMap';
 
-function fillMinuteSelect(sel, defaultVal){
+/* Helpers */
+function jget(k,f){ try{ const v=localStorage.getItem(k); return v ? JSON.parse(v) : f; }catch{ return f; } }
+function jset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+
+function normalizeCat(c){
+  const x = String(c||'').toLowerCase().replace('grün','gruen');
+  if(['rot','gelb','gruen','schwarz'].includes(x)) return x;
+  return null;
+}
+
+function fillMinuteSelect(sel, defaultMin){
   if(!sel) return;
   sel.innerHTML = '';
-  for(const m of DET_MINUTES){
-    const opt=document.createElement('option');
-    opt.value=String(m);
-    opt.textContent = m===0 ? 'Aus' : String(m);
+  const values = [0,1,2,3,4,5,6,7,8,9,10,12,15,20,25,30,40,45,60];
+  for(const v of values){
+    const opt = document.createElement('option');
+    opt.value = String(v);
+    if(v === 0) opt.textContent = 'Aus';
+    else opt.textContent = v === 1 ? '1 Min' : v + ' Min';
     sel.appendChild(opt);
   }
-  sel.value = String(defaultVal ?? 0);
+  sel.value = String(defaultMin ?? 0);
 }
 
-function applySkSelectStyle(selectEl){
-  if(!selectEl) return;
-  const v = String(selectEl.value||'');
-  selectEl.classList.remove('to-rot','to-gelb','to-gruen','to-schwarz');
-  if(v==='rot') selectEl.classList.add('to-rot');
-  if(v==='gelb') selectEl.classList.add('to-gelb');
-  if(v==='gruen') selectEl.classList.add('to-gruen');
-  if(v==='schwarz') selectEl.classList.add('to-schwarz');
-}
-
-function jget(k,f){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):f; }catch(_){ return f; } }
-function jset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } }
-
-
-function getDetPerPat(){ return jget(LS_DET_PERPAT, {}); }
-function setDetPerPat(map){ jset(LS_DET_PERPAT, map); }
-/* Keys */
-const LS_ACTIVE  = 'ablage.active.v1';
-const LS_SESSION = 'ablage.sessionStart.v1';
-const AUTOSTART  = 'ablage.autostart.ok';
-const LS_DET_PERPAT = 'ablage.deterioration.perPatient.v1';
-
-/* ======= AUTO-START-SPERRE ======= */
-function blockAutoStart() {
-  const ok = localStorage.getItem(AUTOSTART) === 'true';
-  if (ok) return;
-
-  let active = jget(LS_ACTIVE, []);
-  if (!Array.isArray(active) || !active.length) return;
-
-  let changed = false;
-  const now = Date.now();
-
-  active = active.map(item => {
-    if (!item || typeof item !== 'object') return item;
-    if (typeof item.queuedAt !== 'number') { item.queuedAt = now; changed = true; }
-    if (typeof item.offset !== 'number')   { item.offset = 0;   changed = true; }
-    if ('addedAt' in item) { delete item.addedAt; changed = true; }
-    if (item.startAt && (now - item.startAt) < 30000) { item.startAt = null; changed = true; }
-    return item;
-  });
-
-  if (changed) jset(LS_ACTIVE, active);
-}
-function denyAutostart(){ localStorage.setItem(AUTOSTART, 'false'); blockAutoStart(); }
-window.addEventListener('pageshow', denyAutostart);
-document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState !== 'hidden') denyAutostart(); });
-window.addEventListener('beforeunload', denyAutostart);
-
-denyAutostart();
-const t0_guard = Date.now();
-const guardInterval = setInterval(()=>{
-  denyAutostart();
-  if (Date.now() - t0_guard > 8000) clearInterval(guardInterval);
-}, 150);
-
-/* ===== Patienten laden ===== */
-async function loadPatients() {
-  const urls = ["patienten.json", "patients.json"];
-  let lastErr;
-  for (const url of urls){
-    try{
-      const res = await fetch(url, { cache:"no-store" });
-      if(!res.ok) throw new Error("HTTP "+res.status);
-      const raw = await res.json();
-      return raw.map(p=>{
-        const kat = String(p.kategorie||p.Kategorie||"").toLowerCase().replace("grün","gruen");
-        const base = ({rot:{af:28,puls:120},gelb:{af:22,puls:100},gruen:{af:16,puls:80},schwarz:{af:0,puls:0}})[kat] || {af:18,puls:85};
-        const gender = (p.gender??p.Gender??p.geschlecht??p.Geschlecht) ?? "—";
-        const age = (p.age??p.Age??p.alter??p.Alter) ?? "—";
-        const photo = p.photo || p.Photo || p.foto || p.Foto || null;
-        return {
-          id: Number(p.id ?? p.ID),
-          kategorie: ["rot","gelb","gruen","schwarz"].includes(kat) ? kat : "gelb",
-          darstellung: p.darstellung || p.Darstellung || "sitzend",
-          verletzung: p.verletzung || p.Verletzung || "—",
-          af: p.af ?? p.AF ?? base.af,
-          puls: p.puls ?? p.Puls ?? base.puls,
-          age, gender, photo
-        };
-      });
-    }catch(e){ lastErr=e; }
-  }
-  throw new Error("Konnte patienten.json nicht laden: "+(lastErr?.message||"Unbekannt"));
-}
-
-/* ===== Sichtungs-/Flag-Storage ===== */
-function getSMap(){ return jget('sichtungMap', {}); }
-function setSMap(map){ jset('sichtungMap', map); }
-function getFlagsFor(pid){ return jget('sicht_'+pid, {t:false,b:false}); }
-function setFlagsFor(pid, flags){ jset('sicht_'+pid, { t: !!flags.t, b: !!flags.b }); }
-function normalizeFlagsForCat(cat, flags){
-  const f = { t: !!flags.t, b: !!flags.b };
-  if (cat !== 'rot')   f.t = false;
-  if (cat !== 'gruen') f.b = false;
-  return f;
-}
-
-/* ===== State + DOM Refs ===== */
-const listEl = document.getElementById("list");
-const countEl = document.getElementById("count");
-const toastEl = document.getElementById("toast");
-
-const trainingBtn = document.getElementById("trainingBtn");
-const savebar = document.getElementById("savebar");
-const saveBtn = document.getElementById("saveBtn");
-const cancelBtn = document.getElementById("cancelBtn");
-const selPill = document.getElementById("selPill");
-const selCountTop = document.getElementById("selCount");
-const selCountBottom = document.getElementById("selCountBottom");
-
-const bulkBox = document.getElementById('bulk');
-const bulkSelectAllBtn = document.getElementById('bulkSelectAll');
-const bulkClearBtn = document.getElementById('bulkClear');
-
-const presetRow = document.getElementById('presetRow');
-const mixPill = document.getElementById('mixPill');
-const mixRot = document.getElementById('mixRot');
-const mixGelb = document.getElementById('mixGelb');
-const mixGruen = document.getElementById('mixGruen');
-const mixSchwarz = document.getElementById('mixSchwarz');
-
-const mixModeSel = document.getElementById('mixMode');
-const reselectBtn = document.getElementById('reselectBtn');
-
-let allPatients = [];
-let training = false;
-let lastPresetCount = 0;
-let selected = new Map(); // id -> { sk:null|..., t:false, b:false }
-
-/* ===== Render ===== */
-function cardHTML(p){
-  const katClass = p.kategorie === "gruen" ? "gruen" : p.kategorie;
-  const katLabel = (p.kategorie === "gruen" ? "GRÜN" : p.kategorie.toUpperCase());
-  return `
-    <article class="card ${katClass}" data-id="${p.id}">
-      <h2>Patient ${p.id}</h2>
-      <div class="meta"><b>Alter:</b> ${p.age}</div>
-      <div class="meta"><b>Geschlecht:</b> ${p.gender}</div>
-      <div class="meta"><b>Darstellung:</b> ${p.darstellung||"—"}</div>
-      <div class="meta"><b>Verletzungsmuster:</b> ${p.verletzung||"—"}</div>
-      <div class="meta"><b>AF:</b> ${p.af}/min&nbsp;&nbsp;&nbsp;<b>Puls:</b> ${p.puls}/min</div>
-      <span class="sichtung">${katLabel}</span><br/>
-      <button class="open" type="button">Vorschau</button>
-
-      <div class="train-controls" aria-hidden="true" hidden inert>
-        <div class="group check">
-          <input type="checkbox" class="pick" id="pick-${p.id}" />
-          <label for="pick-${p.id}">Für Ablage</label>
-        </div>
-
-        <div class="group seg" aria-label="Sichtungsklasse wählen">
-          <button type="button" data-sk="rot" title="SK1 ROT">ROT</button>
-          <button type="button" data-sk="gelb" title="SK2 GELB">GELB</button>
-          <button type="button" data-sk="gruen" title="SK3 GRÜN">GRÜN</button>
-          <button type="button" data-sk="schwarz" title="SCHWARZ">SCHWARZ</button>
-        </div>
-
-        <details class="opts">
-  <summary class="opts-sum">Optionen</summary>
-  <div class="opts-body">
-<div class="group flags" aria-label="Zusatz-Flags">
-          <button type="button" data-flag="t" class="t" title="Transportpriorität (nur SK1)">T</button>
-          <button type="button" data-flag="b" class="b" title="Betroffener (nur SK3)">B</button>
-        </div>
-
-        
-<div class="group det" aria-label="Verschlechterung in Ablage">
-  <label class="check" style="gap:8px;">
-    <input type="checkbox" class="det-enable" />
-    <span>Verschlechterung</span>
-  </label>
-  <select class="det-min" title="Minuten bis Verschlechterung"></select>
-  <select class="det-to" title="Ziel SK"
-          style="flex:1;padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.28);color:#fff;font-weight:900;">
-    <option value="gelb">GELB</option>
-    <option value="rot" selected>ROT</option>
-    <option value="schwarz">SCHWARZ</option>
-  </select>
-</div>
-  </div>
-</details
-
-      </div>
-    </article>
-  `;
-}
-
-function renderList(){
-  listEl.innerHTML = allPatients.map(cardHTML).join("");
-  attachCardEvents();
-  syncTrainingUI();
-}
-
-
-function __fillDetMinSelect(sel, defVal){
+function applySkSelectStyle(sel){
   if(!sel) return;
-  const vals=[0,1,2,3,4,5,6,7,8,9,10,12,15,20,25,30,45,60];
-  sel.innerHTML='';
-  for(const v of vals){
-    const o=document.createElement('option');
-    o.value=String(v);
-    o.textContent=String(v);
-    sel.appendChild(o);
-  }
-  sel.value=String(defVal||0);
+  const v = normalizeCat(sel.value);
+  sel.classList.remove('to-rot','to-gelb','to-gruen','to-schwarz');
+  if(v) sel.classList.add('to-' + v);
 }
 
-function attachCardEvents(){
-  document.querySelectorAll(".card").forEach(card=>{
-    const id = Number(card.dataset.id);
-    const p = allPatients.find(x=>x.id===id);
+function setStickyHeight(){
+  const panel = document.getElementById('trainingPanel');
+  const h = panel ? panel.getBoundingClientRect().height : 0;
+  document.documentElement.style.setProperty('--stickyH', Math.ceil(h) + 'px');
+}
+window.addEventListener('load', setStickyHeight);
+window.addEventListener('resize', setStickyHeight);
 
-    card.querySelector(".open").addEventListener("click", e=>{
-      e.stopPropagation();
-      try{ sessionStorage.setItem("currentPatient", JSON.stringify(p)); }catch(_){ }
-      location.href = `patient${id}.html`;
+function toggleTrainingPanel(){
+  const panel = document.getElementById('trainingPanel');
+  if(!panel) return;
+  panel.classList.toggle('collapsed');
+  setStickyHeight();
+}
+window.toggleTrainingPanel = toggleTrainingPanel;
+
+/* State */
+let patients = [];
+let selected = new Set();
+let trainingOn = false;
+
+/* Render */
+const grid = document.getElementById('grid');
+const elLoaded = document.getElementById('cntLoaded');
+const elSelected = document.getElementById('cntSelected');
+const elSelRot = document.getElementById('selRot');
+const elSelGelb = document.getElementById('selGelb');
+const elSelGruen = document.getElementById('selGruen');
+const elSelSchwarz = document.getElementById('selSchwarz');
+
+function skPillClass(cat){
+  if(cat === 'rot') return 'rot';
+  if(cat === 'gelb') return 'gelb';
+  if(cat === 'gruen') return 'gruen';
+  if(cat === 'schwarz') return 'schwarz';
+  return '';
+}
+
+function updateCounters(){
+  elLoaded.textContent = String(patients.length);
+  elSelected.textContent = String(selected.size);
+
+  let r=0,g=0,gr=0,s=0;
+  for(const id of selected){
+    const p = patients.find(x=>x.id === id);
+    if(!p) continue;
+    if(p.kategorie === 'rot') r++;
+    else if(p.kategorie === 'gelb') g++;
+    else if(p.kategorie === 'gruen') gr++;
+    else if(p.kategorie === 'schwarz') s++;
+  }
+  elSelRot.textContent = String(r);
+  elSelGelb.textContent = String(g);
+  elSelGruen.textContent = String(gr);
+  elSelSchwarz.textContent = String(s);
+}
+
+function readPerPatientDet(){
+  const m = jget(LS_DET_PERPAT, {});
+  return (m && typeof m === 'object') ? m : {};
+}
+
+function writePerPatientDet(map){
+  jset(LS_DET_PERPAT, map || {});
+}
+
+function render(){
+  grid.innerHTML = '';
+  const per = readPerPatientDet();
+
+  for(const p of patients){
+    const card = document.createElement('div');
+    card.className = 'card k-' + p.kategorie;
+    card.dataset.id = p.id;
+
+    const isSel = selected.has(p.id);
+
+    const skLabel = p.kategorie === 'rot' ? 'SK1 ROT' :
+                    p.kategorie === 'gelb' ? 'SK2 GELB' :
+                    p.kategorie === 'gruen' ? 'SK3 GRÜN' :
+                    'SK4 SCHWARZ';
+
+    const ov = per[p.id] || {};
+    const ovEnabled = ov.enabled === true;
+    const ovAfter = Number(ov.afterMin || 0);
+    const ovTo = normalizeCat(ov.to || 'rot') || 'rot';
+
+    card.innerHTML = `
+      <div class="card-inner">
+        <div class="title">
+          <span>${p.label}</span>
+          <span class="skpill ${skPillClass(p.kategorie)}">${skLabel}</span>
+        </div>
+
+        <div class="meta">
+          <div>Alter: ${p.age}</div>
+          <div>Geschlecht: ${p.gender}</div>
+          <div>Darstellung: ${p.pose}</div>
+          <div>AF: ${p.af}/min, Puls: ${p.puls}/min</div>
+        </div>
+
+        <div class="injury">Verletzungsmuster: ${p.injury}</div>
+
+        <div class="actions">
+          <label class="toggle">
+            <input type="checkbox" class="selBox" ${isSel ? 'checked' : ''}>
+            <span>Für Ablage</span>
+          </label>
+
+          <button class="btn" type="button" data-open="${p.url}">Vorschau</button>
+        </div>
+      </div>
+
+      <details class="opts ${trainingOn ? '' : ''}">
+        <summary>
+          <span>Optionen</span>
+          <span style="opacity:.85;">${ovEnabled ? 'Verschlechterung aktiv' : ''}</span>
+        </summary>
+        <div class="opt-body">
+          <div class="opt-row">
+            <span class="pill">Verschlechterung</span>
+            <label class="toggle" style="gap:8px;">
+              <input type="checkbox" class="detEnabled" ${ovEnabled ? 'checked' : ''}>
+              <span>Aktiv</span>
+            </label>
+          </div>
+
+          <div class="opt-row">
+            <span class="pill">Nach</span>
+            <select class="sel-min detMin"></select>
+            <span class="pill">zu</span>
+            <select class="sel-to detTo">
+              <option value="rot">ROT</option>
+              <option value="gelb">GELB</option>
+              <option value="gruen">GRÜN</option>
+              <option value="schwarz">SCHWARZ</option>
+            </select>
+          </div>
+
+          <div class="opt-row">
+            <button class="btn primary detSave" type="button">Speichern</button>
+            <button class="btn detDisable" type="button">Deaktivieren</button>
+          </div>
+        </div>
+      </details>
+    `;
+
+    const box = card.querySelector('.selBox');
+    box.addEventListener('change', () => {
+      if(box.checked) selected.add(p.id);
+      else selected.delete(p.id);
+      updateCounters();
     });
 
-    const cb = card.querySelector(".pick");
-    cb.addEventListener("change", ()=>{
-      if(cb.checked){
-        if(!selected.has(id)) selected.set(id, { sk: null, t:false, b:false });
-      }else{
-        selected.delete(id);
-        card.querySelectorAll('.seg button').forEach(b=>b.classList.remove('active'));
-        card.querySelectorAll('.flags button').forEach(b=>b.classList.remove('active'));
-      }
-      updateCountersAndSavebar();
+    const openBtn = card.querySelector('[data-open]');
+    openBtn.addEventListener('click', () => {
+      const url = openBtn.getAttribute('data-open');
+      if(url) location.href = url;
     });
 
-    const detEnable = card.querySelector('.det-enable');
-    const detMin = card.querySelector('.det-min');
-    const detTo = card.querySelector('.det-to');
+    const selMin = card.querySelector('.detMin');
+    const selTo = card.querySelector('.detTo');
+    const detEnabled = card.querySelector('.detEnabled');
 
-    if(detEnable && detMin && detTo){
-      const detMap = getDetPerPat();
-      const pidKey = 'patient' + id;
+    fillMinuteSelect(selMin, ovAfter || 0);
+    selTo.value = ovTo;
+    applySkSelectStyle(selTo);
+    selTo.addEventListener('change', ()=>applySkSelectStyle(selTo));
 
-      const detCfg = detMap[pidKey] || { enabled:false, afterMin:0, to:'rot' };
+    const saveBtn = card.querySelector('.detSave');
+    const disBtn = card.querySelector('.detDisable');
 
-      fillMinuteSelect(detMin, detCfg.afterMin || 0);
-  detEnable.checked = !!detCfg.enabled;
-       __fillDetMinSelect(detMin, detCfg.afterMin || 0);
-      detTo.value = detCfg.to || 'rot';
-  applySkSelectStyle(detTo);
-
-      const saveDetNow = ()=>{
-        const map = getDetPerPat();
-        map[pidKey] = {
-          enabled: !!detEnable.checked,
-          afterMin: Number(detMin.value || 0),
-          to: detTo.value || 'rot'
-        };
-        setDetPerPat(map);
+    saveBtn.addEventListener('click', () => {
+      const map = readPerPatientDet();
+      const afterMin = Number(selMin.value || 0);
+      const to = normalizeCat(selTo.value);
+      map[p.id] = {
+        enabled: detEnabled.checked === true,
+        afterMin: afterMin,
+        to: to || 'rot'
       };
-
-      detEnable.addEventListener('change', (e)=>{ e.stopPropagation(); saveDetNow(); });
-      detMin.addEventListener('change', (e)=>{ e.stopPropagation(); saveDetNow(); });
-      detTo.addEventListener('change', (e)=>{ e.stopPropagation(); applySkSelectStyle(detTo); saveDetNow(); });
-    }
-
-    card.querySelectorAll('.seg button').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{
-        e.stopPropagation();
-        if(!cb.checked){ cb.checked = true; }
-        if(!selected.has(id)) selected.set(id, { sk: null, t:false, b:false });
-
-        const entry = selected.get(id);
-        const sk = btn.getAttribute('data-sk');
-
-        card.querySelectorAll('.seg button').forEach(b=>b.classList.remove('active'));
-        btn.classList.add('active');
-
-        entry.sk = sk;
-        const norm = normalizeFlagsForCat(sk, entry);
-        entry.t = norm.t; entry.b = norm.b;
-
-        const fT = card.querySelector('.flags [data-flag="t"]');
-        const fB = card.querySelector('.flags [data-flag="b"]');
-        fT.toggleAttribute('disabled', entry.sk !== 'rot');
-        fB.toggleAttribute('disabled', entry.sk !== 'gruen');
-        fT.classList.toggle('active', !!entry.t);
-        fB.classList.toggle('active', !!entry.b);
-
-        selected.set(id, entry);
-        updateCountersAndSavebar();
-      });
+      writePerPatientDet(map);
+      flashPill('Gespeichert');
+      card.querySelector('summary span:last-child').textContent = (detEnabled.checked && afterMin > 0) ? 'Verschlechterung aktiv' : '';
     });
 
-    card.querySelectorAll('.flags [data-flag]').forEach(b=>{
-      b.addEventListener('click', (e)=>{
-        e.stopPropagation();
-        if(!cb.checked){ cb.checked = true; }
-        if(!selected.has(id)) selected.set(id, { sk: null, t:false, b:false });
-        const entry = selected.get(id);
-
-        const flag = b.getAttribute('data-flag');
-        if (flag==='t' && entry.sk!=='rot') return;
-        if (flag==='b' && entry.sk!=='gruen') return;
-
-        entry[flag] = !entry[flag];
-        b.classList.toggle('active', !!entry[flag]);
-
-        selected.set(id, entry);
-        updateCountersAndSavebar();
-      });
+    disBtn.addEventListener('click', () => {
+      const map = readPerPatientDet();
+      map[p.id] = { enabled:false };
+      writePerPatientDet(map);
+      detEnabled.checked = false;
+      selMin.value = '0';
+      selTo.value = 'rot';
+      applySkSelectStyle(selTo);
+      flashPill('Deaktiviert');
+      card.querySelector('summary span:last-child').textContent = '';
     });
 
-    card.addEventListener("click", ()=>{ if(!training) location.href = `patient${id}.html`; });
-  });
+    grid.appendChild(card);
+  }
+
+  updateCounters();
+  setStickyHeight();
 }
 
-/* ===== Training UI ===== */
-trainingBtn.addEventListener("click", ()=>{
-  training = !training;
-  trainingBtn.classList.toggle("active", training);
-  trainingBtn.setAttribute("aria-pressed", String(training));
-  trainingBtn.textContent = training ? "Training Patientenablage läuft" : "Training Patientenablage aktivieren";
-  document.body.classList.toggle('training-mode', !!training);
+function flashPill(text){
+  const st = document.getElementById('trainingState');
+  if(!st) return;
+  const old = st.textContent;
+  st.textContent = text;
+  setTimeout(()=>{ st.textContent = trainingOn ? 'An' : 'Aus'; }, 900);
+}
 
-  if(!training){
-    clearSelectionUI();
-  }
-  syncTrainingUI();
+/* Training */
+const trainingBtn = document.getElementById('trainingBtn');
+const trainingState = document.getElementById('trainingState');
+
+trainingBtn.addEventListener('click', () => {
+  trainingOn = !trainingOn;
+  trainingBtn.setAttribute('aria-pressed', trainingOn ? 'true' : 'false');
+  trainingBtn.textContent = trainingOn ? 'Beenden' : 'Aktivieren';
+  trainingState.textContent = trainingOn ? 'An' : 'Aus';
+  trainingState.classList.toggle('on', trainingOn);
+
+  document.body.classList.toggle('training-on', trainingOn);
+
+  const panel = document.getElementById('trainingPanel');
+  if(panel && trainingOn) panel.classList.remove('collapsed');
+  if(panel && !trainingOn) panel.classList.add('collapsed');
+
+  selected.clear();
+  render();
 });
 
-function syncTrainingUI(){
-  document.querySelectorAll(".card .train-controls").forEach(el=>{
-    const visible = training;
-    el.classList.toggle("show", visible);
-    el.toggleAttribute("hidden", !visible);
-    el.setAttribute("aria-hidden", String(!visible));
-    el.inert = !visible;
-  });
-
-  selPill.style.display = training ? "" : "none";
-  presetRow.style.display = training ? "" : "none";
-  mixPill.style.display = training ? "" : "none";
-  bulkBox.classList.toggle('show', training);
-
-  updateCountersAndSavebar();
-}
-
-/* ===== Auswahl-Helpers ===== */
-function shuffle(arr){
-  const a = [...arr];
-  for(let i=a.length-1;i>0;i--){
-    const j = Math.floor(Math.random()*(i+1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-function computeTargets(total, weights){
-  const cats = Object.keys(weights);
-  const raw = cats.map(c => ({ c, v: total * weights[c] }));
-  const base = {};
-  raw.forEach(x => base[x.c] = Math.floor(x.v));
-
-  let used = Object.values(base).reduce((s,n)=>s+n,0);
-  let rest = total - used;
-
-  raw
-    .map(x => ({ c:x.c, frac: x.v - Math.floor(x.v) }))
-    .sort((a,b)=>b.frac - a.frac)
-    .forEach(x => { if(rest>0){ base[x.c]++; rest--; } });
-
-  return base;
-}
-
-function clearSelectionUI(){
+/* Bulk */
+document.getElementById('bulkSelectAll').addEventListener('click', () => {
+  for(const p of patients) selected.add(p.id);
+  render();
+});
+document.getElementById('bulkClear').addEventListener('click', () => {
   selected.clear();
-  document.querySelectorAll(".card .pick").forEach(cb=>cb.checked=false);
-  document.querySelectorAll(".card .seg button").forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll(".card .flags button").forEach(b=>b.classList.remove('active'));
-}
+  render();
+});
+document.getElementById('bulkCancel').addEventListener('click', () => {
+  selected.clear();
+  render();
+});
 
-function selectIds(ids){
-  ids.forEach(id=>{
-    const card = document.querySelector(`.card[data-id="${id}"]`);
-    if(!card) return;
-    const cb = card.querySelector(".pick");
-    if(!cb.checked) cb.checked = true;
-    if(!selected.has(id)) selected.set(id, { sk: null, t:false, b:false });
-    card.querySelectorAll('.seg button').forEach(b=>b.classList.remove('active'));
-    card.querySelectorAll('.flags button').forEach(b=>b.classList.remove('active'));
-  });
-}
-
-function pickOnly(cat, total){
-  const pool = shuffle(allPatients.filter(p=>p.kategorie===cat));
-  return pool.slice(0, total).map(p=>p.id);
-}
-
-function pickMix(total){
-  const targets = computeTargets(total, { rot:0.2, gelb:0.3, gruen:0.5, schwarz:0.0 });
-
-  const pools = {
-    rot: shuffle(allPatients.filter(p=>p.kategorie==="rot")),
-    gelb: shuffle(allPatients.filter(p=>p.kategorie==="gelb")),
-    gruen: shuffle(allPatients.filter(p=>p.kategorie==="gruen")),
-    schwarz: shuffle(allPatients.filter(p=>p.kategorie==="schwarz")),
-  };
-
-  const chosen = [];
-  const chosenIds = new Set();
-
-  (["rot","gelb","gruen","schwarz"]).forEach(cat=>{
-    const need = Math.max(0, targets[cat] || 0);
-    const pool = pools[cat].filter(p=>!chosenIds.has(p.id));
-    pool.slice(0, need).forEach(p=>{ chosen.push(p); chosenIds.add(p.id); });
-  });
-
-  let missing = total - chosen.length;
-  if (missing > 0){
-    const allRest = shuffle(allPatients).filter(p=>!chosenIds.has(p.id));
-    allRest.slice(0, missing).forEach(p=>{ chosen.push(p); chosenIds.add(p.id); });
-  }
-
-  return chosen.slice(0,total).map(p=>p.id);
-}
-
-function applyPreset(count){
-  if(!training) trainingBtn.click();
-
-  const mode = mixModeSel.value || "mix";
-  lastPresetCount = count;
-
-  if (mode === "manual"){
-    toast("Manuell aktiv – bitte selbst auswählen");
+/* Auswahl in Ablage übernehmen */
+document.getElementById('bulkToAblage').addEventListener('click', () => {
+  if(selected.size === 0){
+    alert('Keine Patienten ausgewählt');
     return;
   }
 
-  bulkClearBtn.click();
-
-  let ids = [];
-  if (mode === "mix") ids = pickMix(count);
-  else if (mode === "only-rot") ids = pickOnly("rot", count);
-  else if (mode === "only-gelb") ids = pickOnly("gelb", count);
-  else if (mode === "only-gruen") ids = pickOnly("gruen", count);
-  else if (mode === "only-schwarz") ids = pickOnly("schwarz", count);
-  else ids = pickMix(count);
-
-  selectIds(ids);
-
-  const wanted = count, got = ids.length;
-  const label = mixModeSel.selectedOptions?.[0]?.textContent || "Preset";
-
-  if (mode.startsWith("only-") && got < wanted){
-    toast(`${label}: ${got}/${wanted} verfügbar (Rest leer)`);
-  } else {
-    toast(`${label}: ${got} vorbereitet`);
-  }
-
-  updateCountersAndSavebar();
-}
-
-/* ===== Counter / Mix Anzeige ===== */
-function updateCountersAndSavebar(){
-  const n = selected.size;
-  selCountTop.textContent = String(n);
-  selCountBottom.textContent = String(n);
-  savebar.classList.toggle("show", training && n>0);
-
-  let r=0,g=0,gr=0,s=0;
-  for(const [id, entry] of selected.entries()){
-    let sk = entry?.sk;
-    if(!sk){
-      const p = allPatients.find(x=>x.id===id);
-      sk = p?.kategorie || null;
-    }
-    if(sk==="rot") r++;
-    else if(sk==="gelb") g++;
-    else if(sk==="gruen") gr++;
-    else if(sk==="schwarz") s++;
-  }
-  mixRot.textContent = String(r);
-  mixGelb.textContent = String(g);
-  mixGruen.textContent = String(gr);
-  mixSchwarz.textContent = String(s);
-}
-
-/* ===== Bulk Actions ===== */
-bulkSelectAllBtn.addEventListener('click', ()=>{
-  document.querySelectorAll(".card").forEach(card=>{
-    const id = Number(card.dataset.id);
-    const cb = card.querySelector(".pick");
-    if(!cb.checked) cb.checked = true;
-    if(!selected.has(id)) selected.set(id, { sk: null, t:false, b:false });
-  });
-  updateCountersAndSavebar();
-});
-
-bulkClearBtn.addEventListener('click', ()=>{
-  clearSelectionUI();
-  updateCountersAndSavebar();
-});
-
-/* ===== Preset Buttons ===== */
-document.querySelectorAll(".preset").forEach(btn=>{
-  btn.addEventListener("click", ()=>{
-    const count = Number(btn.getAttribute("data-count") || "0");
-    applyPreset(count);
-  });
-});
-
-reselectBtn.addEventListener("click", ()=>{
-  const n = lastPresetCount || selected.size;
-  if(!training || !n) return;
-  applyPreset(n);
-});
-
-/* ===== Speichern → Ablage (ohne Start) ===== */
-saveBtn.addEventListener("click", ()=>{
-  if(selected.size===0) return;
-
-  denyAutostart();
-
+  const sMap = jget(LS_SICHT_MAP, {});
   const now = Date.now();
-  if(!jget(LS_SESSION, null)) jset(LS_SESSION, now);
+  const active = jget(LS_ACTIVE, []);
 
-  let active = jget(LS_ACTIVE, []);
-  if(!Array.isArray(active)) active = [];
-  const have = new Set(active.map(a=>a && a.id));
-  let sMap = getSMap();
+  const have = new Set(Array.isArray(active) ? active.map(x=>String(x && x.id || '')) : []);
 
-  for(const [id, entry] of selected.entries()){
-    const p = allPatients.find(x=>x.id===id);
+  for(const id of selected){
+    const p = patients.find(x=>x.id === id);
     if(!p) continue;
-    const pid = `patient${p.id}`;
 
-    const sk = entry?.sk || p.kategorie;
-    const flags = normalizeFlagsForCat(sk, entry || {});
+    sMap[id] = p.kategorie;
 
-    sMap[pid] = sk;
-    setFlagsFor(pid, flags);
-
-    if(!have.has(pid)){
-      active.push({
-        id: pid,
-        label: `Patient ${p.id}`,
-        url: `patient${p.id}.html`,
-        sk,
-        queuedAt: now,
-        startAt: null,
-        offset: 0,
-        from: "overview-training"
-      });
-      have.add(pid);
-    }else{
-      const i = active.findIndex(a=>a && a.id===pid);
-      if(i>=0){
-        active[i].sk = sk;
-        if(typeof active[i].queuedAt !== 'number') active[i].queuedAt = now;
-        active[i].startAt = null;
-        if(typeof active[i].offset !== 'number') active[i].offset = 0;
-        if('addedAt' in active[i]) delete active[i].addedAt;
-      }
+    if(!have.has(id)){
+      active.push({ id, queuedAt: now });
+      have.add(id);
     }
   }
 
-  setSMap(sMap);
+  jset(LS_SICHT_MAP, sMap);
   jset(LS_ACTIVE, active);
 
-  const t0 = Date.now();
-  const g = setInterval(()=>{
-    denyAutostart();
-    if (Date.now() - t0 > 5000) clearInterval(g);
-  }, 150);
-
-  toast("In Ablage übernommen");
-  clearSelectionUI();
-  updateCountersAndSavebar();
+  selected.clear();
+  alert('In Ablage übernommen');
+  render();
 });
 
-cancelBtn.addEventListener("click", ()=>{
-  clearSelectionUI();
-  updateCountersAndSavebar();
+/* Presets */
+document.querySelectorAll('.preset').forEach(btn=>{
+  btn.addEventListener('click', () => {
+    const n = Number(btn.dataset.count || 0);
+    if(!n) return;
+    selected.clear();
+    const copy = [...patients];
+    shuffle(copy);
+    for(const p of copy.slice(0, Math.min(n, copy.length))) selected.add(p.id);
+    render();
+  });
 });
 
-function toast(msg){
-  toastEl.textContent = msg;
-  toastEl.classList.add('show');
-  setTimeout(()=>toastEl.classList.remove('show'), 1600);
+/* Mix */
+document.getElementById('mixBtn').addEventListener('click', () => {
+  const v = String(document.getElementById('mixSelect').value || '20,30,50');
+  const parts = v.split(',').map(x=>Number(x.trim() || 0));
+  const g = parts[0] || 20;
+  const y = parts[1] || 30;
+  const r = parts[2] || 50;
+
+  const greens = patients.filter(p=>p.kategorie === 'gruen');
+  const yellows = patients.filter(p=>p.kategorie === 'gelb');
+  const reds = patients.filter(p=>p.kategorie === 'rot');
+
+  selected.clear();
+  shuffle(greens); shuffle(yellows); shuffle(reds);
+
+  for(const p of greens.slice(0, Math.ceil(patients.length * (g/100)))) selected.add(p.id);
+  for(const p of yellows.slice(0, Math.ceil(patients.length * (y/100)))) selected.add(p.id);
+  for(const p of reds.slice(0, Math.ceil(patients.length * (r/100)))) selected.add(p.id);
+
+  render();
+});
+
+/* Utils */
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    const t = arr[i]; arr[i]=arr[j]; arr[j]=t;
+  }
+  return arr;
 }
 
-/* ===== Init ===== */
-(async function init(){
-  try{
-    denyAutostart();
-    allPatients = await loadPatients();
-    countEl.textContent = String(allPatients.length);
+/* Load patients */
+async function loadPatients(){
+  const urls = ['patienten.json','patients.json'];
+  let lastErr = null;
 
-    jset('patientsData', allPatients.map(p => ({
-      id: p.id,
-      age: p.age,
-      gender: p.gender,
-      photo: p.photo || null
-    })));
+  for(const url of urls){
+    try{
+      const res = await fetch(url, { cache:'no-store' });
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const raw = await res.json();
 
-    renderList();
-  }catch(e){
-    listEl.innerHTML =
-      '<div style="background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.2);padding:16px;border-radius:12px">'
-      + '<b>Fehler beim Laden:</b> '+e.message+'<br/>Prüfe Dateiname/Ort, JSON-Syntax und Cache.'
-      + '</div>';
-    console.error(e);
+      const mapped = raw.map(p=>{
+        const idNum = Number(p.id || p.ID || 0);
+        const id = 'patient' + idNum;
+        const cat = normalizeCat(p.kategorie || p.Kategorie || p.sk || p.SK) || 'gruen';
+
+        const base = ({rot:{af:28,puls:120},gelb:{af:22,puls:100},gruen:{af:16,puls:80},schwarz:{af:0,puls:0}})[cat] || {af:18,puls:85};
+
+        return {
+          id,
+          label: 'Patient ' + idNum,
+          url: 'patient' + idNum + '.html',
+          age: String(p.age || p.Alter || '0'),
+          gender: String(p.gender || p.Geschlecht || 'unbekannt'),
+          pose: String(p.pose || p.Darstellung || 'unbekannt'),
+          injury: String(p.injury || p.Verl | p.Verlatzung || p.Verl| p.Verl || p.Verl || p.Verl || p.Verl|| p.Verl || p.Verl || p.Verl || p.Verl || p.Verl || p.verletzungsmuster || p.Verl| p.Verl|| p.verletzung || p.Verletzungsmuster || p.verletzung || p.verletzungsmuster || 'keine Angabe'),
+          af: Number(p.af || p.AF || base.af),
+          puls: Number(p.puls || p.Puls || base.puls),
+          kategorie: cat
+        };
+      });
+
+      return mapped;
+    }catch(e){
+      lastErr = e;
+    }
   }
-})();
+  throw lastErr || new Error('patienten.json nicht gefunden');
+}
+
+function safeInjury(p){
+  const c = p.injury;
+  if(!c) return 'keine Angabe';
+  return String(c);
+}
+
+/* Patch injury mapping safe */
+function normalizeInjury(p){
+  if(p.injury && p.injury !== 'keine Angabe') return p.injury;
+  const candidates = [
+    p.Verletzungsmuster, p.verletzungsmuster, p.verletzung, p.Verl
+  ].filter(Boolean);
+  return candidates.length ? String(candidates[0]) : 'keine Angabe';
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  try{
+    const list = await loadPatients();
+    patients = list.map(p => {
+      p.injury = safeInjury(p);
+      return p;
+    });
+    render();
+  }catch(e){
+    grid.innerHTML = '<div class="card"><div class="card-inner"><div class="title">Fehler</div><div class="injury">'+(e && e.message ? e.message : String(e))+'</div></div></div>';
+    setStickyHeight();
+  }
+});
 </script>
 
-<script>
-  window.METRICS_URL = "https://1rettungsmittel.de/metrics.php";
-</script>
 <script src="/metrics.js" defer></script>
-
 </body>
 </html>
