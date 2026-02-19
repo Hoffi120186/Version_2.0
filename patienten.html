@@ -362,6 +362,12 @@
     .opts{ margin-top:8px; }
   }
 
+
+  .opt-details{ margin-top:10px; border-radius:14px; border:1px solid rgba(255,255,255,.16); background:rgba(0,0,0,.18); overflow:hidden; }
+  .opt-summary{ list-style:none; cursor:pointer; padding:12px 12px; font-weight:900; display:flex; align-items:center; justify-content:space-between; }
+  .opt-summary::-webkit-details-marker{ display:none; }
+  .opt-body{ padding:12px; padding-top:0; }
+
 </style>
 
 <script src="/freigabe.js?v=2025-09-11-REV2" defer></script>
@@ -609,14 +615,14 @@ function cardHTML(p){
             <input type="checkbox" class="det-enable" />
             <span>Verschlechterung</span>
           </label>
-          <input class="det-min" type="number" min="0" step="1" value="0"
-                 style="width:86px;padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.28);color:#fff;font-weight:900;"
-                 title="Minuten bis Verschlechterung" />
+          <select class="det-min">
           <select class="det-to" title="Ziel SK"
                   style="flex:1;padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.28);color:#fff;font-weight:900;">
             <option value="gelb">GELB</option>
             <option value="rot" selected>ROT</option>
-            <option value="schwarz">SCHWARZ</option>
+            <option value="gelb">GELB</option>
+    <option value="rot">ROT</option>
+    <option value="schwarz">SCHWARZ</option>
           </select>
         </div>
   </div>
@@ -631,6 +637,20 @@ function renderList(){
   listEl.innerHTML = allPatients.map(cardHTML).join("");
   attachCardEvents();
   syncTrainingUI();
+}
+
+
+function __fillDetMinSelect(sel, defVal){
+  if(!sel) return;
+  const vals=[0,1,2,3,4,5,6,7,8,9,10,12,15,20,25,30,45,60];
+  sel.innerHTML='';
+  for(const v of vals){
+    const o=document.createElement('option');
+    o.value=String(v);
+    o.textContent=String(v);
+    sel.appendChild(o);
+  }
+  sel.value=String(defVal||0);
 }
 
 function attachCardEvents(){
@@ -667,7 +687,7 @@ function attachCardEvents(){
       const detCfg = detMap[pidKey] || { enabled:false, afterMin:0, to:'rot' };
 
       detEnable.checked = !!detCfg.enabled;
-      detMin.value = String(detCfg.afterMin || 0);
+       __fillDetMinSelect(detMin, detCfg.afterMin || 0);
       detTo.value = detCfg.to || 'rot';
 
       const saveDetNow = ()=>{
