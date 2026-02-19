@@ -436,10 +436,14 @@
 function jget(k,f){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):f; }catch(_){ return f; } }
 function jset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } }
 
+
+function getDetPerPat(){ return jget(LS_DET_PERPAT, {}); }
+function setDetPerPat(map){ jset(LS_DET_PERPAT, map); }
 /* Keys */
 const LS_ACTIVE  = 'ablage.active.v1';
 const LS_SESSION = 'ablage.sessionStart.v1';
 const AUTOSTART  = 'ablage.autostart.ok';
+const LS_DET_PERPAT = 'ablage.deterioration.perPatient.v1';
 
 /* ======= AUTO-START-SPERRE ======= */
 function blockAutoStart() {
@@ -581,6 +585,22 @@ function cardHTML(p){
           <button type="button" data-flag="t" class="t" title="Transportpriorität (nur SK1)">T</button>
           <button type="button" data-flag="b" class="b" title="Betroffener (nur SK3)">B</button>
         </div>
+
+        <div class="group det" aria-label="Verschlechterung in Ablage">
+          <label class="check" style="gap:8px;">
+            <input type="checkbox" class="det-enable" />
+            <span>Verschlechterung</span>
+          </label>
+          <input class="det-min" type="number" min="0" step="1" value="0"
+                 style="width:86px;padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.28);color:#fff;font-weight:900;"
+                 title="Minuten bis Verschlechterung" />
+          <select class="det-to" title="Ziel SK"
+                  style="flex:1;padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.28);color:#fff;font-weight:900;">
+            <option value="gelb">GELB</option>
+            <option value="rot" selected>ROT</option>
+            <option value="schwarz">SCHWARZ</option>
+          </select>
+        </div>
       </div>
     </article>
   `;
@@ -614,6 +634,35 @@ function attachCardEvents(){
       }
       updateCountersAndSavebar();
     });
+
+    const detEnable = card.querySelector('.det-enable');
+    const detMin = card.querySelector('.det-min');
+    const detTo = card.querySelector('.det-to');
+
+    if(detEnable && detMin && detTo){
+      const detMap = getDetPerPat();
+      const pidKey = 'patient' + id;
+
+      const detCfg = detMap[pidKey] || { enabled:false, afterMin:0, to:'rot' };
+
+      detEnable.checked = !!detCfg.enabled;
+      detMin.value = String(detCfg.afterMin || 0);
+      detTo.value = detCfg.to || 'rot';
+
+      const saveDetNow = ()=>{
+        const map = getDetPerPat();
+        map[pidKey] = {
+          enabled: !!detEnable.checked,
+          afterMin: Number(detMin.value || 0),
+          to: detTo.value || 'rot'
+        };
+        setDetPerPat(map);
+      };
+
+      detEnable.addEventListener('change', (e)=>{ e.stopPropagation(); saveDetNow(); });
+      detMin.addEventListener('change', (e)=>{ e.stopPropagation(); saveDetNow(); });
+      detTo.addEventListener('change', (e)=>{ e.stopPropagation(); saveDetNow(); });
+    }
 
     card.querySelectorAll('.seg button').forEach(btn=>{
       btn.addEventListener('click', (e)=>{
