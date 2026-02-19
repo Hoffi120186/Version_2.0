@@ -579,6 +579,95 @@
   });
 </script>
 
-<script src="/metrics.js" defer></script>
+<script>
+  if(typeof fillMinuteSelect !== 'function'){
+    window.fillMinuteSelect = function(sel, maxMin){
+      if(!sel) return;
+      sel.innerHTML = '';
+      const optOff = document.createElement('option');
+      optOff.value = '0';
+      optOff.textContent = 'Aus';
+      sel.appendChild(optOff);
+      for(let i=1;i<=maxMin;i++){
+        const opt = document.createElement('option');
+        opt.value = String(i);
+        opt.textContent = i + ' Min';
+        sel.appendChild(opt);
+      }
+    };
+  }
+
+  if(typeof applySkSelectStyle !== 'function'){
+    window.applySkSelectStyle = function(sel){
+      if(!sel) return;
+      sel.classList.remove('to-rot','to-gelb','to-gruen','to-schwarz');
+      const v = (sel.value || '').toLowerCase();
+      if(v==='rot') sel.classList.add('to-rot');
+      if(v==='gelb') sel.classList.add('to-gelb');
+      if(v==='gruen' || v==='grün') sel.classList.add('to-gruen');
+      if(v==='schwarz') sel.classList.add('to-schwarz');
+    };
+  }
+
+  if(typeof loadDeteriorationGlobal !== 'function'){
+    window.loadDeteriorationGlobal = function(){
+      const enabled = localStorage.getItem('det_enabled') === '1';
+      const cb = document.getElementById('detEnabled');
+      if(cb) cb.checked = enabled;
+
+      const gMin = document.getElementById('detGruenMin');
+      const yMin = document.getElementById('detGelbMin');
+      const rMin = document.getElementById('detRotMin');
+      const gTo = document.getElementById('detGruenTo');
+      const yTo = document.getElementById('detGelbTo');
+      const rTo = document.getElementById('detRotTo');
+
+      if(gMin) gMin.value = localStorage.getItem('det_gruen_min') || '0';
+      if(yMin) yMin.value = localStorage.getItem('det_gelb_min') || '0';
+      if(rMin) rMin.value = localStorage.getItem('det_rot_min') || '0';
+
+      if(gTo) gTo.value = localStorage.getItem('det_gruen_to') || 'gelb';
+      if(yTo) yTo.value = localStorage.getItem('det_gelb_to') || 'rot';
+      if(rTo) rTo.value = localStorage.getItem('det_rot_to') || 'schwarz';
+
+      applySkSelectStyle(gTo);
+      applySkSelectStyle(yTo);
+      applySkSelectStyle(rTo);
+
+      const chip = document.getElementById('detStateChip');
+      if(chip){
+        chip.textContent = enabled ? 'An' : 'Aus';
+        chip.classList.toggle('on', enabled);
+      }
+    };
+  }
+
+  if(typeof saveDeteriorationGlobal !== 'function'){
+    window.saveDeteriorationGlobal = function(){
+      const enabled = !!document.getElementById('detEnabled')?.checked;
+      localStorage.setItem('det_enabled', enabled ? '1' : '0');
+
+      const gMin = document.getElementById('detGruenMin')?.value || '0';
+      const yMin = document.getElementById('detGelbMin')?.value || '0';
+      const rMin = document.getElementById('detRotMin')?.value || '0';
+
+      const gTo = document.getElementById('detGruenTo')?.value || 'gelb';
+      const yTo = document.getElementById('detGelbTo')?.value || 'rot';
+      const rTo = document.getElementById('detRotTo')?.value || 'schwarz';
+
+      localStorage.setItem('det_gruen_min', gMin);
+      localStorage.setItem('det_gelb_min', yMin);
+      localStorage.setItem('det_rot_min', rMin);
+
+      localStorage.setItem('det_gruen_to', gTo);
+      localStorage.setItem('det_gelb_to', yTo);
+      localStorage.setItem('det_rot_to', rTo);
+
+      loadDeteriorationGlobal();
+      alert('Verschlechterung gespeichert');
+    };
+  }
+</script>
+  <script src="/metrics.js" defer></script>
 </body>
 </html>
