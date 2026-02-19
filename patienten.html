@@ -348,6 +348,20 @@
     header{ align-items: flex-start; }
     .title{ order: 3; width: 100%; }
   }
+
+  .opts{ width:100%; margin-top:10px; border:1px solid rgba(255,255,255,.18); border-radius:14px; background:rgba(0,0,0,.18); overflow:hidden; }
+  .opts-sum{ list-style:none; cursor:pointer; padding:10px 12px; font-weight:900; display:flex; align-items:center; justify-content:space-between; }
+  .opts-sum::-webkit-details-marker{ display:none; }
+  .opts-sum::after{ content:"▾"; opacity:.9; }
+  .opts[open] .opts-sum::after{ content:"▴"; }
+  .opts-body{ padding:10px 12px 12px; display:grid; gap:10px; }
+  @media (max-width:700px){
+    .train-controls{ gap:10px !important; }
+    .group.det{ display:grid !important; grid-template-columns:1fr 110px 1fr; gap:8px !important; align-items:center; }
+    .group.flags{ display:flex !important; gap:10px !important; flex-wrap:wrap; }
+    .opts{ margin-top:8px; }
+  }
+
 </style>
 
 <script src="/freigabe.js?v=2025-09-11-REV2" defer></script>
@@ -581,12 +595,16 @@ function cardHTML(p){
           <button type="button" data-sk="schwarz" title="SCHWARZ">SCHWARZ</button>
         </div>
 
-        <div class="group flags" aria-label="Zusatz-Flags">
+        <details class="opts">
+  <summary class="opts-sum">Optionen</summary>
+  <div class="opts-body">
+<div class="group flags" aria-label="Zusatz-Flags">
           <button type="button" data-flag="t" class="t" title="Transportpriorität (nur SK1)">T</button>
           <button type="button" data-flag="b" class="b" title="Betroffener (nur SK3)">B</button>
         </div>
 
-        <div class="group det" aria-label="Verschlechterung in Ablage">
+        
+<div class="group det" aria-label="Verschlechterung in Ablage">
           <label class="check" style="gap:8px;">
             <input type="checkbox" class="det-enable" />
             <span>Verschlechterung</span>
@@ -601,6 +619,9 @@ function cardHTML(p){
             <option value="schwarz">SCHWARZ</option>
           </select>
         </div>
+  </div>
+</details>
+
       </div>
     </article>
   `;
