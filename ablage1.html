@@ -209,10 +209,6 @@ h2{
   <div class="lightbox" id="lightbox" aria-hidden="true" title="Zum Schließen klicken">
     <img id="lightboxImg" src="" alt="Patientenfoto">
   </div>
-<script src="/coop-client.js"></script>
-<script src="/coop-bridge.js"></script>
-<script src="/ablage.js?v=8"></script>
-
 
 <script type="module">
 'use strict';
@@ -248,14 +244,6 @@ function normGender(g){
   if (x === 'd' || /divers|non[-\s]?binary/.test(x))                                   return 'divers';
   return null;
 }
-let __coopReloadT = 0;
-window.addEventListener('coop:changed', () => {
-  clearTimeout(__coopReloadT);
-  __coopReloadT = setTimeout(() => {
-    try { load(); } catch {}
-  }, 150);
-});
-
 
 /* ===== Datenquellen ===== */
 function getPatMeta(){ try { return JSON.parse(localStorage.getItem('patMeta') || '{}'); } catch { return {}; } }
@@ -730,6 +718,149 @@ async function load(){
 }
 load();
 
+
+/* ===== Verschlechterung in Ablage ===== */
+const LS_ACTIVE = 'ablage.active.v1';
+const LS_DET_GLOBAL = 'ablage.deterioration.global.v1';
+const LS_DET_PERPAT = 'ablage.deterioration.perPatient.v1';
+
+function jgetLS(k,f){ try{ const v=localStorage.getItem(k); return v ? JSON.parse(v) : f; }catch{ return f; } }
+function jsetLS(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+
+function normalizeCat(c){
+  const x = String(c||'').toLowerCase().replace('grün','gruen');
+  if(['rot','gelb','gruen','schwarz'].includes(x)) return x;
+  return null;
+}
+
+function readDetGlobal(){
+  const g = jgetLS(LS_DET_GLOBAL, { enabled:false, steps:{} });
+  if(!g || typeof g !== 'object') return { enabled:false, steps:{} };
+  g.enabled = !!g.enabled;
+  g.steps = (g.steps && typeof g.steps === 'object') ? g.steps : {};
+  return g;
+}
+
+function readDetPerPatient(){
+  const m = jgetLS(LS_DET_PERPAT, {});
+  return (m && typeof m === 'object') ? m : {};
+}
+
+function pickRuleFor(patientId, currentCat){
+  const per = readDetPerPatient();
+  const ov = per[patientId];
+
+  if(ov && typeof ov === 'object'){
+    if(ov.enabled === false) return null;
+    if(ov.enabled === true){
+      const afterMin = Number(ov.afterMin || 0);
+      const to = normalizeCat(ov.to);
+      if(afterMin > 0 && to) return { afterSec: Math.round(afterMin * 60), to };
+      return null;
+    }
+  }
+
+  const g = readDetGlobal();
+  if(!g.enabled) return null;
+
+  const step = g.steps[currentCat];
+  if(!step || typeof step !== 'object') return null;
+
+  const afterMin = Number(step.afterMin || 0);
+  const to = normalizeCat(step.to);
+  if(afterMin > 0 && to) return { afterSec: Math.round(afterMin * 60), to };
+
+  return null;
+}
+
+function getActiveList(){
+  const active = jgetLS(LS_ACTIVE, []);
+  return Array.isArray(active) ? active : [];
+}
+
+function checkDeteriorationTick(){
+  const active = getActiveList();
+  if(!active.length) return;
+
+  const done = getDoneSet();
+  const sMap = getSMap();
+
+  const now = Date.now();
+  let changed = false;
+
+  for(const item of active){
+    if(!item || typeof item !== 'object') continue;
+
+    const pid = String(item.id || '');
+    if(!pid) continue;
+
+    if(done.has(pid)) continue;
+
+    const since = Number(item.queuedAt || 0);
+    if(!since) continue;
+
+    const elapsedSec = Math.floor((now - since) / 1000);
+
+    let current = normalizeCat(sMap[pid]);
+    if(!current) continue;
+
+    let loopGuard = 0;
+    while(loopGuard < 6){
+      loopGuard++;
+
+      const rule = pickRuleFor(pid, current);
+      if(!rule) break;
+
+      if(elapsedSec < rule.afterSec) break;
+      if(current === rule.to) break;
+
+      current = rule.to;
+      sMap[pid] = current;
+      changed = true;
+
+      try{
+        const key = 'sicht_' + pid;
+        const flags = __readTogglePayload(pid) || {};
+        if(current !== 'rot') flags.t = false;
+        if(current !== 'gruen') flags.b = false;
+        localStorage.setItem(key, JSON.stringify(flags));
+      }catch{}
+    }
+  }
+
+  if(changed){
+    localStorage.setItem('sichtungMap', JSON.stringify(sMap));
+
+    if(Array.isArray(window.__PAT_DATA__)){
+      window.__PAT_DATA__.sort((a,b)=>{
+        const aCat = sichtungFor(a.id) || '';
+        const bCat = sichtungFor(b.id) || '';
+        const pa = __readTogglePayload(a.id) || {};
+        const pb = __readTogglePayload(b.id) || {};
+        const d  = __prio(aCat, pa) - __prio(bCat, pb);
+        return d !== 0 ? d : (__numFromId(a.id) - __numFromId(b.id));
+      });
+
+      listEl.innerHTML = '';
+      window.__PAT_DATA__.forEach(upsertCard);
+
+      if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
+        window.Ablage.hydrateCards({
+          containerSelector: '#list',
+          cardSelector: '.card',
+          placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
+          placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
+        });
+        highlightAssignButtons();
+      }
+    }
+
+    updateStats();
+  }
+}
+setInterval(checkDeteriorationTick, 2000);
+
+
 /* Live-Updates (Sichtung/T/B/DONE) */
 window.addEventListener('storage', (e)=>{
   if(!e || !e.key) return;
@@ -832,6 +963,6 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 </script>
 
 <script src="/metrics.js" defer></script>
-
+<script src="/ablage.js?v=8"></script>
 </body>
 </html>
