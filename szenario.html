@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Szenario auswählen</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
   <style>
     :root{
@@ -18,7 +18,15 @@
       --shadow: 0 14px 36px rgba(0,0,0,.55);
 
       --radius: 16px;
+
+      --rot:#e53935;
+      --gelb:#f3fc02;
+      --gruen:#2e7d32;
+      --schwarz:#111;
     }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
 
     body{
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
@@ -27,18 +35,19 @@
       background-image: url(fotos/Patientenkarte.jpg);
       background-size: cover;
       background-position: center;
+      min-height:100vh;
+      position:relative;
+      color:var(--text);
       display:flex;
       flex-direction:column;
       align-items:center;
       justify-content:flex-start;
-      min-height:100vh;
-      position:relative;
-      color:var(--text);
+      padding-bottom: 20px;
     }
 
     body::before{
       content:"";
-      position:absolute;
+      position:fixed;
       inset:0;
       background: rgba(0,0,0,0.55);
       z-index:-1;
@@ -49,7 +58,7 @@
       top:0;
       z-index:50;
       width:min(92vw, 560px);
-      margin:10px auto 0;
+      margin:10px auto 10px;
       padding:10px;
       display:flex;
       align-items:center;
@@ -75,34 +84,31 @@
       font-weight:1000;
       letter-spacing:.2px;
       opacity:.95;
-      user-select:none;
     }
 
     .container{
-      margin:14px 0 18px;
-      background: rgba(0,0,0,0.20);
+      background: rgba(0,0,0,0.22);
       border: 1px solid rgba(255,255,255,.16);
       backdrop-filter: blur(14px) saturate(140%);
       -webkit-backdrop-filter: blur(14px) saturate(140%);
-      padding: 26px 22px;
+      padding: 22px 18px;
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      max-width: 520px;
       width: min(92vw, 560px);
       text-align: center;
     }
 
     h2{
       margin: 0 0 14px;
-      font-size: 28px;
+      font-size: 26px;
       line-height: 1.15;
       text-shadow: 0 2px 10px rgba(0,0,0,.55);
     }
 
     select, button{
-      font-size: 1.1em;
+      font-size: 1.05em;
       padding: 14px 14px;
-      margin: 12px 0;
+      margin: 10px 0;
       width: 100%;
       border-radius: 14px;
       border: 1px solid rgba(255,255,255,.18);
@@ -131,9 +137,7 @@
     .btn-secondary{
       background: rgba(55,65,81,.92);
       border: 1px solid rgba(255,255,255,.14);
-      box-shadow: 0 10px 22px rgba(0,0,0,.35);
     }
-    .btn-secondary:hover{ filter: brightness(1.07); }
 
     .hint{
       margin-top: 10px;
@@ -158,13 +162,11 @@
       color: var(--text);
       padding: 18px 18px;
       border-radius: 14px;
-      max-width: 520px;
+      max-width: 560px;
       width: 100%;
       text-align: left;
-
       border: 1px solid rgba(255,255,255,.14);
       box-shadow: 0 18px 46px rgba(0,0,0,.65);
-
       backdrop-filter: blur(16px) saturate(140%);
       -webkit-backdrop-filter: blur(16px) saturate(140%);
     }
@@ -197,17 +199,9 @@
       background: rgba(255,255,255,.14);
       border: 1px solid rgba(255,255,255,.22);
     }
-    .modal-actions .details:hover{ filter: brightness(1.10); }
     .modal-actions .close{
       background: linear-gradient(180deg, var(--accent), var(--accentDark));
       border:none;
-    }
-    .modal-actions .close:hover{ filter: brightness(1.08); }
-
-    @media (max-width:420px){
-      h2{ font-size: 24px; }
-      .container{ padding: 22px 18px; }
-      .tb-btn{ min-width:110px; }
     }
 
     .det-details{
@@ -241,333 +235,350 @@
       border-color:rgba(34,197,94,.45);
       color:#bbf7d0;
     }
-
     .det-body{ padding:14px; padding-top:0; }
-    .det-row{ display:flex; gap:10px; align-items:center; font-weight:900; padding-top:10px; }
+    .det-row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      font-weight:900;
+      padding-top:10px;
+    }
     .det-row input{ width:18px; height:18px; }
-    .det-grid{ display:grid; gap:10px; margin-top:10px; }
-    .det-step{ padding:12px; border-radius:14px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.08); }
+
+    .det-grid{
+      display:grid;
+      gap:10px;
+      margin-top:10px;
+    }
+    .det-step{
+      padding:12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.08);
+    }
     .det-label{ font-weight:1000; margin-bottom:8px; }
-    .det-ctrl{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-    .det-mid{ opacity:.9; }
+
+    .det-ctrl{
+      display:grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap:10px;
+      align-items:center;
+    }
+    .det-mid{
+      opacity:.9;
+      font-weight:1000;
+      padding:10px 10px;
+      border-radius: 12px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      text-align:center;
+      min-width: 86px;
+    }
 
     .det-min,.det-to{
       -webkit-appearance:none;
       appearance:none;
-      padding:10px 12px;
+      padding:12px 12px;
       border-radius:14px;
       border:1px solid rgba(255,255,255,.22);
       background:rgba(0,0,0,.28);
       color:#fff;
       font-weight:1000;
+      width: 100%;
     }
-    .det-min{ min-width:92px; }
-    .det-to{ min-width:130px; }
-
-    .det-to.to-rot{ background:rgba(229,57,53,.90); border-color: rgba(229,57,53,.90); }
+    .det-to.to-rot{ background:rgba(229,57,53,.85); border-color: rgba(229,57,53,.85); }
     .det-to.to-gelb{ background:rgba(243,252,2,.92); border-color: rgba(243,252,2,.92); color:#111; }
-    .det-to.to-gruen{ background:rgba(46,125,50,.90); border-color: rgba(46,125,50,.90); }
-    .det-to.to-schwarz{ background:rgba(17,17,17,.92); border-color: rgba(17,17,17,.92); }
+    .det-to.to-gruen{ background:rgba(46,125,50,.85); border-color: rgba(46,125,50,.85); }
+    .det-to.to-schwarz{ background:rgba(17,17,17,.90); border-color: rgba(17,17,17,.90); }
 
     .det-gruen .det-label{ color:#86efac; }
     .det-gelb .det-label{ color:#fde047; }
     .det-rot .det-label{ color:#fca5a5; }
+
+    @media (max-width:520px){
+      .tb-title{ display:none; }
+      .det-ctrl{ grid-template-columns: 1fr; }
+      .det-mid{ text-align:left; }
+    }
   </style>
 
-  <link rel="stylesheet" href="/css/app-flow.css?v=2" />
+  <link rel="stylesheet" href="/css/app-flow.css?v=2">
 </head>
 
 <body>
 
-  <header class="topbar">
-    <button class="tb-btn" type="button" onclick="location.href='index.html'">Startseite</button>
-    <div class="tb-title">Szenario</div>
-    <button class="tb-btn" type="button" onclick="location.href='instruktor.html'">Instruktor</button>
-  </header>
+<header class="topbar">
+  <button class="tb-btn" onclick="location.href='index.html'">Startseite</button>
+  <div class="tb-title">Szenario</div>
+  <button class="tb-btn" onclick="location.href='instruktor.html'">Instruktor</button>
+</header>
 
-  <div class="container">
-    <h2>Szenario für Einsatz auswählen</h2>
+<div class="container">
+  <h2>Szenario für Einsatz auswählen</h2>
 
-    <select id="bildAuswahl" onchange="zeigePopup()">
-      <option value="fotos/Melder1rett.png">Szenario 1. Schlägerei auf Party</option>
-      <option value="fotos/MelderBahnhof.png">Szenario 2. Unklare Lage am Bahnhof</option>
-      <option value="fotos/MelderIndustrie.png">Szenario 3. Schnittverletzung in der Industriehalle</option>
-      <option value="fotos/MelderZOB.png">Szenario 4. Platzwunde ZOB</option>
-      <option value="fotos/MelderGalerie.jpg">Szenario 5. Schlägerei in der Einkaufspassage</option>
-      <option value="fotos/MelderKaufhaus.jpg">Szenario 6. Schnittverletzung im Kaufhaus</option>
-      <option value="fotos/MelderRegionalbahn.jpg">Szenario 7. Schlägerei in der Regionalbahn</option>
-      <option value="fotos/MelderFußgängerzone.jpg">Szenario 8. Unklare Lage in der Fußgängerzone</option>
-    </select>
+  <select id="bildAuswahl" onchange="zeigePopup()">
+    <option value="fotos/Melder1rett.png">Szenario 1 Schlägerei auf Party</option>
+    <option value="fotos/MelderBahnhof.png">Szenario 2 Unklare Lage am Bahnhof</option>
+    <option value="fotos/MelderIndustrie.png">Szenario 3 Schnittverletzung Industriehalle</option>
+    <option value="fotos/MelderZOB.png">Szenario 4 Platzwunde ZOB</option>
+    <option value="fotos/MelderGalerie.jpg">Szenario 5 Schlägerei Einkaufspassage</option>
+    <option value="fotos/MelderKaufhaus.jpg">Szenario 6 Schnittverletzung Kaufhaus</option>
+    <option value="fotos/MelderRegionalbahn.jpg">Szenario 7 Schlägerei Regionalbahn</option>
+    <option value="fotos/MelderFußgängerzone.jpg">Szenario 8 Unklare Lage Fußgängerzone</option>
+  </select>
 
-    <button type="button" onclick="speichern()">Szenario speichern</button>
+  <button onclick="speichern()">Szenario speichern</button>
 
-    <button class="btn-secondary" type="button" onclick="openDetailsForCurrent()">Szenario Details lesen</button>
+  <button class="btn-secondary" onclick="openDetailsForCurrent()">Szenario Details lesen</button>
 
-    <details class="det-details" id="detDetails">
-      <summary class="det-summary">
-        <span>SK Verschlechterung in Patientenablage</span>
-        <span class="chip" id="detStateChip">Aus</span>
-      </summary>
+  <details class="det-details" id="detDetails">
+    <summary class="det-summary">
+      <span>SK Verschlechterung in Patientenablage</span>
+      <span class="chip" id="detStateChip">Aus</span>
+    </summary>
 
-      <div class="det-body">
-        <label class="det-row">
-          <input id="detEnabled" type="checkbox" />
-          <span>Aktivieren</span>
-        </label>
+    <div class="det-body">
+      <label class="det-row">
+        <input id="detEnabled" type="checkbox" />
+        <span>Aktivieren</span>
+      </label>
 
-        <div class="det-grid">
-          <div class="det-step det-gruen">
-            <div class="det-label">SK3 GRÜN</div>
-            <div class="det-ctrl">
-              <select id="detGruenMin" class="det-min"></select>
-              <div class="det-mid">Min zu</div>
-              <select id="detGruenTo" class="det-to">
-                <option value="gelb">GELB</option>
-                <option value="rot">ROT</option>
-                <option value="schwarz">SCHWARZ</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="det-step det-gelb">
-            <div class="det-label">SK2 GELB</div>
-            <div class="det-ctrl">
-              <select id="detGelbMin" class="det-min"></select>
-              <div class="det-mid">Min zu</div>
-              <select id="detGelbTo" class="det-to">
-                <option value="rot">ROT</option>
-                <option value="schwarz">SCHWARZ</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="det-step det-rot">
-            <div class="det-label">SK1 ROT</div>
-            <div class="det-ctrl">
-              <select id="detRotMin" class="det-min"></select>
-              <div class="det-mid">Min zu</div>
-              <select id="detRotTo" class="det-to">
-                <option value="schwarz">SCHWARZ</option>
-              </select>
-            </div>
+      <div class="det-grid">
+        <div class="det-step det-gruen">
+          <div class="det-label">SK3 GRÜN</div>
+          <div class="det-ctrl">
+            <select id="detGruenMin" class="det-min"></select>
+            <div class="det-mid">Minuten zu</div>
+            <select id="detGruenTo" class="det-to">
+              <option value="gelb">GELB</option>
+              <option value="rot">ROT</option>
+              <option value="schwarz">SCHWARZ</option>
+            </select>
           </div>
         </div>
 
-        <button type="button" class="btn-secondary" style="margin-top:12px;width:100%;" onclick="saveDeteriorationGlobal()">
-          Verschlechterung speichern
-        </button>
+        <div class="det-step det-gelb">
+          <div class="det-label">SK2 GELB</div>
+          <div class="det-ctrl">
+            <select id="detGelbMin" class="det-min"></select>
+            <div class="det-mid">Minuten zu</div>
+            <select id="detGelbTo" class="det-to">
+              <option value="rot">ROT</option>
+              <option value="schwarz">SCHWARZ</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="det-step det-rot">
+          <div class="det-label">SK1 ROT</div>
+          <div class="det-ctrl">
+            <select id="detRotMin" class="det-min"></select>
+            <div class="det-mid">Minuten zu</div>
+            <select id="detRotTo" class="det-to">
+              <option value="schwarz">SCHWARZ</option>
+            </select>
+          </div>
+        </div>
       </div>
-    </details>
 
-    <p class="hint">
-      Das gewählte Szenario Bild wird beim Status 1 automatisch angezeigt.
-    </p>
-  </div>
+      <button type="button" class="btn-secondary" style="margin-top:12px;width:100%;" onclick="saveDeteriorationGlobal()">
+        Verschlechterung speichern
+      </button>
+    </div>
+  </details>
 
-  <div class="modal" id="infoModal" role="dialog" aria-modal="true">
-    <div class="modal-content">
-      <h3 id="modalTitle">Szenario</h3>
-      <p id="modalText"></p>
+  <p class="hint">Das gewählte Szenario Bild wird beim Status 1 automatisch angezeigt.</p>
+</div>
 
-      <div class="modal-actions">
-        <button class="details" type="button" onclick="openDetailsFromModal()">Details lesen</button>
-        <button class="close" type="button" onclick="schliesseModal()">Schließen</button>
-      </div>
+<div class="modal" id="infoModal" role="dialog" aria-modal="true">
+  <div class="modal-content">
+    <h3 id="modalTitle">Szenario</h3>
+    <p id="modalText"></p>
+
+    <div class="modal-actions">
+      <button class="details" type="button" onclick="openDetailsFromModal()">Details lesen</button>
+      <button class="close" type="button" onclick="schliesseModal()">Schließen</button>
     </div>
   </div>
+</div>
 
-  <script>
-    const beschreibungen = {
-      "fotos/Melder1rett.png": "Szenario 1. Schlägerei auf Party. Mehrere Verletzte nach Schlägerei mit Messerbeteiligung.",
-      "fotos/MelderBahnhof.png": "Szenario 2. Unklare Lage am Bahnhof. Unbekannte schlagen und stechen auf Passanten ein.",
-      "fotos/MelderIndustrie.png": "Szenario 3. Schnittverletzung. Mehrere Verletzte in einer Industriehalle nach Feierlichkeiten.",
-      "fotos/MelderZOB.png": "Szenario 4. Platzwunde. Mehrere Verletzte am ZOB nach psychischem Ausnahmezustand.",
-      "fotos/MelderGalerie.jpg": "Szenario 5. Schlägerei in der Einkaufspassage. Durch mehrere Täter wurden Passanten verletzt.",
-      "fotos/MelderKaufhaus.jpg": "Szenario 6. Schnittverletzung im Kaufhaus. Amoklauf im Kaufhaus.",
-      "fotos/MelderRegionalbahn.jpg": "Szenario 7. Schlägerei in der Regionalbahn. Mehrere Verletzte. Zug steht im Bahnhof.",
-      "fotos/MelderFußgängerzone.jpg": "Szenario 8. Unklare Lage in der Fußgängerzone. Viele Verletzte durch verschiedene Täter."
+<script>
+  const LS_DET_GLOBAL = 'ablage.deterioration.global.v1';
+
+  const beschreibungen = {
+    "fotos/Melder1rett.png": "Szenario 1 Schlägerei auf Party. Mehrere Verletzte nach Schlägerei mit Messerbeteiligung.",
+    "fotos/MelderBahnhof.png": "Szenario 2 Unklare Lage am Bahnhof. Unbekannte schlagen und stechen auf Passanten ein.",
+    "fotos/MelderIndustrie.png": "Szenario 3 Schnittverletzung. Mehrere Verletzte in einer Industriehalle nach Feierlichkeiten.",
+    "fotos/MelderZOB.png": "Szenario 4 Platzwunde. Mehrere Verletzte am ZOB nach psychischem Ausnahmezustand.",
+    "fotos/MelderGalerie.jpg": "Szenario 5 Schlägerei Einkaufspassage. Durch mehrere Täter wurden Passanten verletzt.",
+    "fotos/MelderKaufhaus.jpg": "Szenario 6 Schnittverletzung Kaufhaus. Amoklauf im Kaufhaus.",
+    "fotos/MelderRegionalbahn.jpg": "Szenario 7 Schlägerei Regionalbahn. Mehrere Verletzte, Zug steht im Bahnhof.",
+    "fotos/MelderFußgängerzone.jpg": "Szenario 8 Unklare Lage Fußgängerzone. Viele Verletzte durch verschiedene Täter."
+  };
+
+  const detailsPages = {
+    "fotos/Melder1rett.png": "/status4.html",
+    "fotos/MelderBahnhof.png": "/status4a.html",
+    "fotos/MelderIndustrie.png": "/status4b.html",
+    "fotos/MelderZOB.png": "/status4c.html",
+    "fotos/MelderGalerie.jpg": "/status4d.html",
+    "fotos/MelderKaufhaus.jpg": "/status4e.html",
+    "fotos/MelderRegionalbahn.jpg": "/status4f.html",
+    "fotos/MelderFußgängerzone.jpg": "/status4g.html"
+  };
+
+  function jget(k,f){ try{ const v=localStorage.getItem(k); return v ? JSON.parse(v) : f; }catch{ return f; } }
+  function jset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+
+  function normalizeCat(c){
+    const x = String(c||'').toLowerCase().replace('grün','gruen');
+    if(['rot','gelb','gruen','schwarz'].includes(x)) return x;
+    return null;
+  }
+
+  function fillMinuteSelect(sel, defaultMin){
+    if(!sel) return;
+    sel.innerHTML = '';
+    const values = [0,1,2,3,4,5,6,7,8,9,10,12,15,20,25,30,40,45,60];
+    for(const v of values){
+      const opt = document.createElement('option');
+      opt.value = String(v);
+      if(v === 0) opt.textContent = 'Aus';
+      else opt.textContent = v === 1 ? '1 Min' : v + ' Min';
+      sel.appendChild(opt);
+    }
+    sel.value = String(defaultMin ?? 0);
+  }
+
+  function applySkSelectStyle(sel){
+    if(!sel) return;
+    const v = normalizeCat(sel.value);
+    sel.classList.remove('to-rot','to-gelb','to-gruen','to-schwarz');
+    if(v) sel.classList.add('to-' + v);
+  }
+
+  function speichern(){
+    const bild = document.getElementById("bildAuswahl").value;
+    localStorage.setItem("meldebild", bild);
+    alert("Gespeichert");
+  }
+
+  function zeigePopup(){
+    const key = document.getElementById("bildAuswahl").value;
+    const sel = document.getElementById("bildAuswahl");
+    const title = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : "Szenario";
+
+    document.getElementById("modalTitle").textContent = title;
+    document.getElementById("modalText").textContent = beschreibungen[key] || "Keine Beschreibung vorhanden.";
+    document.getElementById("infoModal").style.display = "flex";
+  }
+
+  function schliesseModal(){
+    document.getElementById("infoModal").style.display = "none";
+  }
+
+  function openScenarioDetailsByKey(key){
+    const url = detailsPages[key];
+    if(!url){
+      alert("Für dieses Szenario ist noch keine Detailseite hinterlegt.");
+      return;
+    }
+    sessionStorage.setItem("fromScenario", "1");
+    sessionStorage.setItem("scenario_back_to", "/szenario.html");
+    window.location.href = url;
+  }
+
+  function openDetailsForCurrent(){
+    const key = document.getElementById("bildAuswahl").value;
+    openScenarioDetailsByKey(key);
+  }
+
+  function openDetailsFromModal(){
+    const key = document.getElementById("bildAuswahl").value;
+    schliesseModal();
+    openScenarioDetailsByKey(key);
+  }
+
+  document.getElementById("infoModal").addEventListener("click", (e) => {
+    if (e.target && e.target.id === "infoModal") schliesseModal();
+  });
+
+  function loadDeteriorationGlobal(){
+    const g = jget(LS_DET_GLOBAL, { enabled:false, steps:{} });
+    const enabled = !!g.enabled;
+
+    document.getElementById('detEnabled').checked = enabled;
+
+    const steps = (g.steps && typeof g.steps === 'object') ? g.steps : {};
+
+    const gr = steps.gruen || {};
+    const ge = steps.gelb || {};
+    const ro = steps.rot || {};
+
+    fillMinuteSelect(document.getElementById('detGruenMin'), Number(gr.afterMin || 0));
+    fillMinuteSelect(document.getElementById('detGelbMin'), Number(ge.afterMin || 0));
+    fillMinuteSelect(document.getElementById('detRotMin'), Number(ro.afterMin || 0));
+
+    document.getElementById('detGruenTo').value = normalizeCat(gr.to) || 'gelb';
+    document.getElementById('detGelbTo').value = normalizeCat(ge.to) || 'rot';
+    document.getElementById('detRotTo').value = normalizeCat(ro.to) || 'schwarz';
+
+    ['detGruenTo','detGelbTo','detRotTo'].forEach(id=>{
+      const el = document.getElementById(id);
+      applySkSelectStyle(el);
+    });
+
+    paintChip();
+  }
+
+  function paintChip(){
+    const chip = document.getElementById('detStateChip');
+    const on = document.getElementById('detEnabled').checked === true;
+    chip.textContent = on ? 'An' : 'Aus';
+    chip.classList.toggle('on', on);
+  }
+
+  function saveDeteriorationGlobal(){
+    const enabled = document.getElementById('detEnabled').checked === true;
+
+    const g = {
+      enabled: enabled,
+      steps: {
+        gruen: {
+          afterMin: Number(document.getElementById('detGruenMin').value || 0),
+          to: normalizeCat(document.getElementById('detGruenTo').value) || 'gelb'
+        },
+        gelb: {
+          afterMin: Number(document.getElementById('detGelbMin').value || 0),
+          to: normalizeCat(document.getElementById('detGelbTo').value) || 'rot'
+        },
+        rot: {
+          afterMin: Number(document.getElementById('detRotMin').value || 0),
+          to: normalizeCat(document.getElementById('detRotTo').value) || 'schwarz'
+        }
+      }
     };
 
-    const detailsPages = {
-      "fotos/Melder1rett.png": "/status4.html",
-      "fotos/MelderBahnhof.png": "/status4a.html",
-      "fotos/MelderIndustrie.png": "/status4b.html",
-      "fotos/MelderZOB.png": "/status4c.html",
-      "fotos/MelderGalerie.jpg": "/status4d.html",
-      "fotos/MelderKaufhaus.jpg": "/status4e.html",
-      "fotos/MelderRegionalbahn.jpg": "/status4f.html",
-      "fotos/MelderFußgängerzone.jpg": "/status4g.html"
-    };
+    jset(LS_DET_GLOBAL, g);
+    paintChip();
+    alert("Gespeichert");
+  }
 
-    function speichern(){
-      const bild = document.getElementById("bildAuswahl").value;
-      localStorage.setItem("meldebild", bild);
-      alert("Gespeichert: " + bild);
-    }
+  window.addEventListener("DOMContentLoaded", () => {
+    const gespeichertes = localStorage.getItem("meldebild");
+    if (gespeichertes) document.getElementById("bildAuswahl").value = gespeichertes;
 
-    function zeigePopup(){
-      const key = document.getElementById("bildAuswahl").value;
-      const sel = document.getElementById("bildAuswahl");
-      const title = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : "Szenario";
-
-      document.getElementById("modalTitle").textContent = title;
-      document.getElementById("modalText").textContent = beschreibungen[key] || "Keine Beschreibung vorhanden.";
-      document.getElementById("infoModal").style.display = "flex";
-    }
-
-    function schliesseModal(){
-      document.getElementById("infoModal").style.display = "none";
-    }
-
-    function openScenarioDetailsByKey(key){
-      const url = detailsPages[key];
-      if(!url){
-        alert("Für dieses Szenario ist noch keine Detailseite hinterlegt.");
-        return;
-      }
-      sessionStorage.setItem("fromScenario", "1");
-      sessionStorage.setItem("scenario_back_to", "/szenario.html");
-      window.location.href = url;
-    }
-
-    function openDetailsForCurrent(){
-      const key = document.getElementById("bildAuswahl").value;
-      openScenarioDetailsByKey(key);
-    }
-
-    function openDetailsFromModal(){
-      const key = document.getElementById("bildAuswahl").value;
-      schliesseModal();
-      openScenarioDetailsByKey(key);
-    }
-
-    document.getElementById("infoModal").addEventListener("click", (e) => {
-      if (e.target && e.target.id === "infoModal") schliesseModal();
+    ['detGruenTo','detGelbTo','detRotTo'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.addEventListener('change', ()=>applySkSelectStyle(el));
     });
-  </script>
 
-  <script>
-    const LS_DET_GLOBAL = 'ablage.deterioration.global.v1';
+    document.getElementById('detEnabled').addEventListener('change', paintChip);
 
-    function fillMinuteSelect(sel, defaultMin){
-      if(!sel) return;
-      sel.innerHTML = '';
-      const values = [0,1,2,3,4,5,6,7,8,9,10,12,15,20,25,30,40,45,60];
-      for(const v of values){
-        const opt = document.createElement('option');
-        opt.value = String(v);
-        opt.textContent = v === 0 ? 'Aus' : String(v);
-        sel.appendChild(opt);
-      }
-      sel.value = String(defaultMin ?? 0);
-    }
+    loadDeteriorationGlobal();
+  });
+</script>
 
-    function applySkSelectStyle(sel){
-      if(!sel) return;
-      sel.classList.remove('to-rot','to-gelb','to-gruen','to-schwarz');
-      const v = String(sel.value || '').toLowerCase().replace('grün','gruen');
-      if(v === 'rot') sel.classList.add('to-rot');
-      if(v === 'gelb') sel.classList.add('to-gelb');
-      if(v === 'gruen') sel.classList.add('to-gruen');
-      if(v === 'schwarz') sel.classList.add('to-schwarz');
-    }
-
-    function updateDetChip(){
-      const chip = document.getElementById('detStateChip');
-      const en = document.getElementById('detEnabled');
-      if(!chip || !en) return;
-      chip.textContent = en.checked ? 'An' : 'Aus';
-      chip.classList.toggle('on', !!en.checked);
-    }
-
-    function saveDeteriorationGlobal(){
-      const cfg = {
-        enabled: document.getElementById('detEnabled') ? document.getElementById('detEnabled').checked : false,
-        steps: {
-          gruen: {
-            afterMin: Number((document.getElementById('detGruenMin') || {}).value || 0),
-            to: (document.getElementById('detGruenTo') || {}).value || 'gelb'
-          },
-          gelb: {
-            afterMin: Number((document.getElementById('detGelbMin') || {}).value || 0),
-            to: (document.getElementById('detGelbTo') || {}).value || 'rot'
-          },
-          rot: {
-            afterMin: Number((document.getElementById('detRotMin') || {}).value || 0),
-            to: (document.getElementById('detRotTo') || {}).value || 'schwarz'
-          }
-        }
-      };
-
-      try{
-        localStorage.setItem(LS_DET_GLOBAL, JSON.stringify(cfg));
-      }catch{}
-
-      updateDetChip();
-      alert('Verschlechterung gespeichert');
-    }
-
-    function loadDeteriorationGlobal(){
-      let cfg=null;
-      try{
-        const raw = localStorage.getItem(LS_DET_GLOBAL);
-        cfg = raw ? JSON.parse(raw) : null;
-      }catch{}
-      if(!cfg) cfg = { enabled:false, steps:{} };
-
-      const en = document.getElementById('detEnabled');
-      if(en) en.checked = !!cfg.enabled;
-
-      const gr = (cfg.steps && cfg.steps.gruen) ? cfg.steps.gruen : {};
-      const ge = (cfg.steps && cfg.steps.gelb) ? cfg.steps.gelb : {};
-      const ro = (cfg.steps && cfg.steps.rot) ? cfg.steps.rot : {};
-
-      const gMin = document.getElementById('detGruenMin');
-      const yMin = document.getElementById('detGelbMin');
-      const rMin = document.getElementById('detRotMin');
-
-      if(gMin && gr.afterMin != null) gMin.value = String(gr.afterMin);
-      if(yMin && ge.afterMin != null) yMin.value = String(ge.afterMin);
-      if(rMin && ro.afterMin != null) rMin.value = String(ro.afterMin);
-
-      const gTo = document.getElementById('detGruenTo');
-      const yTo = document.getElementById('detGelbTo');
-      const rTo = document.getElementById('detRotTo');
-
-      if(gTo && gr.to) gTo.value = String(gr.to);
-      if(yTo && ge.to) yTo.value = String(ge.to);
-      if(rTo && ro.to) rTo.value = String(ro.to);
-
-      applySkSelectStyle(gTo);
-      applySkSelectStyle(yTo);
-      applySkSelectStyle(rTo);
-
-      updateDetChip();
-    }
-
-    window.addEventListener("DOMContentLoaded", () => {
-      const gespeichertes = localStorage.getItem("meldebild");
-      if (gespeichertes) document.getElementById("bildAuswahl").value = gespeichertes;
-
-      fillMinuteSelect(document.getElementById('detGruenMin'), 10);
-      fillMinuteSelect(document.getElementById('detGelbMin'), 5);
-      fillMinuteSelect(document.getElementById('detRotMin'), 8);
-
-      ['detGruenTo','detGelbTo','detRotTo'].forEach(id=>{
-        const el = document.getElementById(id);
-        if(el){
-          applySkSelectStyle(el);
-          el.addEventListener('change', ()=>applySkSelectStyle(el));
-        }
-      });
-
-      const en = document.getElementById('detEnabled');
-      if(en) en.addEventListener('change', updateDetChip);
-
-      loadDeteriorationGlobal();
-    });
-  </script>
-
-  <script src="/metrics.js" defer></script>
+<script src="/metrics.js" defer></script>
 </body>
 </html>
