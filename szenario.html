@@ -244,6 +244,62 @@
       Szenario-Details lesen
     </button>
 
+    
+    <div id="detPanel" style="margin-top:14px;padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.18);text-align:left;">
+      <div style="font-weight:900;margin-bottom:10px;">SK Verschlechterung in Patientenablage</div>
+
+      <label style="display:flex;gap:10px;align-items:center;font-weight:800;">
+        <input id="detEnabled" type="checkbox" style="width:18px;height:18px;">
+        Aktivieren
+      </label>
+
+      <div style="margin-top:10px;display:grid;gap:10px;">
+        <div style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+          <div style="font-weight:800;">SK3 GRÜN</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+            <input id="detGruenMin" type="number" min="0" step="1" value="10"
+                   style="width:92px;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.28);color:#fff;font-weight:900;">
+            <div style="opacity:.9;">Min zu</div>
+            <select id="detGruenTo" style="width:140px;background:rgba(255,255,255,.92);color:#111;font-weight:800;">
+              <option value="gelb" selected>GELB</option>
+              <option value="rot">ROT</option>
+              <option value="schwarz">SCHWARZ</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+          <div style="font-weight:800;">SK2 GELB</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+            <input id="detGelbMin" type="number" min="0" step="1" value="5"
+                   style="width:92px;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.28);color:#fff;font-weight:900;">
+            <div style="opacity:.9;">Min zu</div>
+            <select id="detGelbTo" style="width:140px;background:rgba(255,255,255,.92);color:#111;font-weight:800;">
+              <option value="rot" selected>ROT</option>
+              <option value="schwarz">SCHWARZ</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+          <div style="font-weight:800;">SK1 ROT</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+            <input id="detRotMin" type="number" min="0" step="1" value="0"
+                   style="width:92px;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.28);color:#fff;font-weight:900;">
+            <div style="opacity:.9;">Min zu</div>
+            <select id="detRotTo" style="width:140px;background:rgba(255,255,255,.92);color:#111;font-weight:800;">
+              <option value="schwarz" selected>SCHWARZ</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" class="btn-secondary" style="margin-top:12px;width:100%;" onclick="saveDeteriorationGlobal()">
+        Verschlechterung speichern
+      </button>
+    </div>
+
+
     <p class="hint">
       Das gewählte Szenario-Bild wird beim „Status 1“ automatisch angezeigt.
     </p>
@@ -286,6 +342,45 @@
       "fotos/MelderRegionalbahn.jpg": "/status4f.html",
       "fotos/MelderFußgängerzone.jpg": "/status4g.html"
     };
+
+    const LS_DET_GLOBAL = 'ablage.deterioration.global.v1';
+
+    function saveDeteriorationGlobal(){
+      const cfg = {
+        enabled: document.getElementById('detEnabled').checked,
+        steps: {
+          gruen: { afterMin: Number(document.getElementById('detGruenMin').value || 0), to: document.getElementById('detGruenTo').value },
+          gelb:  { afterMin: Number(document.getElementById('detGelbMin').value || 0),  to: document.getElementById('detGelbTo').value },
+          rot:   { afterMin: Number(document.getElementById('detRotMin').value || 0),   to: document.getElementById('detRotTo').value }
+        }
+      };
+      localStorage.setItem(LS_DET_GLOBAL, JSON.stringify(cfg));
+      alert('Verschlechterung gespeichert');
+    }
+
+    function loadDeteriorationGlobal(){
+      try{
+        const raw = localStorage.getItem(LS_DET_GLOBAL);
+        if(!raw) return;
+        const cfg = JSON.parse(raw);
+        document.getElementById('detEnabled').checked = !!cfg.enabled;
+
+        const s = cfg.steps || {};
+        if(s.gruen){
+          document.getElementById('detGruenMin').value = s.gruen.afterMin ?? 10;
+          document.getElementById('detGruenTo').value = s.gruen.to ?? 'gelb';
+        }
+        if(s.gelb){
+          document.getElementById('detGelbMin').value = s.gelb.afterMin ?? 5;
+          document.getElementById('detGelbTo').value = s.gelb.to ?? 'rot';
+        }
+        if(s.rot){
+          document.getElementById('detRotMin').value = s.rot.afterMin ?? 0;
+          document.getElementById('detRotTo').value = s.rot.to ?? 'schwarz';
+        }
+      }catch(_){}
+    }
+
 
     function speichern(){
       const bild = document.getElementById("bildAuswahl").value;
@@ -332,6 +427,7 @@
     }
 
     window.addEventListener("DOMContentLoaded", () => {
+      loadDeteriorationGlobal();
       const gespeichertes = localStorage.getItem("meldebild");
       if (gespeichertes) document.getElementById("bildAuswahl").value = gespeichertes;
     });
