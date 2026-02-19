@@ -368,6 +368,24 @@
   .opt-summary::-webkit-details-marker{ display:none; }
   .opt-body{ padding:12px; padding-top:0; }
 
+.seg button[data-sk="rot"]{ border-color: rgba(229,57,53,.55); }
+  .seg button[data-sk="gelb"]{ border-color: rgba(243,252,2,.55); }
+  .seg button[data-sk="gruen"]{ border-color: rgba(46,125,50,.55); }
+  .seg button[data-sk="schwarz"]{ border-color: rgba(17,17,17,.75); }
+
+  .seg button[data-sk="rot"].active{ background:rgba(229,57,53,.85); color:#fff; }
+  .seg button[data-sk="gelb"].active{ background:rgba(243,252,2,.92); color:#111; }
+  .seg button[data-sk="gruen"].active{ background:rgba(46,125,50,.85); color:#fff; }
+  .seg button[data-sk="schwarz"].active{ background:rgba(17,17,17,.90); color:#fff; }
+
+  body.training-mode #list{ display:flex; flex-direction:column; gap:14px; }
+  body.training-mode article.card{ width:100%; max-width: 820px; margin:0 auto; }
+  body.training-mode .viewport{ padding-bottom: 140px; }
+  .det-to.to-rot{ background:rgba(229,57,53,.85) !important; border-color: rgba(229,57,53,.85) !important; }
+    .det-to.to-gelb{ background:rgba(243,252,2,.92) !important; border-color: rgba(243,252,2,.92) !important; color:#111 !important; }
+    .det-to.to-gruen{ background:rgba(46,125,50,.85) !important; border-color: rgba(46,125,50,.85) !important; }
+    .det-to.to-schwarz{ background:rgba(17,17,17,.90) !important; border-color: rgba(17,17,17,.90) !important; }
+
 </style>
 
 <script src="/freigabe.js?v=2025-09-11-REV2" defer></script>
@@ -453,6 +471,30 @@
 "use strict";
 
 /* ===== Storage Helpers ===== */
+const DET_MINUTES = [0,1,2,3,4,5,7,10,12,15,20,25,30,40,45,60];
+
+function fillMinuteSelect(sel, defaultVal){
+  if(!sel) return;
+  sel.innerHTML = '';
+  for(const m of DET_MINUTES){
+    const opt=document.createElement('option');
+    opt.value=String(m);
+    opt.textContent = m===0 ? 'Aus' : String(m);
+    sel.appendChild(opt);
+  }
+  sel.value = String(defaultVal ?? 0);
+}
+
+function applySkSelectStyle(selectEl){
+  if(!selectEl) return;
+  const v = String(selectEl.value||'');
+  selectEl.classList.remove('to-rot','to-gelb','to-gruen','to-schwarz');
+  if(v==='rot') selectEl.classList.add('to-rot');
+  if(v==='gelb') selectEl.classList.add('to-gelb');
+  if(v==='gruen') selectEl.classList.add('to-gruen');
+  if(v==='schwarz') selectEl.classList.add('to-schwarz');
+}
+
 function jget(k,f){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):f; }catch(_){ return f; } }
 function jset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } }
 
@@ -611,22 +653,20 @@ function cardHTML(p){
 
         
 <div class="group det" aria-label="Verschlechterung in Ablage">
-          <label class="check" style="gap:8px;">
-            <input type="checkbox" class="det-enable" />
-            <span>Verschlechterung</span>
-          </label>
-          <select class="det-min">
-          <select class="det-to" title="Ziel SK"
-                  style="flex:1;padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.28);color:#fff;font-weight:900;">
-            <option value="gelb">GELB</option>
-            <option value="rot" selected>ROT</option>
-            <option value="gelb">GELB</option>
-    <option value="rot">ROT</option>
+  <label class="check" style="gap:8px;">
+    <input type="checkbox" class="det-enable" />
+    <span>Verschlechterung</span>
+  </label>
+  <select class="det-min" title="Minuten bis Verschlechterung"></select>
+  <select class="det-to" title="Ziel SK"
+          style="flex:1;padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.28);color:#fff;font-weight:900;">
+    <option value="gelb">GELB</option>
+    <option value="rot" selected>ROT</option>
     <option value="schwarz">SCHWARZ</option>
-          </select>
-        </div>
+  </select>
+</div>
   </div>
-</details>
+</details
 
       </div>
     </article>
@@ -686,9 +726,11 @@ function attachCardEvents(){
 
       const detCfg = detMap[pidKey] || { enabled:false, afterMin:0, to:'rot' };
 
-      detEnable.checked = !!detCfg.enabled;
+      fillMinuteSelect(detMin, detCfg.afterMin || 0);
+  detEnable.checked = !!detCfg.enabled;
        __fillDetMinSelect(detMin, detCfg.afterMin || 0);
       detTo.value = detCfg.to || 'rot';
+  applySkSelectStyle(detTo);
 
       const saveDetNow = ()=>{
         const map = getDetPerPat();
@@ -702,7 +744,7 @@ function attachCardEvents(){
 
       detEnable.addEventListener('change', (e)=>{ e.stopPropagation(); saveDetNow(); });
       detMin.addEventListener('change', (e)=>{ e.stopPropagation(); saveDetNow(); });
-      detTo.addEventListener('change', (e)=>{ e.stopPropagation(); saveDetNow(); });
+      detTo.addEventListener('change', (e)=>{ e.stopPropagation(); applySkSelectStyle(detTo); saveDetNow(); });
     }
 
     card.querySelectorAll('.seg button').forEach(btn=>{
@@ -762,6 +804,7 @@ trainingBtn.addEventListener("click", ()=>{
   trainingBtn.classList.toggle("active", training);
   trainingBtn.setAttribute("aria-pressed", String(training));
   trainingBtn.textContent = training ? "Training Patientenablage läuft" : "Training Patientenablage aktivieren";
+  document.body.classList.toggle('training-mode', !!training);
 
   if(!training){
     clearSelectionUI();
