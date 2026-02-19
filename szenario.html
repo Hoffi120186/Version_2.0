@@ -214,13 +214,42 @@
       h2{ font-size: 24px; }
       .container{ padding: 22px 18px; }
     }
-  </style>
+  
+    .topbar{
+      position:sticky; top:0; z-index:20;
+      display:flex; align-items:center; gap:10px;
+      padding:10px 12px;
+      background:rgba(0,0,0,.55);
+      backdrop-filter: blur(8px);
+      border-bottom:1px solid rgba(255,255,255,.12);
+    }
+    .tb-title{ font-weight:900; letter-spacing:.2px; }
+    .tb-btn{
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.10);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:12px;
+      font-weight:900;
+      cursor:pointer;
+    }
+    .tb-btn:active{ transform:scale(.99); }
+    .container{ padding-top: 10px; }
+
+</style>
 
   <!-- WICHTIG: app-flow NACH Inline-CSS, sonst überschreibt es nichts -->
   <link rel="stylesheet" href="/css/app-flow.css?v=2">
 </head>
 
 <body>
+
+  <header class="topbar">
+    <button class="tb-btn" onclick="location.href='index.html'">Startseite</button>
+    <div class="tb-title">Szenario</div>
+    <button class="tb-btn" onclick="location.href='instruktor.html'">Instruktor</button>
+  </header>
+
 
   <a href="Instruktor.html" class="zurueck">Zurück</a>
 
