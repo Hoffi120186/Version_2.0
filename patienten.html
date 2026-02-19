@@ -1,401 +1,764 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Patienten Übersicht</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
   <style>
     :root{
       --text:#e5e7eb;
-      --muted:#cbd5e1;
-      --bg1:#0b0f1a;
-      --shadow:0 14px 36px rgba(0,0,0,.55);
+      --muted:rgba(229,231,235,.75);
+
+      --glass: rgba(255,255,255,.10);
+      --glass2: rgba(255,255,255,.14);
+      --border: rgba(255,255,255,.18);
+      --shadow: 0 14px 36px rgba(0,0,0,.50);
+
+      --radius: 18px;
+
+      --blue1:#1e3a8a;
+      --blue2:#2563eb;
+
+      --red1:#7f1d1d;
+      --red2:#ef4444;
+
+      --green1:#14532d;
+      --green2:#22c55e;
+
+      --yellow1:#713f12;
+      --yellow2:#fbbf24;
+
+      --black1:#0b0f1a;
+      --black2:#111827;
     }
 
-    *{box-sizing:border-box}
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
     body{
       margin:0;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       color:var(--text);
-      background: radial-gradient(1200px 700px at 20% 10%, rgba(37,99,235,.25), transparent 60%),
-                  radial-gradient(900px 700px at 80% 30%, rgba(239,68,68,.22), transparent 60%),
-                  radial-gradient(900px 700px at 70% 85%, rgba(34,197,94,.18), transparent 60%),
-                  var(--bg1);
+      background-image: url(fotos/Patientenkarte.jpg);
+      background-size: cover;
+      background-position:center;
+      background-attachment: fixed;
+      min-height:100vh;
+      position:relative;
+    }
+    body::before{
+      content:"";
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.55);
+      pointer-events:none;
+      z-index:-1;
     }
 
-    /* V7 Overrides: klare Balken, weniger verschachtelt */
-    .stickyStack{ position:sticky; top:0; z-index:40; padding:10px 10px 0; backdrop-filter: blur(10px); }
-    .topbar{ width:min(980px, 96vw); margin:0 auto; display:grid; grid-template-columns: 1fr 1.2fr auto; gap:10px; align-items:center; background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.18); border-radius:18px; padding:12px; }
-    .tbChips{ display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
-    .chip{ padding:10px 12px; border-radius:999px; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.10); font-weight:900; }
+    .wrap{
+      width:min(980px, 94vw);
+      margin: 14px auto 28px;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
 
-    .stack{ width:min(980px, 96vw); margin:10px auto 12px; display:flex; flex-direction:column; gap:10px; }
-    .stackItem{ background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14); border-radius:18px; overflow:hidden; box-shadow:0 14px 30px rgba(0,0,0,.35); }
-    .stackSum{ list-style:none; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 14px; cursor:pointer; }
-    .stackSum::-webkit-details-marker{ display:none; }
-    .sumTitle{ font-weight:1000; font-size:18px; }
-    .sumSub{ opacity:.85; font-weight:800; font-size:13px; margin-top:2px; }
+    .topbar{
+      display:grid;
+      grid-template-columns: 1fr 1.2fr 1fr;
+      gap:10px;
+      align-items:stretch;
+      padding:12px;
+      background: rgba(0,0,0,.42);
+      border:1px solid rgba(255,255,255,.18);
+      border-radius: 18px;
+      backdrop-filter: blur(12px) saturate(140%);
+      -webkit-backdrop-filter: blur(12px) saturate(140%);
+      box-shadow: var(--shadow);
+    }
+
+    .tbLeft{ display:flex; flex-direction:column; gap:10px; }
+    .tbCenter{ display:flex; align-items:center; justify-content:center; text-align:center; font-weight:1000; letter-spacing:.2px; }
+    .tbRight{ display:flex; flex-direction:column; gap:10px; justify-content:flex-start; align-items:stretch; }
+
+    .btn{
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.10);
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-weight: 950;
+      cursor:pointer;
+      box-shadow: 0 10px 22px rgba(0,0,0,.35);
+      transition: transform .12s ease, filter .12s ease, background .12s ease;
+      text-align:center;
+    }
+    .btn:active{ transform: translateY(1px) scale(.99); }
+    .btn.primary{ background: linear-gradient(180deg, var(--blue2), var(--blue1)); border:none; }
+    .btn.danger{ background: linear-gradient(180deg, var(--red2), var(--red1)); border:none; }
+    .btn.ghost{ background: rgba(255,255,255,.08); }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.10);
+      font-weight:1000;
+      min-height:38px;
+      white-space:nowrap;
+    }
+    .pill.on{ background: rgba(34,197,94,.20); border-color: rgba(34,197,94,.45); color:#bbf7d0; }
+    .pill.off{ background: rgba(255,255,255,.10); }
+
+    .stack{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      padding:12px;
+      background: rgba(0,0,0,.30);
+      border:1px solid rgba(255,255,255,.16);
+      border-radius: 18px;
+      backdrop-filter: blur(14px) saturate(140%);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+      box-shadow: var(--shadow);
+    }
+
+    .stackItem{
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      border-radius: 16px;
+      overflow:hidden;
+    }
+
+    .stackItem summary{
+      cursor:pointer;
+      list-style:none;
+      padding:14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      font-weight:1000;
+    }
+    .stackItem summary::-webkit-details-marker{ display:none; }
+
+    .sumMain{ display:flex; flex-direction:column; gap:2px; }
+    .sumTitle{ font-size:16px; }
+    .sumSub{ font-size:13px; opacity:.78; font-weight:900; }
     .sumRight{ display:flex; align-items:center; gap:10px; }
-    .pill{ padding:8px 12px; border-radius:999px; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.10); font-weight:1000; }
-    .pill.danger{ background:rgba(220,38,38,.18); border-color:rgba(220,38,38,.35); }
-    .chev{ opacity:.85; font-size:18px; transform: translateY(-1px); }
-    .stackBody{ padding:0 14px 14px; border-top:1px solid rgba(255,255,255,.10); }
+    .chev{ opacity:.8; font-weight:1000; }
 
-    .panel{ margin-top:12px; padding:12px; border-radius:16px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.22); }
-    .panel.collapsed{ display:none; }
+    .stackBody{
+      padding:14px;
+      padding-top:0;
+    }
 
-    .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-    .btn{ padding:14px 14px; border-radius:16px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.10); color:#fff; font-weight:1000; }
-    .btn.primary{ background:linear-gradient(180deg, rgba(37,99,235,1), rgba(29,78,216,1)); border:none; }
-    .btn.danger{ background:linear-gradient(180deg, rgba(239,68,68,1), rgba(153,27,27,1)); border:none; }
-    .tbBtn{ padding:14px 14px; border-radius:16px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.10); color:#fff; font-weight:1000; }
-    .tbBtn.primary{ background:linear-gradient(180deg, rgba(37,99,235,1), rgba(29,78,216,1)); border:none; }
+    .row{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .switchRow{ display:flex; align-items:center; gap:10px; font-weight:900; }
+    .switchRow input{ width:18px; height:18px; }
 
-    .fieldTitle{ font-weight:1000; margin-bottom:10px; }
-    .chipsRow{ display:flex; gap:10px; flex-wrap:wrap; }
-    .qbtn{ padding:12px 14px; border-radius:999px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.10); color:#fff; font-weight:1000; min-width:64px; }
-    .qbtn.active{ background:rgba(37,99,235,.35); border-color:rgba(37,99,235,.55); }
+    .helpText{ font-size:12px; opacity:.82; margin-left:auto; text-align:right; }
+    @media (max-width:420px){
+      .helpText{ margin-left:0; width:100%; text-align:left; margin-top:6px; }
+      .topbar{ grid-template-columns: 1fr; }
+      .tbCenter{ order:-1; padding:6px 0; }
+      .tbRight{ flex-direction:row; }
+    }
 
-    .select{ width:100%; padding:12px 12px; border-radius:16px; border:1px solid rgba(255,255,255,.14); background:rgba(0,0,0,.25); color:#fff; font-weight:1000; }
-    .hintLine{ margin-top:10px; opacity:.85; font-size:13px; font-weight:800; }
+    .ruleGrid{ display:grid; gap:12px; margin-top:10px; }
+    .ruleCard{ border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.06); border-radius:16px; padding:12px; }
+    .ruleHead{ font-weight:1000; margin-bottom:10px; letter-spacing:.2px; }
+    .ruleLine{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .ruleLbl{ font-weight:900; opacity:.92; }
+    .ruleUnit{ font-weight:1000; opacity:.9; }
 
-    .toggleRow{ display:flex; align-items:center; gap:10px; font-weight:1000; padding-top:10px; }
-    .toggleRow input{ width:20px; height:20px; }
+    .minSel,.toSel{
+      -webkit-appearance:none; appearance:none;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(0,0,0,.28);
+      color:#fff;
+      font-weight:1000;
+    }
+    .minSel{ min-width:96px; }
+    .toSel{ min-width:140px; }
 
-    .ruleBox{ margin-top:10px; padding:12px; border-radius:16px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.22); }
-    .ruleTitle{ font-weight:1000; margin-bottom:10px; }
-    .ruleTitle.sk3{ color:#86efac; }
-    .ruleTitle.sk2{ color:#fde047; }
-    .ruleTitle.sk1{ color:#fca5a5; }
-    .ruleRow{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-    .ruleLabel{ font-weight:1000; opacity:.9; }
-    .ruleUnit{ opacity:.85; font-weight:1000; }
-    .minSel,.toSel{ -webkit-appearance:none; appearance:none; padding:12px 12px; border-radius:16px; border:1px solid rgba(255,255,255,.14); background:rgba(0,0,0,.28); color:#fff; font-weight:1000; }
-    .minSel{ min-width:130px; }
-    .toSel{ min-width:170px; }
-    .toSel.to-rot{ background:rgba(229,57,53,.85); border-color:rgba(229,57,53,.85); }
-    .toSel.to-gelb{ background:rgba(243,252,2,.92); border-color:rgba(243,252,2,.92); color:#111; }
-    .toSel.to-gruen{ background:rgba(46,125,50,.85); border-color:rgba(46,125,50,.85); }
-    .toSel.to-schwarz{ background:rgba(17,17,17,.90); border-color:rgba(17,17,17,.90); }
+    .toSel.to-rot{ background:rgba(229,57,53,.85); border-color: rgba(229,57,53,.85); }
+    .toSel.to-gelb{ background:rgba(243,252,2,.92); border-color: rgba(243,252,2,.92); color:#111; }
+    .toSel.to-gruen{ background:rgba(46,125,50,.85); border-color: rgba(46,125,50,.85); }
+    .toSel.to-schwarz{ background:rgba(17,17,17,.90); border-color: rgba(17,17,17,.90); }
 
-    .countRow{ display:flex; gap:10px; flex-wrap:wrap; }
-    .countChip{ padding:10px 12px; border-radius:999px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.10); font-weight:1000; }
-    .countChip.rot{ background:rgba(239,68,68,.16); border-color:rgba(239,68,68,.35); }
-    .countChip.gelb{ background:rgba(234,179,8,.16); border-color:rgba(234,179,8,.35); }
-    .countChip.gruen{ background:rgba(34,197,94,.16); border-color:rgba(34,197,94,.35); }
-    .countChip.schwarz{ background:rgba(0,0,0,.30); border-color:rgba(255,255,255,.14); }
+    .ruleGreen .ruleHead{ color:#86efac; }
+    .ruleYellow .ruleHead{ color:#fde047; }
+    .ruleRed .ruleHead{ color:#fca5a5; }
 
-    #grid{ width:min(980px, 96vw); margin: 10px auto 24px; display:grid; gap:14px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); padding: 0 10px; }
+    .cards{
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
 
-    @media (max-width:520px){
-      .topbar{ grid-template-columns: 1fr 1fr; grid-auto-rows:auto; }
-      .tbChips{ grid-column:1/3; justify-content:flex-start; }
-      .row2{ grid-template-columns:1fr; }
-      .minSel,.toSel{ width:100%; min-width:0; }
-      .qbtn{ min-width:72px; flex:1; }
-      #grid{ grid-template-columns: 1fr; padding: 0 10px; }
+    .card{
+      position:relative;
+      background: rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.18);
+      border-radius: 20px;
+      overflow:hidden;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px) saturate(140%);
+      -webkit-backdrop-filter: blur(16px) saturate(140%);
+    }
+
+    .card::before{
+      content:"";
+      position:absolute;
+      left:0;
+      top:0;
+      bottom:0;
+      width:8px;
+      background: rgba(255,255,255,.08);
+    }
+    .card.sk-rot::before{ background: rgba(239,68,68,.85); }
+    .card.sk-gelb::before{ background: rgba(251,191,36,.85); }
+    .card.sk-gruen::before{ background: rgba(34,197,94,.85); }
+    .card.sk-schwarz::before{ background: rgba(17,17,17,.95); }
+
+    .cardInner{ padding:16px; padding-left:18px; display:flex; flex-direction:column; gap:12px; }
+
+    .cardTop{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .cardTitle{ font-size:26px; font-weight:1000; }
+    .skBadge{
+      padding:10px 14px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.18);
+      font-weight:1000;
+      background: rgba(255,255,255,.08);
+    }
+    .skBadge.rot{ background: rgba(239,68,68,.22); border-color: rgba(239,68,68,.45); }
+    .skBadge.gelb{ background: rgba(251,191,36,.22); border-color: rgba(251,191,36,.45); color:#fff; }
+    .skBadge.gruen{ background: rgba(34,197,94,.22); border-color: rgba(34,197,94,.45); }
+    .skBadge.schwarz{ background: rgba(17,17,17,.60); border-color: rgba(17,17,17,.90); }
+
+    .kv{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:8px 16px;
+      font-weight:900;
+    }
+    .kv div{ opacity:.95; }
+    .kv .wide{ grid-column: 1 / -1; }
+
+    .cardActions{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    .checkRow{ display:flex; align-items:center; gap:10px; font-weight:1000; }
+    .checkRow input{ width:22px; height:22px; }
+
+    .miniBtn{
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.10);
+      color:var(--text);
+      padding: 12px 16px;
+      border-radius: 16px;
+      font-weight:1000;
+      cursor:pointer;
+      min-width:140px;
+      text-align:center;
+    }
+
+    details.cardOpts{
+      border-top:1px solid rgba(255,255,255,.12);
+      padding-top:10px;
+    }
+    details.cardOpts summary{
+      cursor:pointer;
+      list-style:none;
+      padding: 10px 0 0;
+      font-weight:1000;
+      opacity:.95;
+    }
+    details.cardOpts summary::-webkit-details-marker{ display:none; }
+
+    .optBox{
+      margin-top:10px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.22);
+      border-radius:16px;
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .optLine{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      font-weight:1000;
+    }
+
+    .optLine .optLabel{
+      padding:8px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      font-weight:1000;
+    }
+
+    .optLine select{
+      -webkit-appearance:none; appearance:none;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.28);
+      color:#fff;
+      font-weight:1000;
+      min-width:120px;
     }
   </style>
+
+  <link rel="stylesheet" href="/css/app-flow.css?v=2">
 </head>
 
 <body>
+  <div class="wrap">
 
-<div class="stickyStack">
-  <div class="topbar">
-    <button class="tbBtn" onclick="history.back()">Zurück</button>
-    <button class="tbBtn primary" onclick="location.href='ablage1.html'">Direkt zur Pat. Ablage</button>
+    <div class="topbar">
+      <div class="tbLeft">
+        <button class="btn" type="button" onclick="location.href='instruktor.html'">Zurück</button>
+        <button class="btn primary" type="button" onclick="location.href='ablage1.html'">Direkt zur Pat. Ablage</button>
+      </div>
 
-    <div class="tbChips">
-      <span class="chip" id="loadedChip">Geladen 0</span>
-      <span class="chip" id="selectedChip">Ausgewählt 0</span>
+      <div class="tbCenter">
+        Patienten Übersicht
+      </div>
+
+      <div class="tbRight">
+        <div class="pill" id="loadedCount">Geladen 0</div>
+        <div class="pill" id="selectedCount">Ausgewählt 0</div>
+      </div>
     </div>
+
+    <div class="stack">
+
+      <details class="stackItem" id="stackTraining">
+        <summary>
+          <div class="sumMain">
+            <div class="sumTitle">Patientenablage Training</div>
+            <div class="sumSub">Einstellungen</div>
+          </div>
+          <div class="sumRight">
+            <span class="pill off" id="trainingStateChip">Aus</span>
+            <span class="chev">▾</span>
+          </div>
+        </summary>
+
+        <div class="stackBody">
+          <div class="row">
+            <button class="btn primary" id="btnTrainingToggle" type="button">Aktivieren</button>
+            <button class="btn ghost" id="btnTrainingOptions" type="button">Optionen</button>
+          </div>
+
+          <div id="trainingOptionsArea" style="display:none;margin-top:12px;">
+            <div class="row" style="gap:10px;">
+              <div class="pill" id="mixState">Mix</div>
+              <select id="mixSelect" class="minSel" style="min-width:240px;">
+                <option value="20,30,50">Mix 20, 30, 50</option>
+                <option value="10,15,20">Mix 10, 15, 20</option>
+              </select>
+              <button class="btn ghost" id="btnPickNew" type="button">Neu auswählen</button>
+            </div>
+
+            <div class="row" style="margin-top:10px;">
+              <div class="pill">Schnellauswahl</div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button class="btn ghost" type="button" data-quick="10">10</button>
+                <button class="btn ghost" type="button" data-quick="15">15</button>
+                <button class="btn ghost" type="button" data-quick="20">20</button>
+                <button class="btn ghost" type="button" data-quick="25">25</button>
+                <button class="btn ghost" type="button" data-quick="30">30</button>
+                <button class="btn ghost" type="button" data-quick="35">35</button>
+                <button class="btn ghost" type="button" data-quick="40">40</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="stackItem" id="stackDeterioration">
+        <summary>
+          <div class="sumMain">
+            <div class="sumTitle">Patientenverschlechterung im Training</div>
+            <div class="sumSub">Regeln festlegen</div>
+          </div>
+          <div class="sumRight">
+            <span class="pill off" id="detStatePill">Aus</span>
+            <span class="chev">▾</span>
+          </div>
+        </summary>
+
+        <div class="stackBody">
+          <div class="row">
+            <label class="switchRow">
+              <input id="detEnabled" type="checkbox" />
+              <span>Aktivieren</span>
+            </label>
+            <div class="helpText">Gilt für die Patientenablage.</div>
+          </div>
+
+          <div class="ruleGrid">
+
+            <div class="ruleCard ruleGreen">
+              <div class="ruleHead">SK3 GRÜN</div>
+              <div class="ruleLine">
+                <span class="ruleLbl">Nach</span>
+                <select id="detGruenMin" class="minSel" aria-label="Minuten"></select>
+                <span class="ruleUnit">Min</span>
+                <span class="ruleLbl">zu</span>
+                <select id="detGruenTo" class="toSel" aria-label="Ziel">
+                  <option value="gelb">GELB</option>
+                  <option value="rot">ROT</option>
+                  <option value="schwarz">SCHWARZ</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="ruleCard ruleYellow">
+              <div class="ruleHead">SK2 GELB</div>
+              <div class="ruleLine">
+                <span class="ruleLbl">Nach</span>
+                <select id="detGelbMin" class="minSel" aria-label="Minuten"></select>
+                <span class="ruleUnit">Min</span>
+                <span class="ruleLbl">zu</span>
+                <select id="detGelbTo" class="toSel" aria-label="Ziel">
+                  <option value="rot">ROT</option>
+                  <option value="schwarz">SCHWARZ</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="ruleCard ruleRed">
+              <div class="ruleHead">SK1 ROT</div>
+              <div class="ruleLine">
+                <span class="ruleLbl">Nach</span>
+                <select id="detRotMin" class="minSel" aria-label="Minuten"></select>
+                <span class="ruleUnit">Min</span>
+                <span class="ruleLbl">zu</span>
+                <select id="detRotTo" class="toSel" aria-label="Ziel">
+                  <option value="schwarz">SCHWARZ</option>
+                </select>
+              </div>
+            </div>
+
+          </div>
+
+          <button type="button" class="btn primary" style="width:100%;margin-top:12px" onclick="saveDeteriorationGlobal()">
+            Regeln speichern
+          </button>
+        </div>
+      </details>
+
+      <details class="stackItem" id="stackSelection" open>
+        <summary>
+          <div class="sumMain">
+            <div class="sumTitle">Übersicht Auswahl</div>
+            <div class="sumSub" id="sumSelSub">0 ausgewählt</div>
+          </div>
+          <div class="sumRight">
+            <span class="chev">▾</span>
+          </div>
+        </summary>
+
+        <div class="stackBody">
+          <div class="row" style="gap:10px;">
+            <div class="pill" id="countRot">Auswahl Rot 0</div>
+            <div class="pill" id="countGelb">Gelb 0</div>
+            <div class="pill" id="countGruen">Grün 0</div>
+            <div class="pill" id="countSchwarz">Schwarz 0</div>
+          </div>
+
+          <div class="row" style="margin-top:12px;">
+            <button class="btn ghost" id="btnSelectAll" type="button">Alle auswählen</button>
+            <button class="btn ghost" id="btnClearSelection" type="button">Auswahl löschen</button>
+          </div>
+
+          <div class="row" style="margin-top:12px;">
+            <button class="btn primary" id="btnMoveToAblage" type="button">In Ablage übernehmen</button>
+            <button class="btn danger" id="btnCancel" type="button">Abbrechen</button>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="cards" id="cards"></div>
+
   </div>
 
-  <div class="stack">
+  <script>
+    const DET_KEY = "sk_deterioration_global_v1";
 
-    <details class="stackItem" id="secTraining" open>
-      <summary class="stackSum">
-        <div class="sumLeft">
-          <div class="sumTitle">Patientenablage Training</div>
-          <div class="sumSub">Einstellungen</div>
-        </div>
-        <div class="sumRight">
-          <span class="pill" id="trainingState">Aus</span>
-          <span class="chev">⌄</span>
-        </div>
-      </summary>
-
-      <div class="stackBody">
-        <div class="row2">
-          <button class="btn primary" id="trainingBtn" type="button">Aktivieren</button>
-          <button class="btn" id="btnKarussell" type="button">Karussell</button>
-        </div>
-
-        <div id="trainingPanel" class="panel collapsed">
-          <div class="fieldTitle">Schnellauswahl</div>
-          <div class="chipsRow">
-            <button class="qbtn" data-n="10" type="button">10</button>
-            <button class="qbtn" data-n="15" type="button">15</button>
-            <button class="qbtn" data-n="20" type="button">20</button>
-            <button class="qbtn" data-n="25" type="button">25</button>
-            <button class="qbtn" data-n="30" type="button">30</button>
-            <button class="qbtn" data-n="35" type="button">35</button>
-            <button class="qbtn" data-n="40" type="button">40</button>
-          </div>
-
-          <div class="row2" style="margin-top:10px;">
-            <select id="mixSel" class="select">
-              <option value="mix203050">Mix 20, 30, 50</option>
-              <option value="mix251050">Mix 25, 10, 50</option>
-              <option value="mix301040">Mix 30, 10, 40</option>
-            </select>
-            <button class="btn" id="btnNeuAuswahl" type="button">Neu auswählen</button>
-          </div>
-        </div>
-
-        <div class="hintLine">
-          Wenn Training aktiv ist, erscheint hier die Schnellauswahl. Die Patientenkarten bleiben darunter sauber untereinander.
-        </div>
-      </div>
-    </details>
-
-    <details class="stackItem" id="secDet">
-      <summary class="stackSum">
-        <div class="sumLeft">
-          <div class="sumTitle">Patientenverschlechterung im Training</div>
-          <div class="sumSub" id="detSummaryLine">Regeln festlegen</div>
-        </div>
-        <div class="sumRight">
-          <span class="pill danger" id="detStateMini"><span id="detStateMiniText">Aus</span></span>
-          <span class="chev">⌄</span>
-        </div>
-      </summary>
-
-      <div class="stackBody">
-        <label class="toggleRow">
-          <input id="detEnabled" type="checkbox">
-          <span>Aktivieren</span>
-        </label>
-
-        <div class="ruleBox">
-          <div class="ruleTitle sk3">SK3 GRÜN</div>
-          <div class="ruleRow">
-            <span class="ruleLabel">Nach</span>
-            <select id="detGruenMin" class="minSel"></select>
-            <span class="ruleUnit">Min</span>
-            <span class="ruleLabel">zu</span>
-            <select id="detGruenTo" class="toSel">
-              <option value="gelb">GELB</option>
-              <option value="rot">ROT</option>
-              <option value="schwarz">SCHWARZ</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="ruleBox">
-          <div class="ruleTitle sk2">SK2 GELB</div>
-          <div class="ruleRow">
-            <span class="ruleLabel">Nach</span>
-            <select id="detGelbMin" class="minSel"></select>
-            <span class="ruleUnit">Min</span>
-            <span class="ruleLabel">zu</span>
-            <select id="detGelbTo" class="toSel">
-              <option value="rot">ROT</option>
-              <option value="schwarz">SCHWARZ</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="ruleBox">
-          <div class="ruleTitle sk1">SK1 ROT</div>
-          <div class="ruleRow">
-            <span class="ruleLabel">Nach</span>
-            <select id="detRotMin" class="minSel"></select>
-            <span class="ruleUnit">Min</span>
-            <span class="ruleLabel">zu</span>
-            <select id="detRotTo" class="toSel">
-              <option value="schwarz">SCHWARZ</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="row2" style="margin-top:10px;">
-          <button class="btn primary" type="button" id="btnDetSave">Speichern</button>
-          <button class="btn" type="button" id="btnDetReset">Zurücksetzen</button>
-        </div>
-
-        <div class="hintLine">
-          Diese Regeln gelten für die Patientenablage. Schwarz ist Endzustand.
-        </div>
-      </div>
-    </details>
-
-    <details class="stackItem" id="secSel">
-      <summary class="stackSum">
-        <div class="sumLeft">
-          <div class="sumTitle">Übersicht Auswahl</div>
-          <div class="sumSub" id="selCountText">0 ausgewählt</div>
-        </div>
-        <div class="sumRight">
-          <span class="chev">⌄</span>
-        </div>
-      </summary>
-
-      <div class="stackBody">
-        <div class="countRow">
-          <span class="countChip rot" id="countRot">Auswahl Rot 0</span>
-          <span class="countChip gelb" id="countGelb">Gelb 0</span>
-          <span class="countChip gruen" id="countGruen">Grün 0</span>
-          <span class="countChip schwarz" id="countSchwarz">Schwarz 0</span>
-        </div>
-
-        <div class="row2">
-          <button class="btn" id="btnSelectAll" type="button">Alle auswählen</button>
-          <button class="btn" id="btnClearSel" type="button">Auswahl löschen</button>
-        </div>
-
-        <div class="row2">
-          <button class="btn primary" id="btnToAblage" type="button">In Ablage übernehmen</button>
-          <button class="btn danger" id="btnCancel" type="button">Abbrechen</button>
-        </div>
-      </div>
-    </details>
-
-  </div>
-</div>
-
-<div id="grid"></div>
-
-<script>
-/* V7: globale Verschlechterung Regeln, kompatibel zu ablage1_ui_v3 */
-const LS_DET_GLOBAL = 'ablage.deterioration.global.v1';
-
-function v7FillMinuteSelect(sel, max){
-  if(!sel) return;
-  sel.innerHTML = '';
-  const opt0 = document.createElement('option');
-  opt0.value = '';
-  opt0.textContent = 'Minuten';
-  sel.appendChild(opt0);
-  for(let i=1;i<=max;i++){
-    const o=document.createElement('option');
-    o.value = String(i);
-    o.textContent = i + ' Min';
-    sel.appendChild(o);
-  }
-}
-
-function v7ApplyToStyle(sel){
-  if(!sel) return;
-  sel.classList.remove('to-rot','to-gelb','to-gruen','to-schwarz');
-  const v=(sel.value||'').toLowerCase();
-  if(v==='rot') sel.classList.add('to-rot');
-  if(v==='gelb') sel.classList.add('to-gelb');
-  if(v==='gruen' || v==='grün') sel.classList.add('to-gruen');
-  if(v==='schwarz') sel.classList.add('to-schwarz');
-}
-
-function v7ReadGlobal(){
-  try{
-    const raw=localStorage.getItem(LS_DET_GLOBAL);
-    if(!raw) return null;
-    return JSON.parse(raw);
-  }catch(e){ return null; }
-}
-
-function v7WriteGlobal(obj){
-  localStorage.setItem(LS_DET_GLOBAL, JSON.stringify(obj));
-}
-
-function v7UpdateDetBadge(enabled){
-  const pill=document.getElementById('detStateMini');
-  const t=document.getElementById('detStateMiniText');
-  if(!pill || !t) return;
-  if(enabled){
-    t.textContent='An';
-    pill.classList.add('on');
-    pill.classList.remove('danger');
-  }else{
-    t.textContent='Aus';
-    pill.classList.remove('on');
-    pill.classList.add('danger');
-  }
-}
-
-function v7LoadDetUI(){
-  const data=v7ReadGlobal() || {enabled:false, steps:{gruen:{afterMin:10,to:'gelb'}, gelb:{afterMin:5,to:'rot'}, rot:{afterMin:8,to:'schwarz'}}};
-  document.getElementById('detEnabled').checked = !!data.enabled;
-
-  const g=data.steps?.gruen || {};
-  const y=data.steps?.gelb || {};
-  const r=data.steps?.rot || {};
-
-  document.getElementById('detGruenMin').value = g.afterMin ? String(g.afterMin) : '';
-  document.getElementById('detGelbMin').value = y.afterMin ? String(y.afterMin) : '';
-  document.getElementById('detRotMin').value = r.afterMin ? String(r.afterMin) : '';
-
-  document.getElementById('detGruenTo').value = (g.to||'gelb');
-  document.getElementById('detGelbTo').value = (y.to||'rot');
-  document.getElementById('detRotTo').value = (r.to||'schwarz');
-
-  v7ApplyToStyle(document.getElementById('detGruenTo'));
-  v7ApplyToStyle(document.getElementById('detGelbTo'));
-  v7ApplyToStyle(document.getElementById('detRotTo'));
-
-  v7UpdateDetBadge(!!data.enabled);
-}
-
-function v7SaveDetUI(){
-  const enabled = document.getElementById('detEnabled').checked;
-
-  const gMin = parseInt(document.getElementById('detGruenMin').value||'10',10);
-  const yMin = parseInt(document.getElementById('detGelbMin').value||'5',10);
-  const rMin = parseInt(document.getElementById('detRotMin').value||'8',10);
-
-  const data = {
-    enabled: !!enabled,
-    steps:{
-      gruen:{ afterMin: isFinite(gMin)?gMin:10, to: document.getElementById('detGruenTo').value },
-      gelb:{ afterMin: isFinite(yMin)?yMin:5, to: document.getElementById('detGelbTo').value },
-      rot:{ afterMin: isFinite(rMin)?rMin:8, to: document.getElementById('detRotTo').value }
+    function fillMinuteSelect(el, max){
+      if(!el) return;
+      const current = el.value;
+      el.innerHTML = "";
+      for(let i=1;i<=max;i++){
+        const opt = document.createElement("option");
+        opt.value = String(i);
+        opt.textContent = String(i);
+        el.appendChild(opt);
+      }
+      if(current) el.value = current;
     }
-  };
 
-  v7WriteGlobal(data);
-  v7UpdateDetBadge(!!enabled);
-  const line=document.getElementById('detSummaryLine');
-  if(line) line.textContent = enabled ? 'Aktiv' : 'Regeln festlegen';
-}
+    function applySkSelectStyle(sel){
+      if(!sel) return;
+      sel.classList.remove("to-rot","to-gelb","to-gruen","to-schwarz");
+      const v = String(sel.value||"").toLowerCase();
+      if(v==="rot") sel.classList.add("to-rot");
+      if(v==="gelb") sel.classList.add("to-gelb");
+      if(v==="gruen" || v==="grün") sel.classList.add("to-gruen");
+      if(v==="schwarz") sel.classList.add("to-schwarz");
+    }
 
-function v7ResetDetUI(){
-  localStorage.removeItem(LS_DET_GLOBAL);
-  v7LoadDetUI();
-}
+    function updateDetPill(){
+      const pill = document.getElementById("detStatePill");
+      const enabled = document.getElementById("detEnabled");
+      if(!pill || !enabled) return;
+      const on = !!enabled.checked;
+      pill.textContent = on ? "An" : "Aus";
+      pill.classList.toggle("on", on);
+      pill.classList.toggle("off", !on);
+    }
 
-window.addEventListener('DOMContentLoaded', ()=>{
-  v7FillMinuteSelect(document.getElementById('detGruenMin'), 60);
-  v7FillMinuteSelect(document.getElementById('detGelbMin'), 60);
-  v7FillMinuteSelect(document.getElementById('detRotMin'), 60);
+    function loadDeteriorationGlobal(){
+      let cfg = null;
+      try{ cfg = JSON.parse(localStorage.getItem(DET_KEY) || "null"); }catch(e){ cfg = null; }
+      if(!cfg) cfg = { enabled:false, gruen:{min:10,to:"gelb"}, gelb:{min:5,to:"rot"}, rot:{min:8,to:"schwarz"} };
 
-  ['detGruenTo','detGelbTo','detRotTo'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) el.addEventListener('change', ()=>v7ApplyToStyle(el));
-  });
+      const enabled = document.getElementById("detEnabled");
+      if(enabled) enabled.checked = !!cfg.enabled;
 
-  const btnSave=document.getElementById('btnDetSave');
-  if(btnSave) btnSave.addEventListener('click', v7SaveDetUI);
+      const gm = document.getElementById("detGruenMin");
+      const gto = document.getElementById("detGruenTo");
+      const ym = document.getElementById("detGelbMin");
+      const yto = document.getElementById("detGelbTo");
+      const rm = document.getElementById("detRotMin");
+      const rto = document.getElementById("detRotTo");
 
-  const btnReset=document.getElementById('btnDetReset');
-  if(btnReset) btnReset.addEventListener('click', v7ResetDetUI);
+      if(gm) gm.value = String(cfg.gruen?.min ?? 10);
+      if(gto) gto.value = String(cfg.gruen?.to ?? "gelb");
+      if(ym) ym.value = String(cfg.gelb?.min ?? 5);
+      if(yto) yto.value = String(cfg.gelb?.to ?? "rot");
+      if(rm) rm.value = String(cfg.rot?.min ?? 8);
+      if(rto) rto.value = String(cfg.rot?.to ?? "schwarz");
 
-  const detEnabled=document.getElementById('detEnabled');
-  if(detEnabled) detEnabled.addEventListener('change', ()=>v7UpdateDetBadge(detEnabled.checked));
+      [gto,yto,rto].forEach(applySkSelectStyle);
+      updateDetPill();
+    }
 
-  v7LoadDetUI();
-});
-</script>
+    function saveDeteriorationGlobal(){
+      const cfg = {
+        enabled: !!document.getElementById("detEnabled")?.checked,
+        gruen: { min: Number(document.getElementById("detGruenMin")?.value || 10), to: String(document.getElementById("detGruenTo")?.value || "gelb") },
+        gelb:  { min: Number(document.getElementById("detGelbMin")?.value || 5),  to: String(document.getElementById("detGelbTo")?.value  || "rot") },
+        rot:   { min: Number(document.getElementById("detRotMin")?.value  || 8),  to: String(document.getElementById("detRotTo")?.value   || "schwarz") }
+      };
+      localStorage.setItem(DET_KEY, JSON.stringify(cfg));
+      localStorage.setItem("sk_deterioration_global", JSON.stringify(cfg));
+      updateDetPill();
+      alert("Regeln gespeichert.");
+    }
 
-<script src="/metrics.js" defer></script>
+    function normalizeInjury(p){
+      const keys = ["Verletzungsmuster","verletzungsmuster","verletzung","Verletzung","injury","Injury","muster"];
+      for(const k of keys){
+        if(p && p[k]) return p[k];
+      }
+      return "";
+    }
+
+    function skToClass(sk){
+      const v = String(sk||"").toLowerCase();
+      if(v.includes("rot") || v.includes("sk1")) return "sk-rot";
+      if(v.includes("gelb") || v.includes("sk2")) return "sk-gelb";
+      if(v.includes("grün") || v.includes("gruen") || v.includes("sk3")) return "sk-gruen";
+      if(v.includes("schwarz") || v.includes("black")) return "sk-schwarz";
+      return "sk-rot";
+    }
+
+    function skToBadge(sk){
+      const v = String(sk||"").toLowerCase();
+      if(v.includes("gelb") || v.includes("sk2")) return { txt:"SK2 GELB", cls:"gelb" };
+      if(v.includes("grün") || v.includes("gruen") || v.includes("sk3")) return { txt:"SK3 GRÜN", cls:"gruen" };
+      if(v.includes("schwarz")) return { txt:"SCHWARZ", cls:"schwarz" };
+      return { txt:"SK1 ROT", cls:"rot" };
+    }
+
+    function escapeHtml(s){
+      return String(s||"")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function renderPatients(patients){
+      const cards = document.getElementById("cards");
+      cards.innerHTML = "";
+
+      patients.forEach((p, idx) => {
+        const sk = p.sk || p.SK || p.sichtung || "SK1 ROT";
+        const badge = skToBadge(sk);
+        const cls = skToClass(sk);
+
+        const injury = String(normalizeInjury(p));
+        const name = p.name || p.titel || ("Patient " + (idx+1));
+        const age = p.alter ?? p.Alter ?? "";
+        const sex = p.geschlecht ?? p.Geschlecht ?? "";
+        const pose = p.darstellung ?? p.Darstellung ?? "";
+        const af = p.af ?? p.AF ?? "";
+        const puls = p.puls ?? p.Puls ?? "";
+
+        const el = document.createElement("div");
+        el.className = "card " + cls;
+        el.innerHTML = `
+          <div class="cardInner">
+            <div class="cardTop">
+              <div class="cardTitle">${escapeHtml(name)}</div>
+              <div class="skBadge ${badge.cls}">${escapeHtml(badge.txt)}</div>
+            </div>
+
+            <div class="kv">
+              <div>Alter: ${escapeHtml(age)}</div>
+              <div>Geschlecht: ${escapeHtml(sex)}</div>
+              <div>Darstellung: ${escapeHtml(pose)}</div>
+              <div>AF: ${escapeHtml(af)}/min, Puls: ${escapeHtml(puls)}/min</div>
+              <div class="wide">Verletzungsmuster: ${escapeHtml(injury)}</div>
+            </div>
+
+            <div class="cardActions">
+              <label class="checkRow">
+                <input type="checkbox" class="pickForAblage" data-index="${idx}">
+                <span>Für Ablage</span>
+              </label>
+              <button class="miniBtn" type="button">Vorschau</button>
+            </div>
+
+            <details class="cardOpts">
+              <summary>Optionen</summary>
+              <div class="optBox">
+                <div class="optLine">
+                  <span class="optLabel">Verschlechterung</span>
+                  <label class="switchRow">
+                    <input type="checkbox" class="detLocalOn" data-index="${idx}">
+                    <span>Aktiv</span>
+                  </label>
+                </div>
+
+                <div class="optLine">
+                  <span class="optLabel">Nach</span>
+                  <select class="detLocalMin" data-index="${idx}"></select>
+                  <span class="optLabel">Min</span>
+                  <span class="optLabel">zu</span>
+                  <select class="detLocalTo" data-index="${idx}">
+                    <option value="gelb">GELB</option>
+                    <option value="rot">ROT</option>
+                    <option value="schwarz">SCHWARZ</option>
+                  </select>
+                </div>
+              </div>
+            </details>
+          </div>
+        `;
+        cards.appendChild(el);
+      });
+
+      document.querySelectorAll(".detLocalMin").forEach(sel => fillMinuteSelect(sel, 30));
+      document.querySelectorAll(".detLocalTo").forEach(sel => {
+        applySkSelectStyle(sel);
+        sel.addEventListener("change", ()=>applySkSelectStyle(sel));
+      });
+
+      document.getElementById("loadedCount").textContent = "Geladen " + patients.length;
+    }
+
+    async function loadPatients(){
+      const url = "patienten.json";
+      const res = await fetch(url, { cache:"no-store" });
+      const data = await res.json();
+      const arr = Array.isArray(data) ? data : (data.patients || data.Patienten || []);
+      renderPatients(arr);
+    }
+
+    function initTrainingUi(){
+      const trainingChip = document.getElementById("trainingStateChip");
+      const btnToggle = document.getElementById("btnTrainingToggle");
+      const btnOpts = document.getElementById("btnTrainingOptions");
+      const optsArea = document.getElementById("trainingOptionsArea");
+
+      function setTraining(on){
+        trainingChip.textContent = on ? "An" : "Aus";
+        trainingChip.classList.toggle("on", on);
+        trainingChip.classList.toggle("off", !on);
+        btnToggle.textContent = on ? "Beenden" : "Aktivieren";
+      }
+
+      let on = false;
+      setTraining(on);
+
+      btnToggle.addEventListener("click", () => {
+        on = !on;
+        setTraining(on);
+      });
+
+      btnOpts.addEventListener("click", () => {
+        optsArea.style.display = (optsArea.style.display === "none") ? "block" : "none";
+      });
+    }
+
+    window.addEventListener("DOMContentLoaded", async () => {
+      fillMinuteSelect(document.getElementById("detGruenMin"), 30);
+      fillMinuteSelect(document.getElementById("detGelbMin"), 30);
+      fillMinuteSelect(document.getElementById("detRotMin"), 30);
+
+      ["detGruenTo","detGelbTo","detRotTo"].forEach(id=>{
+        const el=document.getElementById(id);
+        if(el){
+          applySkSelectStyle(el);
+          el.addEventListener("change", ()=>applySkSelectStyle(el));
+        }
+      });
+
+      document.getElementById("detEnabled").addEventListener("change", updateDetPill);
+
+      loadDeteriorationGlobal();
+      initTrainingUi();
+
+      try{
+        await loadPatients();
+      }catch(e){
+        document.getElementById("cards").innerHTML = "<div class='pill'>Patienten konnten nicht geladen werden.</div>";
+      }
+    });
+  </script>
+
+  <script src="/metrics.js" defer></script>
 </body>
 </html>
