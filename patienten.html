@@ -20,21 +20,15 @@
       --blue1:#1e3a8a;
       --blue2:#2563eb;
 
-      --red1:#7f1d1d;
-      --red2:#ef4444;
-
-      --green1:#14532d;
-      --green2:#22c55e;
-
-      --yellow1:#713f12;
-      --yellow2:#fbbf24;
-
-      --black1:#0b0f1a;
-      --black2:#111827;
+      --red:#ef4444;
+      --yellow:#fbbf24;
+      --green:#22c55e;
+      --black:#111827;
     }
 
     *{ box-sizing:border-box; }
     html,body{ height:100%; }
+
     body{
       margin:0;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
@@ -95,7 +89,7 @@
     }
     .btn:active{ transform: translateY(1px) scale(.99); }
     .btn.primary{ background: linear-gradient(180deg, var(--blue2), var(--blue1)); border:none; }
-    .btn.danger{ background: linear-gradient(180deg, var(--red2), var(--red1)); border:none; }
+    .btn.danger{ background: linear-gradient(180deg, #ef4444, #7f1d1d); border:none; }
     .btn.ghost{ background: rgba(255,255,255,.08); }
 
     .pill{
@@ -109,9 +103,31 @@
       font-weight:1000;
       min-height:38px;
       white-space:nowrap;
+      user-select:none;
     }
-    .pill.on{ background: rgba(34,197,94,.20); border-color: rgba(34,197,94,.45); color:#bbf7d0; }
-    .pill.off{ background: rgba(255,255,255,.10); }
+
+    .pillToggle{
+      cursor:pointer;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.10);
+      font-weight:1100;
+      min-height:38px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .pillToggle.on{
+      background: rgba(34,197,94,.22);
+      border-color: rgba(34,197,94,.55);
+      color:#bbf7d0;
+    }
+    .pillToggle.off{
+      background: rgba(255,255,255,.10);
+      border-color: rgba(255,255,255,.18);
+      color: var(--text);
+    }
 
     .stack{
       display:flex;
@@ -148,6 +164,7 @@
     .sumMain{ display:flex; flex-direction:column; gap:2px; }
     .sumTitle{ font-size:16px; }
     .sumSub{ font-size:13px; opacity:.78; font-weight:900; }
+
     .sumRight{ display:flex; align-items:center; gap:10px; }
     .chev{ opacity:.8; font-weight:1000; }
 
@@ -157,44 +174,15 @@
     }
 
     .row{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
-    .switchRow{ display:flex; align-items:center; gap:10px; font-weight:900; }
-    .switchRow input{ width:18px; height:18px; }
 
     .helpText{ font-size:12px; opacity:.82; margin-left:auto; text-align:right; }
+
     @media (max-width:420px){
       .helpText{ margin-left:0; width:100%; text-align:left; margin-top:6px; }
       .topbar{ grid-template-columns: 1fr; }
       .tbCenter{ order:-1; padding:6px 0; }
-      .tbRight{ flex-direction:row; }
+      .tbRight{ flex-direction:row; flex-wrap:wrap; justify-content:space-between; }
     }
-
-    .ruleGrid{ display:grid; gap:12px; margin-top:10px; }
-    .ruleCard{ border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.06); border-radius:16px; padding:12px; }
-    .ruleHead{ font-weight:1000; margin-bottom:10px; letter-spacing:.2px; }
-    .ruleLine{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-    .ruleLbl{ font-weight:900; opacity:.92; }
-    .ruleUnit{ font-weight:1000; opacity:.9; }
-
-    .minSel,.toSel{
-      -webkit-appearance:none; appearance:none;
-      padding:10px 12px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.18);
-      background:rgba(0,0,0,.28);
-      color:#fff;
-      font-weight:1000;
-    }
-    .minSel{ min-width:96px; }
-    .toSel{ min-width:140px; }
-
-    .toSel.to-rot{ background:rgba(229,57,53,.85); border-color: rgba(229,57,53,.85); }
-    .toSel.to-gelb{ background:rgba(243,252,2,.92); border-color: rgba(243,252,2,.92); color:#111; }
-    .toSel.to-gruen{ background:rgba(46,125,50,.85); border-color: rgba(46,125,50,.85); }
-    .toSel.to-schwarz{ background:rgba(17,17,17,.90); border-color: rgba(17,17,17,.90); }
-
-    .ruleGreen .ruleHead{ color:#86efac; }
-    .ruleYellow .ruleHead{ color:#fde047; }
-    .ruleRed .ruleHead{ color:#fca5a5; }
 
     .cards{
       display:flex;
@@ -227,7 +215,13 @@
     .card.sk-gruen::before{ background: rgba(34,197,94,.85); }
     .card.sk-schwarz::before{ background: rgba(17,17,17,.95); }
 
-    .cardInner{ padding:16px; padding-left:18px; display:flex; flex-direction:column; gap:12px; }
+    .cardInner{
+      padding:16px;
+      padding-left:18px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
 
     .cardTop{
       display:flex;
@@ -236,17 +230,23 @@
       gap:12px;
       flex-wrap:wrap;
     }
+
     .cardTitle{ font-size:26px; font-weight:1000; }
+
     .skBadge{
       padding:10px 14px;
       border-radius:999px;
       border:1px solid rgba(255,255,255,.18);
-      font-weight:1000;
+      font-weight:1100;
       background: rgba(255,255,255,.08);
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:120px;
     }
-    .skBadge.rot{ background: rgba(239,68,68,.22); border-color: rgba(239,68,68,.45); }
-    .skBadge.gelb{ background: rgba(251,191,36,.22); border-color: rgba(251,191,36,.45); color:#fff; }
-    .skBadge.gruen{ background: rgba(34,197,94,.22); border-color: rgba(34,197,94,.45); }
+    .skBadge.rot{ background: rgba(239,68,68,.22); border-color: rgba(239,68,68,.55); }
+    .skBadge.gelb{ background: rgba(251,191,36,.22); border-color: rgba(251,191,36,.55); }
+    .skBadge.gruen{ background: rgba(34,197,94,.22); border-color: rgba(34,197,94,.55); }
     .skBadge.schwarz{ background: rgba(17,17,17,.60); border-color: rgba(17,17,17,.90); }
 
     .kv{
@@ -255,7 +255,6 @@
       gap:8px 16px;
       font-weight:900;
     }
-    .kv div{ opacity:.95; }
     .kv .wide{ grid-column: 1 / -1; }
 
     .cardActions{
@@ -266,7 +265,7 @@
       flex-wrap:wrap;
     }
 
-    .checkRow{ display:flex; align-items:center; gap:10px; font-weight:1000; }
+    .checkRow{ display:flex; align-items:center; gap:10px; font-weight:1100; }
     .checkRow input{ width:22px; height:22px; }
 
     .miniBtn{
@@ -275,27 +274,20 @@
       color:var(--text);
       padding: 12px 16px;
       border-radius: 16px;
-      font-weight:1000;
+      font-weight:1100;
       cursor:pointer;
       min-width:140px;
       text-align:center;
     }
 
-    details.cardOpts{
-      border-top:1px solid rgba(255,255,255,.12);
-      padding-top:10px;
-    }
-    details.cardOpts summary{
-      cursor:pointer;
-      list-style:none;
-      padding: 10px 0 0;
-      font-weight:1000;
-      opacity:.95;
-    }
-    details.cardOpts summary::-webkit-details-marker{ display:none; }
-
-    .optBox{
+    .detArea{
       margin-top:10px;
+      border-top:1px solid rgba(255,255,255,.12);
+      padding-top:12px;
+      display:none;
+    }
+
+    .detBox{
       border:1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.22);
       border-radius:16px;
@@ -305,32 +297,58 @@
       gap:12px;
     }
 
-    .optLine{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
-      font-weight:1000;
-    }
-
-    .optLine .optLabel{
+    .labelChip{
       padding:8px 12px;
       border-radius:999px;
       border:1px solid rgba(255,255,255,.14);
       background: rgba(255,255,255,.06);
-      font-weight:1000;
+      font-weight:1100;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-height:38px;
     }
 
-    .optLine select{
+    .skBtns{ display:flex; gap:10px; flex-wrap:wrap; }
+    .skBtn{
+      padding:10px 14px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.08);
+      color:var(--text);
+      font-weight:1100;
+      cursor:pointer;
+      min-width:92px;
+      text-align:center;
+      user-select:none;
+    }
+    .skBtn.rot{ border-color: rgba(239,68,68,.55); }
+    .skBtn.gelb{ border-color: rgba(251,191,36,.55); }
+    .skBtn.gruen{ border-color: rgba(34,197,94,.55); }
+    .skBtn.schwarz{ border-color: rgba(17,17,17,.90); }
+
+    .skBtn.active.rot{ background: rgba(239,68,68,.35); }
+    .skBtn.active.gelb{ background: rgba(251,191,36,.30); }
+    .skBtn.active.gruen{ background: rgba(34,197,94,.28); }
+    .skBtn.active.schwarz{ background: rgba(17,17,17,.65); }
+
+    .sel{
       -webkit-appearance:none; appearance:none;
       padding:10px 12px;
       border-radius:14px;
       border:1px solid rgba(255,255,255,.18);
-      background: rgba(0,0,0,.28);
+      background:rgba(0,0,0,.28);
       color:#fff;
-      font-weight:1000;
+      font-weight:1100;
       min-width:120px;
     }
+
+    .toSel.to-rot{ background:rgba(239,68,68,.55); border-color: rgba(239,68,68,.65); }
+    .toSel.to-gelb{ background:rgba(251,191,36,.55); border-color: rgba(251,191,36,.65); color:#111; }
+    .toSel.to-gruen{ background:rgba(34,197,94,.55); border-color: rgba(34,197,94,.65); }
+    .toSel.to-schwarz{ background:rgba(17,17,17,.75); border-color: rgba(17,17,17,.90); }
+
+    .smallNote{ font-size:12px; opacity:.82; }
   </style>
 
   <link rel="stylesheet" href="/css/app-flow.css?v=2">
@@ -364,39 +382,37 @@
             <div class="sumSub">Einstellungen</div>
           </div>
           <div class="sumRight">
-            <span class="pill off" id="trainingStateChip">Aus</span>
+            <span class="pillToggle off" id="trainingToggle" role="button" aria-label="Training an aus">Aus</span>
             <span class="chev">▾</span>
           </div>
         </summary>
 
         <div class="stackBody">
           <div class="row">
-            <button class="btn primary" id="btnTrainingToggle" type="button">Aktivieren</button>
-            <button class="btn ghost" id="btnTrainingOptions" type="button">Optionen</button>
+            <div class="labelChip">Schnellauswahl</div>
+            <div class="row" style="gap:10px;justify-content:flex-start;">
+              <button class="btn ghost" type="button" data-quick="10">10</button>
+              <button class="btn ghost" type="button" data-quick="15">15</button>
+              <button class="btn ghost" type="button" data-quick="20">20</button>
+              <button class="btn ghost" type="button" data-quick="25">25</button>
+              <button class="btn ghost" type="button" data-quick="30">30</button>
+              <button class="btn ghost" type="button" data-quick="35">35</button>
+              <button class="btn ghost" type="button" data-quick="40">40</button>
+            </div>
           </div>
 
-          <div id="trainingOptionsArea" style="display:none;margin-top:12px;">
-            <div class="row" style="gap:10px;">
-              <div class="pill" id="mixState">Mix</div>
-              <select id="mixSelect" class="minSel" style="min-width:240px;">
-                <option value="20,30,50">Mix 20, 30, 50</option>
-                <option value="10,15,20">Mix 10, 15, 20</option>
-              </select>
-              <button class="btn ghost" id="btnPickNew" type="button">Neu auswählen</button>
-            </div>
+          <div class="row" style="margin-top:12px;justify-content:flex-start;">
+            <div class="labelChip">Mix</div>
+            <select id="mixSelect" class="sel" style="min-width:240px;">
+              <option value="20,30,50">Mix 20, 30, 50</option>
+              <option value="10,15,20">Mix 10, 15, 20</option>
+            </select>
+            <button class="btn ghost" id="btnMixPick" type="button">Mix auswählen</button>
+            <button class="btn ghost" id="btnPickNew" type="button">Neu auswählen</button>
+          </div>
 
-            <div class="row" style="margin-top:10px;">
-              <div class="pill">Schnellauswahl</div>
-              <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                <button class="btn ghost" type="button" data-quick="10">10</button>
-                <button class="btn ghost" type="button" data-quick="15">15</button>
-                <button class="btn ghost" type="button" data-quick="20">20</button>
-                <button class="btn ghost" type="button" data-quick="25">25</button>
-                <button class="btn ghost" type="button" data-quick="30">30</button>
-                <button class="btn ghost" type="button" data-quick="35">35</button>
-                <button class="btn ghost" type="button" data-quick="40">40</button>
-              </div>
-            </div>
+          <div class="smallNote" style="margin-top:10px;">
+            Auswahl setzt Haken bei Für Ablage. In Ablage übernehmen speichert die Auswahl.
           </div>
         </div>
       </details>
@@ -405,76 +421,22 @@
         <summary>
           <div class="sumMain">
             <div class="sumTitle">Patientenverschlechterung im Training</div>
-            <div class="sumSub">Regeln festlegen</div>
+            <div class="sumSub">Regeln und Karten Optionen</div>
           </div>
           <div class="sumRight">
-            <span class="pill off" id="detStatePill">Aus</span>
+            <span class="pillToggle off" id="detToggle" role="button" aria-label="Verschlechterung an aus">Aus</span>
             <span class="chev">▾</span>
           </div>
         </summary>
 
         <div class="stackBody">
-          <div class="row">
-            <label class="switchRow">
-              <input id="detEnabled" type="checkbox" />
-              <span>Aktivieren</span>
-            </label>
-            <div class="helpText">Gilt für die Patientenablage.</div>
+          <div class="smallNote">
+            Wenn An, erscheinen in jeder Patienten Karte unten Patientenverschlechterung und SK Auswahl.
           </div>
-
-          <div class="ruleGrid">
-
-            <div class="ruleCard ruleGreen">
-              <div class="ruleHead">SK3 GRÜN</div>
-              <div class="ruleLine">
-                <span class="ruleLbl">Nach</span>
-                <select id="detGruenMin" class="minSel" aria-label="Minuten"></select>
-                <span class="ruleUnit">Min</span>
-                <span class="ruleLbl">zu</span>
-                <select id="detGruenTo" class="toSel" aria-label="Ziel">
-                  <option value="gelb">GELB</option>
-                  <option value="rot">ROT</option>
-                  <option value="schwarz">SCHWARZ</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="ruleCard ruleYellow">
-              <div class="ruleHead">SK2 GELB</div>
-              <div class="ruleLine">
-                <span class="ruleLbl">Nach</span>
-                <select id="detGelbMin" class="minSel" aria-label="Minuten"></select>
-                <span class="ruleUnit">Min</span>
-                <span class="ruleLbl">zu</span>
-                <select id="detGelbTo" class="toSel" aria-label="Ziel">
-                  <option value="rot">ROT</option>
-                  <option value="schwarz">SCHWARZ</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="ruleCard ruleRed">
-              <div class="ruleHead">SK1 ROT</div>
-              <div class="ruleLine">
-                <span class="ruleLbl">Nach</span>
-                <select id="detRotMin" class="minSel" aria-label="Minuten"></select>
-                <span class="ruleUnit">Min</span>
-                <span class="ruleLbl">zu</span>
-                <select id="detRotTo" class="toSel" aria-label="Ziel">
-                  <option value="schwarz">SCHWARZ</option>
-                </select>
-              </div>
-            </div>
-
-          </div>
-
-          <button type="button" class="btn primary" style="width:100%;margin-top:12px" onclick="saveDeteriorationGlobal()">
-            Regeln speichern
-          </button>
         </div>
       </details>
 
-      <details class="stackItem" id="stackSelection" open>
+      <details class="stackItem" id="stackSelection">
         <summary>
           <div class="sumMain">
             <div class="sumTitle">Übersicht Auswahl</div>
@@ -486,8 +448,8 @@
         </summary>
 
         <div class="stackBody">
-          <div class="row" style="gap:10px;">
-            <div class="pill" id="countRot">Auswahl Rot 0</div>
+          <div class="row" style="gap:10px;justify-content:flex-start;">
+            <div class="pill" id="countRot">Rot 0</div>
             <div class="pill" id="countGelb">Gelb 0</div>
             <div class="pill" id="countGruen">Grün 0</div>
             <div class="pill" id="countSchwarz">Schwarz 0</div>
@@ -500,10 +462,11 @@
 
           <div class="row" style="margin-top:12px;">
             <button class="btn primary" id="btnMoveToAblage" type="button">In Ablage übernehmen</button>
-            <button class="btn danger" id="btnCancel" type="button">Abbrechen</button>
+            <button class="btn danger" id="btnCancel" type="button" onclick="location.href='instruktor.html'">Abbrechen</button>
           </div>
         </div>
       </details>
+
     </div>
 
     <div class="cards" id="cards"></div>
@@ -511,78 +474,27 @@
   </div>
 
   <script>
-    const DET_KEY = "sk_deterioration_global_v1";
+    const LS_SELECTED = "patients_selected_for_ablage_v1";
+    const LS_PAT_SK = "patients_sk_overrides_v1";
+    const LS_PAT_DET = "patients_det_rules_v1";
+    const LS_TRAIN_ON = "patients_training_on_v1";
+    const LS_DET_ON = "patients_det_on_v1";
 
-    function fillMinuteSelect(el, max){
-      if(!el) return;
-      const current = el.value;
-      el.innerHTML = "";
-      for(let i=1;i<=max;i++){
-        const opt = document.createElement("option");
-        opt.value = String(i);
-        opt.textContent = String(i);
-        el.appendChild(opt);
-      }
-      if(current) el.value = current;
-    }
+    let patients = [];
+    let selected = new Set();
+    let trainingOn = false;
+    let detOn = false;
 
-    function applySkSelectStyle(sel){
-      if(!sel) return;
-      sel.classList.remove("to-rot","to-gelb","to-gruen","to-schwarz");
-      const v = String(sel.value||"").toLowerCase();
-      if(v==="rot") sel.classList.add("to-rot");
-      if(v==="gelb") sel.classList.add("to-gelb");
-      if(v==="gruen" || v==="grün") sel.classList.add("to-gruen");
-      if(v==="schwarz") sel.classList.add("to-schwarz");
-    }
+    let skOverrides = {};
+    let detRules = {};
 
-    function updateDetPill(){
-      const pill = document.getElementById("detStatePill");
-      const enabled = document.getElementById("detEnabled");
-      if(!pill || !enabled) return;
-      const on = !!enabled.checked;
-      pill.textContent = on ? "An" : "Aus";
-      pill.classList.toggle("on", on);
-      pill.classList.toggle("off", !on);
-    }
-
-    function loadDeteriorationGlobal(){
-      let cfg = null;
-      try{ cfg = JSON.parse(localStorage.getItem(DET_KEY) || "null"); }catch(e){ cfg = null; }
-      if(!cfg) cfg = { enabled:false, gruen:{min:10,to:"gelb"}, gelb:{min:5,to:"rot"}, rot:{min:8,to:"schwarz"} };
-
-      const enabled = document.getElementById("detEnabled");
-      if(enabled) enabled.checked = !!cfg.enabled;
-
-      const gm = document.getElementById("detGruenMin");
-      const gto = document.getElementById("detGruenTo");
-      const ym = document.getElementById("detGelbMin");
-      const yto = document.getElementById("detGelbTo");
-      const rm = document.getElementById("detRotMin");
-      const rto = document.getElementById("detRotTo");
-
-      if(gm) gm.value = String(cfg.gruen?.min ?? 10);
-      if(gto) gto.value = String(cfg.gruen?.to ?? "gelb");
-      if(ym) ym.value = String(cfg.gelb?.min ?? 5);
-      if(yto) yto.value = String(cfg.gelb?.to ?? "rot");
-      if(rm) rm.value = String(cfg.rot?.min ?? 8);
-      if(rto) rto.value = String(cfg.rot?.to ?? "schwarz");
-
-      [gto,yto,rto].forEach(applySkSelectStyle);
-      updateDetPill();
-    }
-
-    function saveDeteriorationGlobal(){
-      const cfg = {
-        enabled: !!document.getElementById("detEnabled")?.checked,
-        gruen: { min: Number(document.getElementById("detGruenMin")?.value || 10), to: String(document.getElementById("detGruenTo")?.value || "gelb") },
-        gelb:  { min: Number(document.getElementById("detGelbMin")?.value || 5),  to: String(document.getElementById("detGelbTo")?.value  || "rot") },
-        rot:   { min: Number(document.getElementById("detRotMin")?.value  || 8),  to: String(document.getElementById("detRotTo")?.value   || "schwarz") }
-      };
-      localStorage.setItem(DET_KEY, JSON.stringify(cfg));
-      localStorage.setItem("sk_deterioration_global", JSON.stringify(cfg));
-      updateDetPill();
-      alert("Regeln gespeichert.");
+    function escapeHtml(s){
+      return String(s || "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
     }
 
     function normalizeInjury(p){
@@ -593,40 +505,104 @@
       return "";
     }
 
-    function skToClass(sk){
-      const v = String(sk||"").toLowerCase();
-      if(v.includes("rot") || v.includes("sk1")) return "sk-rot";
-      if(v.includes("gelb") || v.includes("sk2")) return "sk-gelb";
-      if(v.includes("grün") || v.includes("gruen") || v.includes("sk3")) return "sk-gruen";
-      if(v.includes("schwarz") || v.includes("black")) return "sk-schwarz";
-      return "sk-rot";
+    function getPatientId(p, idx){
+      return String(p.id ?? p.ID ?? p.patientId ?? p.patientID ?? ("p_" + idx));
     }
 
-    function skToBadge(sk){
-      const v = String(sk||"").toLowerCase();
-      if(v.includes("gelb") || v.includes("sk2")) return { txt:"SK2 GELB", cls:"gelb" };
-      if(v.includes("grün") || v.includes("gruen") || v.includes("sk3")) return { txt:"SK3 GRÜN", cls:"gruen" };
-      if(v.includes("schwarz")) return { txt:"SCHWARZ", cls:"schwarz" };
-      return { txt:"SK1 ROT", cls:"rot" };
+    function badgeForSk(v){
+      const s = String(v || "").toLowerCase();
+      if(s.includes("gelb") || s.includes("sk2")) return { txt:"SK2 GELB", cls:"gelb", card:"sk-gelb" };
+      if(s.includes("grün") || s.includes("gruen") || s.includes("sk3")) return { txt:"SK3 GRÜN", cls:"gruen", card:"sk-gruen" };
+      if(s.includes("schwarz")) return { txt:"SCHWARZ", cls:"schwarz", card:"sk-schwarz" };
+      return { txt:"SK1 ROT", cls:"rot", card:"sk-rot" };
     }
 
-    function escapeHtml(s){
-      return String(s||"")
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
+    function applyToStyle(sel){
+      if(!sel) return;
+      sel.classList.remove("to-rot","to-gelb","to-gruen","to-schwarz");
+      const v = String(sel.value || "").toLowerCase();
+      if(v === "rot") sel.classList.add("to-rot");
+      if(v === "gelb") sel.classList.add("to-gelb");
+      if(v === "gruen" || v === "grün") sel.classList.add("to-gruen");
+      if(v === "schwarz") sel.classList.add("to-schwarz");
     }
 
-    function renderPatients(patients){
+    function fillMinutes(sel, max){
+      if(!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = "";
+      for(let i=1;i<=max;i++){
+        const opt = document.createElement("option");
+        opt.value = String(i);
+        opt.textContent = String(i);
+        sel.appendChild(opt);
+      }
+      if(cur) sel.value = cur;
+    }
+
+    function setToggle(el, on){
+      el.classList.toggle("on", on);
+      el.classList.toggle("off", !on);
+      el.textContent = on ? "An" : "Aus";
+    }
+
+    function persist(){
+      localStorage.setItem(LS_SELECTED, JSON.stringify([...selected]));
+      localStorage.setItem(LS_PAT_SK, JSON.stringify(skOverrides));
+      localStorage.setItem(LS_PAT_DET, JSON.stringify(detRules));
+      localStorage.setItem(LS_TRAIN_ON, trainingOn ? "1" : "0");
+      localStorage.setItem(LS_DET_ON, detOn ? "1" : "0");
+    }
+
+    function restore(){
+      try{
+        const arr = JSON.parse(localStorage.getItem(LS_SELECTED) || "[]");
+        selected = new Set(Array.isArray(arr) ? arr : []);
+      }catch(e){
+        selected = new Set();
+      }
+
+      try{ skOverrides = JSON.parse(localStorage.getItem(LS_PAT_SK) || "{}") || {}; }catch(e){ skOverrides = {}; }
+      try{ detRules = JSON.parse(localStorage.getItem(LS_PAT_DET) || "{}") || {}; }catch(e){ detRules = {}; }
+
+      trainingOn = localStorage.getItem(LS_TRAIN_ON) === "1";
+      detOn = localStorage.getItem(LS_DET_ON) === "1";
+    }
+
+    function updateCounts(){
+      const totalSel = selected.size;
+      document.getElementById("selectedCount").textContent = "Ausgewählt " + totalSel;
+      document.getElementById("sumSelSub").textContent = totalSel + " ausgewählt";
+
+      let r=0,y=0,g=0,b=0;
+      for(const id of selected){
+        const p = patients.find((x, idx) => getPatientId(x, idx) === id);
+        const idx = patients.indexOf(p);
+        const baseSk = p ? (p.sk || p.SK || p.sichtung || "SK1 ROT") : "SK1 ROT";
+        const sk = skOverrides[id] || baseSk;
+        const s = String(sk).toLowerCase();
+        if(s.includes("gelb") || s.includes("sk2")) y++;
+        else if(s.includes("grün") || s.includes("gruen") || s.includes("sk3")) g++;
+        else if(s.includes("schwarz")) b++;
+        else r++;
+      }
+
+      document.getElementById("countRot").textContent = "Rot " + r;
+      document.getElementById("countGelb").textContent = "Gelb " + y;
+      document.getElementById("countGruen").textContent = "Grün " + g;
+      document.getElementById("countSchwarz").textContent = "Schwarz " + b;
+    }
+
+    function render(){
       const cards = document.getElementById("cards");
       cards.innerHTML = "";
 
       patients.forEach((p, idx) => {
-        const sk = p.sk || p.SK || p.sichtung || "SK1 ROT";
-        const badge = skToBadge(sk);
-        const cls = skToClass(sk);
+        const id = getPatientId(p, idx);
+
+        const baseSk = p.sk || p.SK || p.sichtung || "SK1 ROT";
+        const sk = skOverrides[id] || baseSk;
+        const badge = badgeForSk(sk);
 
         const injury = String(normalizeInjury(p));
         const name = p.name || p.titel || ("Patient " + (idx+1));
@@ -636,13 +612,17 @@
         const af = p.af ?? p.AF ?? "";
         const puls = p.puls ?? p.Puls ?? "";
 
+        const checked = selected.has(id);
+
+        const detCfg = detRules[id] || { on:false, min:"10", to:"rot" };
+
         const el = document.createElement("div");
-        el.className = "card " + cls;
+        el.className = "card " + badge.card;
         el.innerHTML = `
           <div class="cardInner">
             <div class="cardTop">
               <div class="cardTitle">${escapeHtml(name)}</div>
-              <div class="skBadge ${badge.cls}">${escapeHtml(badge.txt)}</div>
+              <div class="skBadge ${badge.cls}" id="badge_${id}">${escapeHtml(badge.txt)}</div>
             </div>
 
             <div class="kv">
@@ -655,104 +635,304 @@
 
             <div class="cardActions">
               <label class="checkRow">
-                <input type="checkbox" class="pickForAblage" data-index="${idx}">
+                <input type="checkbox" class="pick" data-id="${id}" ${checked ? "checked" : ""}>
                 <span>Für Ablage</span>
               </label>
               <button class="miniBtn" type="button">Vorschau</button>
             </div>
 
-            <details class="cardOpts">
-              <summary>Optionen</summary>
-              <div class="optBox">
-                <div class="optLine">
-                  <span class="optLabel">Verschlechterung</span>
-                  <label class="switchRow">
-                    <input type="checkbox" class="detLocalOn" data-index="${idx}">
-                    <span>Aktiv</span>
+            <div class="detArea" id="detArea_${id}">
+              <div class="detBox">
+
+                <div class="row" style="justify-content:flex-start;">
+                  <div class="labelChip">SK Klasse</div>
+                  <div class="skBtns" data-id="${id}">
+                    <button class="skBtn rot ${badge.cls==="rot" ? "active" : ""}" type="button" data-sk="rot">ROT</button>
+                    <button class="skBtn gelb ${badge.cls==="gelb" ? "active" : ""}" type="button" data-sk="gelb">GELB</button>
+                    <button class="skBtn gruen ${badge.cls==="gruen" ? "active" : ""}" type="button" data-sk="gruen">GRÜN</button>
+                    <button class="skBtn schwarz ${badge.cls==="schwarz" ? "active" : ""}" type="button" data-sk="schwarz">SCHWARZ</button>
+                  </div>
+                </div>
+
+                <div class="row" style="justify-content:flex-start;">
+                  <div class="labelChip">Patientenverschlechterung</div>
+                  <label class="checkRow" style="margin-left:6px;">
+                    <input type="checkbox" class="detOn" data-id="${id}" ${detCfg.on ? "checked" : ""}>
+                    <span>An</span>
                   </label>
                 </div>
 
-                <div class="optLine">
-                  <span class="optLabel">Nach</span>
-                  <select class="detLocalMin" data-index="${idx}"></select>
-                  <span class="optLabel">Min</span>
-                  <span class="optLabel">zu</span>
-                  <select class="detLocalTo" data-index="${idx}">
+                <div class="row" style="justify-content:flex-start;">
+                  <div class="labelChip">Nach</div>
+                  <select class="sel detMin" data-id="${id}" style="min-width:110px;"></select>
+                  <div class="labelChip">Min</div>
+                  <div class="labelChip">zu</div>
+                  <select class="sel toSel detTo" data-id="${id}" style="min-width:150px;">
                     <option value="gelb">GELB</option>
                     <option value="rot">ROT</option>
                     <option value="schwarz">SCHWARZ</option>
                   </select>
                 </div>
+
+                <div class="smallNote">
+                  Diese Regeln gelten pro Patient, nicht global. Szenario bleibt getrennt.
+                </div>
+
               </div>
-            </details>
+            </div>
+
           </div>
         `;
-        cards.appendChild(el);
-      });
 
-      document.querySelectorAll(".detLocalMin").forEach(sel => fillMinuteSelect(sel, 30));
-      document.querySelectorAll(".detLocalTo").forEach(sel => {
-        applySkSelectStyle(sel);
-        sel.addEventListener("change", ()=>applySkSelectStyle(sel));
+        cards.appendChild(el);
+
+        const detArea = el.querySelector("#detArea_" + CSS.escape(id));
+        detArea.style.display = detOn ? "block" : "none";
+
+        const minSel = el.querySelector(".detMin");
+        fillMinutes(minSel, 30);
+        minSel.value = String(detCfg.min || "10");
+
+        const toSel = el.querySelector(".detTo");
+        toSel.value = String(detCfg.to || "rot");
+        applyToStyle(toSel);
       });
 
       document.getElementById("loadedCount").textContent = "Geladen " + patients.length;
+
+      wireCardEvents();
+      updateCounts();
+    }
+
+    function wireCardEvents(){
+      document.querySelectorAll(".pick").forEach(cb => {
+        cb.addEventListener("change", (e) => {
+          const id = e.target.getAttribute("data-id");
+          if(e.target.checked) selected.add(id);
+          else selected.delete(id);
+          persist();
+          updateCounts();
+        });
+      });
+
+      document.querySelectorAll(".skBtns").forEach(group => {
+        group.querySelectorAll(".skBtn").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const id = group.getAttribute("data-id");
+            const v = btn.getAttribute("data-sk");
+
+            let txt = "SK1 ROT";
+            if(v === "gelb") txt = "SK2 GELB";
+            if(v === "gruen") txt = "SK3 GRÜN";
+            if(v === "schwarz") txt = "SCHWARZ";
+
+            skOverrides[id] = txt;
+
+            group.querySelectorAll(".skBtn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+
+            const badge = document.getElementById("badge_" + id);
+            if(badge){
+              badge.textContent = txt;
+              badge.classList.remove("rot","gelb","gruen","schwarz");
+              if(v === "rot") badge.classList.add("rot");
+              if(v === "gelb") badge.classList.add("gelb");
+              if(v === "gruen") badge.classList.add("gruen");
+              if(v === "schwarz") badge.classList.add("schwarz");
+            }
+
+            const card = badge ? badge.closest(".card") : null;
+            if(card){
+              card.classList.remove("sk-rot","sk-gelb","sk-gruen","sk-schwarz");
+              const cls = v === "gelb" ? "sk-gelb" : v === "gruen" ? "sk-gruen" : v === "schwarz" ? "sk-schwarz" : "sk-rot";
+              card.classList.add(cls);
+            }
+
+            persist();
+            updateCounts();
+          });
+        });
+      });
+
+      document.querySelectorAll(".detOn").forEach(cb => {
+        cb.addEventListener("change", (e) => {
+          const id = e.target.getAttribute("data-id");
+          const cur = detRules[id] || { on:false, min:"10", to:"rot" };
+          cur.on = !!e.target.checked;
+          detRules[id] = cur;
+          persist();
+        });
+      });
+
+      document.querySelectorAll(".detMin").forEach(sel => {
+        sel.addEventListener("change", (e) => {
+          const id = e.target.getAttribute("data-id");
+          const cur = detRules[id] || { on:false, min:"10", to:"rot" };
+          cur.min = String(e.target.value || "10");
+          detRules[id] = cur;
+          persist();
+        });
+      });
+
+      document.querySelectorAll(".detTo").forEach(sel => {
+        sel.addEventListener("change", (e) => {
+          applyToStyle(e.target);
+          const id = e.target.getAttribute("data-id");
+          const cur = detRules[id] || { on:false, min:"10", to:"rot" };
+          cur.to = String(e.target.value || "rot");
+          detRules[id] = cur;
+          persist();
+        });
+      });
+    }
+
+    function setAllDetailsClosed(){
+      document.getElementById("stackTraining").open = false;
+      document.getElementById("stackDeterioration").open = false;
+      document.getElementById("stackSelection").open = false;
+    }
+
+    function wireAccordionCloseOthers(){
+      const ids = ["stackTraining","stackDeterioration","stackSelection"];
+      ids.forEach(id => {
+        const det = document.getElementById(id);
+        det.addEventListener("toggle", () => {
+          if(det.open){
+            ids.forEach(otherId => {
+              if(otherId !== id){
+                const o = document.getElementById(otherId);
+                o.open = false;
+              }
+            });
+          }
+        });
+      });
+    }
+
+    function randomPick(n){
+      const ids = patients.map((p, idx) => getPatientId(p, idx));
+      const pool = [...ids];
+      for(let i=pool.length-1;i>0;i--){
+        const j = Math.floor(Math.random() * (i+1));
+        const tmp = pool[i];
+        pool[i] = pool[j];
+        pool[j] = tmp;
+      }
+      const pick = pool.slice(0, Math.min(n, pool.length));
+      selected = new Set(pick);
+      persist();
+      render();
+    }
+
+    function mixPick(defStr){
+      const parts = String(defStr || "20,30,50").split(",").map(x => Number(x.trim())).filter(x => Number.isFinite(x) && x > 0);
+      if(parts.length < 1){
+        randomPick(20);
+        return;
+      }
+      const value = parts[Math.floor(Math.random() * parts.length)];
+      randomPick(value);
+    }
+
+    function wireTraining(){
+      const trainingToggle = document.getElementById("trainingToggle");
+      setToggle(trainingToggle, trainingOn);
+
+      trainingToggle.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        trainingOn = !trainingOn;
+        setToggle(trainingToggle, trainingOn);
+        persist();
+      });
+
+      document.querySelectorAll("[data-quick]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const n = Number(btn.getAttribute("data-quick") || "0");
+          if(n > 0) randomPick(n);
+        });
+      });
+
+      document.getElementById("btnPickNew").addEventListener("click", () => {
+        const n = selected.size || 20;
+        randomPick(n);
+      });
+
+      document.getElementById("btnMixPick").addEventListener("click", () => {
+        const v = document.getElementById("mixSelect").value;
+        mixPick(v);
+      });
+    }
+
+    function wireDetToggle(){
+      const detToggle = document.getElementById("detToggle");
+      setToggle(detToggle, detOn);
+
+      detToggle.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        detOn = !detOn;
+        setToggle(detToggle, detOn);
+
+        document.querySelectorAll(".detArea").forEach(el => {
+          el.style.display = detOn ? "block" : "none";
+        });
+
+        persist();
+      });
+    }
+
+    function wireSelectionButtons(){
+      document.getElementById("btnSelectAll").addEventListener("click", () => {
+        const ids = patients.map((p, idx) => getPatientId(p, idx));
+        selected = new Set(ids);
+        persist();
+        render();
+      });
+
+      document.getElementById("btnClearSelection").addEventListener("click", () => {
+        selected = new Set();
+        persist();
+        render();
+      });
+
+      document.getElementById("btnMoveToAblage").addEventListener("click", () => {
+        const picked = [...selected];
+        const payload = picked.map(id => {
+          const idx = patients.findIndex((p, i) => getPatientId(p, i) === id);
+          const p = idx >= 0 ? patients[idx] : null;
+          const baseSk = p ? (p.sk || p.SK || p.sichtung || "SK1 ROT") : "SK1 ROT";
+          const sk = skOverrides[id] || baseSk;
+          const det = detRules[id] || { on:false, min:"10", to:"rot" };
+          return { id, sk, det };
+        });
+
+        localStorage.setItem("ablage_selected_patients_v1", JSON.stringify(payload));
+
+        alert("Auswahl gespeichert. Jetzt zur Patientenablage wechseln.");
+      });
     }
 
     async function loadPatients(){
-      const url = "patienten.json";
-      const res = await fetch(url, { cache:"no-store" });
+      const res = await fetch("patienten.json", { cache:"no-store" });
       const data = await res.json();
       const arr = Array.isArray(data) ? data : (data.patients || data.Patienten || []);
-      renderPatients(arr);
-    }
-
-    function initTrainingUi(){
-      const trainingChip = document.getElementById("trainingStateChip");
-      const btnToggle = document.getElementById("btnTrainingToggle");
-      const btnOpts = document.getElementById("btnTrainingOptions");
-      const optsArea = document.getElementById("trainingOptionsArea");
-
-      function setTraining(on){
-        trainingChip.textContent = on ? "An" : "Aus";
-        trainingChip.classList.toggle("on", on);
-        trainingChip.classList.toggle("off", !on);
-        btnToggle.textContent = on ? "Beenden" : "Aktivieren";
-      }
-
-      let on = false;
-      setTraining(on);
-
-      btnToggle.addEventListener("click", () => {
-        on = !on;
-        setTraining(on);
-      });
-
-      btnOpts.addEventListener("click", () => {
-        optsArea.style.display = (optsArea.style.display === "none") ? "block" : "none";
-      });
+      patients = arr;
     }
 
     window.addEventListener("DOMContentLoaded", async () => {
-      fillMinuteSelect(document.getElementById("detGruenMin"), 30);
-      fillMinuteSelect(document.getElementById("detGelbMin"), 30);
-      fillMinuteSelect(document.getElementById("detRotMin"), 30);
+      restore();
 
-      ["detGruenTo","detGelbTo","detRotTo"].forEach(id=>{
-        const el=document.getElementById(id);
-        if(el){
-          applySkSelectStyle(el);
-          el.addEventListener("change", ()=>applySkSelectStyle(el));
-        }
-      });
+      setAllDetailsClosed();
+      wireAccordionCloseOthers();
 
-      document.getElementById("detEnabled").addEventListener("change", updateDetPill);
-
-      loadDeteriorationGlobal();
-      initTrainingUi();
+      wireTraining();
+      wireDetToggle();
+      wireSelectionButtons();
 
       try{
         await loadPatients();
+        render();
       }catch(e){
         document.getElementById("cards").innerHTML = "<div class='pill'>Patienten konnten nicht geladen werden.</div>";
       }
@@ -762,3 +942,4 @@
   <script src="/metrics.js" defer></script>
 </body>
 </html>
+
