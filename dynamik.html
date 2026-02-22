@@ -149,7 +149,7 @@
 
           <div style="margin-top:10px; font-weight:800;">Modus Fix</div>
           <div style="opacity:.9; margin-top:4px;">
-            Du legst konkrete Ereignisse fest, z.B. Patient 30 wird nach 3 Minuten von SK2 zu SK1. Das ist ideal für feste Lernziele.
+            Du legst konkrete Ereignisse fest, z.B. Patient 30 wird nach 3 Minuten eine SK Klasse schlechter. Das ist ideal für feste Lernziele.
           </div>
 
           <div style="margin-top:10px; font-weight:800;">Modus Zufall</div>
@@ -201,7 +201,7 @@
       <div class="row" style="justify-content:space-between;">
         <div>
           <div style="font-weight:900;font-size:18px;">Fix Regeln</div>
-          <div class="muted">Beispiel. Patient 30 nach 3 Minuten SK2 zu SK1</div>
+          <div class="muted">Beispiel. Patient 30 nach 3 Minuten eine SK Klasse schlechter</div>
         </div>
         <button class="btnSmall" type="button" id="btnAddRule">Regel hinzufügen</button>
       </div>
@@ -212,7 +212,7 @@
             <tr>
               <th style="width:120px;">Patient</th>
               <th style="width:160px;">Zeit Minuten</th>
-              <th style="width:140px;">Ziel</th>
+              <th style="width:140px;">Verschlechterung</th>
               <th style="width:120px;"></th>
             </tr>
           </thead>
@@ -234,7 +234,7 @@
 
           <div style="margin-top:10px; font-weight:800;">Modus Fix</div>
           <div style="opacity:.9; margin-top:4px;">
-            Du legst konkrete Ereignisse fest, z.B. Patient 30 wird nach 3 Minuten von SK2 zu SK1. Das ist ideal für feste Lernziele.
+            Du legst konkrete Ereignisse fest, z.B. Patient 30 wird nach 3 Minuten eine SK Klasse schlechter. Das ist ideal für feste Lernziele.
           </div>
 
           <div style="margin-top:10px; font-weight:800;">Modus Zufall</div>
@@ -400,14 +400,7 @@
         tr.innerHTML = `
           <td><input type="number" min="1" max="99" step="1" value="${Number(String(r.id||'').replace(/\D/g,''))||''}" data-k="id" data-i="${idx}"></td>
           <td><input type="number" min="0" step="0.5" value="${(r.afterMin!=null? r.afterMin : 3)}" data-k="afterMin" data-i="${idx}"></td>
-          <td>
-            <select data-k="to" data-i="${idx}">
-              <option value="1"${Number(r.to)===1?' selected':''}>SK1</option>
-              <option value="2"${Number(r.to)===2?' selected':''}>SK2</option>
-              <option value="3"${Number(r.to)===3?' selected':''}>SK3</option>
-              <option value="4"${Number(r.to)===4?' selected':''}>SK4</option>
-            </select>
-          </td>
+          <td><div class="muted" style="font-weight:800;">Eine SK schlechter</div></td>
           <td><button class="btnSmall danger" type="button" data-del="${idx}">Entfernen</button></td>
         `;
         ruleBody.appendChild(tr);
@@ -420,9 +413,8 @@
       rows.forEach((tr, idx) => {
         const idNum = Number(tr.querySelector('input[data-k="id"]').value || 0);
         const afterMinVal = Number(tr.querySelector('input[data-k="afterMin"]').value || 0);
-        const toVal = Number(tr.querySelector('select[data-k="to"]').value || 0);
-        if(idNum>0 && toVal>0){
-          out.push({ id:'patient'+idNum, afterMin: afterMinVal, to: toVal });
+        if(idNum>0){
+          out.push({ id:'patient'+idNum, afterMin: afterMinVal, delta: -1 });
         }
       });
       return out;
