@@ -1,1040 +1,973 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Patienten Übersicht</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Patienten – Übersicht</title>
+<link rel="manifest" href="/manifest.json" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <style>
-    :root{
-      --text:#e5e7eb;
-      --muted:rgba(229,231,235,.82);
-      --glass:rgba(255,255,255,.10);
-      --glass2:rgba(255,255,255,.14);
-      --border:rgba(255,255,255,.18);
-      --shadow:0 16px 44px rgba(0,0,0,.55);
-      --radius:18px;
+<style>
+  :root{
+    --card-w: min(92vw, 560px);
+    --card-h: clamp(160px, 38vh, 240px);
+    --gap: 14px;
+    --radius: 16px;
+    --shadow: 0 12px 30px rgba(0,0,0,.25);
+    --blur: 10px;
 
-      --blue1:#1976ff;
-      --blue2:#0f4ed6;
+    --ink:#fff;
+    --muted: rgba(255,255,255,.75);
+    --line: rgba(255,255,255,.22);
 
-      --rot:#e53935;
-      --gelb:#f7d803;
-      --gruen:#22c55e;
-      --schwarz:#111111;
-    }
+    /* Accent Colors (bleiben!) */
+    --blue:#3b82f6;
+    --blue2:#2563eb;
+    --danger:#e53935;
 
-    *{ box-sizing:border-box; }
-    html,body{ height:100%; }
-    body{
-      margin:0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color:var(--text);
-      background-image:url("fotos/Patientenkarte.jpg");
-      background-size:cover;
-      background-position:center;
-      background-attachment:fixed;
-      min-height:100vh;
-      display:flex;
-      justify-content:center;
-      align-items:flex-start;
-      padding:12px;
-      padding-bottom:calc(16px + env(safe-area-inset-bottom));
-      position:relative;
-      overflow-x:hidden;
-    }
-    body::before{
-      content:"";
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,.55);
-      z-index:-1;
-    }
+    --card-bg: rgba(255,255,255,.12);
+    --glass: rgba(0,0,0,.28);
+  }
 
-    .page{
-      width:min(980px, 96vw);
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-      padding-bottom:18px;
-    }
+  *{ box-sizing: border-box; }
+  html, body { height: 100%; }
+  body{
+    margin:0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    background:#0b0f1a url("fotos/Patientenkarte.jpg") center/cover no-repeat;
+    color:#fff;
+    min-height:100dvh;
+    padding: calc(env(safe-area-inset-top) + 10px) 12px calc(env(safe-area-inset-bottom) + 12px);
+  }
+  body::before{ content:""; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:-1; }
 
-    .card{
-      background:rgba(0,0,0,.22);
-      border:1px solid rgba(255,255,255,.14);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-      backdrop-filter: blur(14px) saturate(140%);
-      -webkit-backdrop-filter: blur(14px) saturate(140%);
-      overflow:hidden;
-    }
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    max-width: 960px; margin: 0 auto 8px;
+    gap: 8px;
+  }
+  .title{ font-weight:800; font-size: clamp(18px, 5vw, 28px); text-align:center; }
 
-    .header{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:10px;
-      padding:12px;
-      align-items:stretch;
-    }
-    .header .left,
-    .header .right{
-      display:grid;
-      gap:10px;
-      align-content:start;
-    }
+  .actions{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 
-    .btn{
-      appearance:none;
-      border:1px solid rgba(255,255,255,.18);
-      background:rgba(255,255,255,.10);
-      color:var(--text);
-      padding:12px 14px;
-      border-radius:14px;
-      font-weight:900;
-      letter-spacing:.2px;
-      cursor:pointer;
-      box-shadow:0 12px 24px rgba(0,0,0,.35);
-      transition: transform .15s ease, filter .15s ease, background .2s ease;
-      user-select:none;
-      -webkit-tap-highlight-color: transparent;
-      text-align:center;
-    }
-    .btn:active{ transform: translateY(1px) scale(.99); }
-    .btn.primary{
-      background:linear-gradient(180deg, var(--blue1), var(--blue2));
-      border:none;
-    }
-    .btn.danger{
-      background:linear-gradient(180deg, #ff3b30, #b10d0a);
-      border:none;
-    }
-    .pill{
-      border:1px solid rgba(255,255,255,.18);
-      background:rgba(255,255,255,.10);
-      color:var(--text);
-      padding:10px 12px;
-      border-radius:999px;
-      font-weight:900;
-      text-align:center;
-      box-shadow:0 10px 20px rgba(0,0,0,.30);
-    }
+  /* ===== Buttons / Links (App-Flow, aber Farben bleiben als Akzent) ===== */
+  .back,
+  .to-ablage{
+    text-decoration:none;
+    color:#fff;
+    padding:10px 14px;
+    border-radius:12px;
+    white-space: nowrap;
 
-    .topRow{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:10px;
-    }
-    .topRow .btn{ width:100%; }
-    .statsRow{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:10px;
-    }
+    background: rgba(255,255,255,.10);
+    border: 1px solid rgba(255,255,255,.18);
+    box-shadow:0 6px 14px rgba(0,0,0,.22);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 
-    .section{
-      padding:10px 12px 12px;
-      display:grid;
-      gap:10px;
-    }
+    transition: transform .12s ease, box-shadow .2s ease, border-color .2s ease, filter .2s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .back:hover,
+  .to-ablage:hover{
+    transform: translateY(-1px);
+    box-shadow:0 10px 26px rgba(0,0,0,.32);
+    filter: brightness(1.04);
+  }
+  .back:active,
+  .to-ablage:active{ transform: scale(.985); }
 
-    details.accord{
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.08);
-      border-radius:16px;
-      overflow:hidden;
-    }
-    details.accord > summary{
-      list-style:none;
-      cursor:pointer;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      padding:14px 14px;
-      font-weight:1000;
-      user-select:none;
-    }
-    details.accord > summary::-webkit-details-marker{ display:none; }
+  /* Akzent statt Vollfläche */
+  .back{
+    border-color: rgba(229,57,53,.65);
+    background: rgba(229,57,53,.16);
+  }
+  .to-ablage{
+    border-color: rgba(59,130,246,.65);
+    background: rgba(59,130,246,.16);
+  }
 
-    .sum-left{
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-      min-width:0;
-    }
-    .sum-title{
-      font-size:18px;
-      line-height:1.15;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .sum-sub{
-      font-size:13px;
-      color:rgba(229,231,235,.78);
-      font-weight:900;
-    }
-    .sum-right{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      flex-wrap:wrap;
-      justify-content:flex-end;
-    }
+  .toolbar{
+    max-width:960px; margin: 8px auto 10px;
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-start;
+  }
+  .pill{
+    background: rgba(255,255,255,.12);
+    border: 1px solid var(--line);
+    border-radius: 999px; padding: 8px 12px;
+    font-weight:700; box-shadow: 0 6px 14px rgba(0,0,0,.18);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .pill small{ opacity:.85; font-weight:700; }
 
-    .togglePill{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:8px 12px;
-      border-radius:999px;
-      font-weight:1000;
-      border:1px solid rgba(255,255,255,.18);
-      background:rgba(255,255,255,.10);
-      min-width:84px;
-      cursor:pointer;
-      user-select:none;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .togglePill.on{
-      background:rgba(34,197,94,.22);
-      border-color:rgba(34,197,94,.45);
-      color:#bbf7d0;
-    }
-    .togglePill.off{
-      background:rgba(255,255,255,.10);
-      border-color:rgba(255,255,255,.18);
-      color:rgba(229,231,235,.85);
-    }
+  .trainbar{
+    max-width:960px; margin: 8px auto 10px; padding:12px;
+    border-radius:12px;
+    border:1px solid rgba(59,130,246,.45);
+    background: rgba(59,130,246,.14);
+    box-shadow: 0 10px 26px rgba(0,0,0,.18) inset;
+    display:flex; flex-direction:column; gap:10px; align-items:stretch; justify-content:center;
+    text-align:center;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .trainbar .row{
+    display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap;
+  }
+  .trainbar .label{
+    font-weight:900; opacity:.95;
+    background: rgba(0,0,0,.22);
+    border: 1px solid rgba(255,255,255,.18);
+    padding: 7px 10px;
+    border-radius: 999px;
+  }
 
-    .accordBody{
-      padding:12px 14px 14px;
-      border-top:1px solid rgba(255,255,255,.10);
-      display:grid;
-      gap:12px;
-    }
+  /* ===== Base Button ===== */
+  .btn{
+    appearance:none;
+    border:1px solid rgba(255,255,255,.22);
+    background: rgba(255,255,255,.10);
+    color:#fff;
+    padding:10px 14px;
+    border-radius:12px;
+    font-weight:800;
+    cursor:pointer;
 
-    .miniHint{
-      color:rgba(229,231,235,.78);
-      font-size:13px;
-      font-weight:900;
-      line-height:1.35;
-    }
+    box-shadow:0 6px 14px rgba(0,0,0,.22);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 
-    .quickRow{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-    .chipBtn{
-      padding:10px 14px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.18);
-      background:rgba(255,255,255,.10);
-      font-weight:1000;
-      cursor:pointer;
-      user-select:none;
-      -webkit-tap-highlight-color: transparent;
-      min-width:64px;
-      text-align:center;
-    }
-    .chipBtn.active{
-      background:rgba(25,118,255,.25);
-      border-color:rgba(25,118,255,.45);
-    }
+    transition: transform .12s ease, box-shadow .2s ease, border-color .2s ease, filter .2s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:hover{
+    transform: translateY(-1px);
+    box-shadow:0 10px 26px rgba(0,0,0,.32);
+    filter: brightness(1.04);
+  }
+  .btn:active{ transform: scale(.985); }
 
-    .row2{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:10px;
-      align-items:center;
-    }
-    select, input{
-      font:inherit;
-      color:var(--text);
-      background:rgba(0,0,0,.24);
-      border:1px solid rgba(255,255,255,.18);
-      border-radius:14px;
-      padding:12px 12px;
-      outline:none;
-    }
-    select{ cursor:pointer; }
+  /* Primary: Blau bleibt, aber als Akzent/Glow (nicht Vollfläche) */
+  .btn.primary{
+    background: linear-gradient(180deg, rgba(59,130,246,.26), rgba(37,99,235,.22));
+    border-color: rgba(59,130,246,.65);
+  }
+  .btn.primary:hover{
+    box-shadow:
+      0 10px 26px rgba(59,130,246,.22),
+      0 10px 26px rgba(0,0,0,.32);
+  }
 
-    .selectMini{
-      width:100%;
-    }
-    .btnRow{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:10px;
-    }
+  .btn.active{ outline:2px solid rgba(59,130,246,.55); }
 
-    .countGrid{
-      display:grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap:10px;
-    }
-    @media (max-width:520px){
-      .countGrid{ grid-template-columns: repeat(2, 1fr); }
-      .header{ grid-template-columns: 1fr; }
-      .statsRow{ grid-template-columns: 1fr 1fr; }
-      .btnRow{ grid-template-columns: 1fr 1fr; }
-      .row2{ grid-template-columns: 1fr; }
-    }
+  .btn.mini{ padding:8px 10px; border-radius:999px; font-size:13px; font-weight:900; }
+  .btn.preset{ min-width:54px; }
 
-    .countsPill{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:8px;
-      padding:10px 12px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.16);
-      background:rgba(255,255,255,.10);
-      font-weight:1000;
-    }
-    .dot{
-      width:10px; height:10px; border-radius:999px;
-      box-shadow:0 0 0 2px rgba(255,255,255,.08) inset;
-      flex:0 0 auto;
-    }
-    .dot.rot{ background:var(--rot); }
-    .dot.gelb{ background:var(--gelb); }
-    .dot.gruen{ background:var(--gruen); }
-    .dot.schwarz{ background:var(--schwarz); }
+  select{
+    border:1px solid rgba(255,255,255,.22);
+    background: rgba(0,0,0,.28);
+    color:#fff;
+    border-radius: 12px;
+    padding: 9px 12px;
+    font-weight:800;
+    cursor:pointer;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
 
-    .list{
-      display:grid;
-      gap:12px;
-      padding:12px;
-    }
+  .viewport{
+    max-width: 960px;
+    height: calc(100dvh - 280px);
+    margin: 0 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+    perspective: 1000px;
+  }
 
-    .pat{
-      border-radius:18px;
-      overflow:hidden;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.06);
-      box-shadow:0 16px 42px rgba(0,0,0,.45);
-      position:relative;
-    }
-    .pat::before{
-      content:"";
-      position:absolute;
-      left:0; top:0; bottom:0;
-      width:10px;
-      background:rgba(255,255,255,.18);
-    }
-    .pat.sk-rot::before{ background:rgba(229,57,53,.95); }
-    .pat.sk-gelb::before{ background:rgba(247,216,3,.95); }
-    .pat.sk-gruen::before{ background:rgba(34,197,94,.95); }
-    .pat.sk-schwarz::before{ background:rgba(17,17,17,.95); }
+  .spacer{ height: 12vh; }
 
-    .patHead{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:12px;
-      padding:14px 14px 8px 18px;
-    }
-    .patTitle{
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-      min-width:0;
-    }
-    .patTitle .name{
-      font-size:28px;
-      font-weight:1100;
-      line-height:1.05;
-      letter-spacing:.2px;
-      text-shadow:0 2px 10px rgba(0,0,0,.55);
-    }
-    .badge{
-      align-self:flex-start;
-      padding:8px 12px;
-      border-radius:999px;
-      font-weight:1100;
-      border:1px solid rgba(255,255,255,.18);
-      background:rgba(255,255,255,.10);
-      box-shadow:0 12px 24px rgba(0,0,0,.35);
-      white-space:nowrap;
-    }
-    .badge.rot{ background:rgba(229,57,53,.18); border-color:rgba(229,57,53,.35); }
-    .badge.gelb{ background:rgba(247,216,3,.18); border-color:rgba(247,216,3,.35); color:#111; }
-    .badge.gruen{ background:rgba(34,197,94,.18); border-color:rgba(34,197,94,.35); }
-    .badge.schwarz{ background:rgba(17,17,17,.40); border-color:rgba(17,17,17,.70); }
+  .card{
+    position: relative;
+    width: var(--card-w);
+    min-height: var(--card-h);
+    margin: var(--gap) auto;
+    padding: 14px 16px 86px;
+    border-radius: var(--radius);
+    background: var(--card-bg);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    scroll-snap-align: center;
+    cursor:pointer;
+  }
+  .card:hover{ outline:2px solid rgba(255,255,255,.12) }
 
-    .patBody{
-      padding:0 14px 12px 18px;
-      display:grid;
-      gap:8px;
-    }
-    .kv{
-      display:grid;
-      grid-template-columns: auto 1fr;
-      gap:8px 12px;
-      align-items:baseline;
-      font-weight:900;
-      color:rgba(229,231,235,.92);
-    }
-    .kv .k{ color:rgba(229,231,235,.78); font-weight:900; }
-    .kv .v{ color:rgba(229,231,235,.96); font-weight:1000; }
+  .card.rot     { border-left: 10px solid #e53935; }
+  .card.gelb    { border-left: 10px solid #f3fc02; }
+  .card.gruen   { border-left: 10px solid #2e7d32; }
+  .card.schwarz { border-left: 10px solid #111; }
 
-    .patFoot{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      padding:12px 14px 14px 18px;
-      border-top:1px solid rgba(255,255,255,.10);
-    }
+  .card h2{ margin: 0 0 6px; font-size: clamp(18px, 4.6vw, 22px); font-weight: 800; }
+  .meta{ display:flex; flex-wrap:wrap; gap: 8px 14px; font-size: clamp(14px, 3.6vw, 16px); }
+  .meta b{ opacity:.9; }
 
-    .ablageCheck{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      font-weight:1000;
-      user-select:none;
-    }
-    .ablageCheck input{
-      width:22px; height:22px;
-      border-radius:6px;
-      accent-color: #1976ff;
-    }
+  .sichtung{
+    display:inline-block; margin-top:8px; padding: 5px 10px; border-radius: 999px;
+    font-weight: 800; font-size: clamp(12px, 3.2vw, 14px);
+    box-shadow: 0 6px 14px rgba(0,0,0,.24);
+  }
+  .card.rot  .sichtung{ background:#e53935; color:#fff; }
+  .card.gelb .sichtung{ background:#f3fc02; color:#111; }
+  .card.gruen .sichtung{ background:#2e7d32; color:#fff; }
+  .card.schwarz .sichtung{ background:#111; color:#fff; }
 
-    .previewBtn{
-      padding:10px 16px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.18);
-      background:rgba(34,197,94,.14);
-      color:rgba(229,231,235,.95);
-      font-weight:1000;
-      box-shadow:0 12px 24px rgba(0,0,0,.35);
-      cursor:pointer;
-    }
-    .previewBtn:active{ transform: translateY(1px) scale(.99); }
+  /* Vorschau Button: dezent */
+  .open{
+    background: rgba(255,255,255,.10);
+    color:#fff;
+    border:1px solid rgba(255,255,255,.20);
+    padding:6px 10px;
+    border-radius:10px;
+    font-weight:800;
+    cursor:pointer;
+    margin-top:10px;
+    box-shadow:0 6px 14px rgba(0,0,0,.18);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: transform .12s ease, box-shadow .2s ease, filter .2s ease;
+  }
+  .open:hover{
+    transform: translateY(-1px);
+    box-shadow:0 10px 22px rgba(0,0,0,.28);
+    filter: brightness(1.04);
+  }
+  .open:active{ transform: scale(.985); }
 
-    details.patOpt{
-      margin:0 14px 14px 18px;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(0,0,0,.14);
-      border-radius:16px;
-      overflow:hidden;
-    }
-    details.patOpt > summary{
-      list-style:none;
-      cursor:pointer;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      padding:12px 12px;
-      font-weight:1000;
-      user-select:none;
-    }
-    details.patOpt > summary::-webkit-details-marker{ display:none; }
+  .train-controls{
+    position:absolute; left:14px; right:14px; bottom:12px;
+    display:none; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    padding:8px 10px; border-radius:10px;
+    background: rgba(0,0,0,.35);
+    border:1px solid rgba(255,255,255,.18);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .train-controls.show{ display:flex; }
+  .group{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
 
-    .optBody{
-      padding:12px 12px 14px;
-      border-top:1px solid rgba(255,255,255,.10);
-      display:grid;
-      gap:10px;
-    }
+  .check{ display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none; font-weight:800; }
+  .check input{ width:18px; height:18px; accent-color:#3b82f6; }
 
-    .optLine{
-      display:grid;
-      grid-template-columns: auto 1fr auto 1fr;
-      gap:10px;
-      align-items:center;
-      font-weight:1000;
-    }
-    @media (max-width:520px){
-      .optLine{ grid-template-columns: auto 1fr; }
-    }
-    .tag{
-      padding:8px 10px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.16);
-      background:rgba(255,255,255,.10);
-      font-weight:1100;
-      text-align:center;
-    }
-    .toSel{
-      width:100%;
-      font-weight:1100;
-      border-radius:14px;
-      padding:10px 12px;
-    }
-    .toSel.to-rot{ background:rgba(229,57,53,.80); border-color:rgba(229,57,53,.80); }
-    .toSel.to-gelb{ background:rgba(247,216,3,.92); border-color:rgba(247,216,3,.92); color:#111; }
-    .toSel.to-gruen{ background:rgba(34,197,94,.78); border-color:rgba(34,197,94,.78); }
-    .toSel.to-schwarz{ background:rgba(17,17,17,.88); border-color:rgba(17,17,17,.88); }
+  /* Segment Buttons: Farben bleiben, aber weniger Vollfläche */
+  .seg{ display:flex; gap:6px; }
+  .seg button{
+    border:1px solid rgba(255,255,255,.22);
+    background: rgba(0,0,0,.35);
+    color:#fff;
+    border-radius:999px;
+    padding:6px 10px;
+    font-weight:900;
+    cursor:pointer;
+    font-size:12px;
+    transition: transform .12s ease, box-shadow .2s ease, filter .2s ease, border-color .2s ease;
+  }
+  .seg button:hover{
+    transform: translateY(-1px);
+    box-shadow:0 10px 18px rgba(0,0,0,.28);
+    filter: brightness(1.05);
+  }
 
-    .warn{
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(0,0,0,.12);
-      border-radius:14px;
-      padding:10px 12px;
-      font-weight:900;
-      color:rgba(229,231,235,.84);
-      font-size:13px;
-      line-height:1.35;
-    }
+  /* Akzentfarben (nicht komplett knallig) */
+  .seg button[data-sk="rot"]{ background: rgba(229,57,53,.16); border-color: rgba(229,57,53,.70); }
+  .seg button[data-sk="gelb"]{ background: rgba(243,252,2,.16); border-color: rgba(243,252,2,.70); color:#111; }
+  .seg button[data-sk="gruen"]{ background: rgba(46,125,50,.16); border-color: rgba(46,125,50,.70); }
+  .seg button[data-sk="schwarz"]{ background: rgba(17,17,17,.24); border-color: rgba(255,255,255,.25); }
 
-    .empty{
-      padding:16px 12px 20px;
-      text-align:center;
-      color:rgba(229,231,235,.85);
-      font-weight:900;
-    }
-  </style>
+  .seg button.active{
+    outline:2px solid rgba(255,255,255,.65);
+    box-shadow: 0 10px 22px rgba(0,0,0,.25);
+  }
 
-  <link rel="stylesheet" href="/css/app-flow.css?v=2">
+  /* Flags: Farben bleiben, dezenter */
+  .flags { display:flex; gap:6px; align-items:center; }
+  .flags button{
+    border:1px solid rgba(255,255,255,.22);
+    background: rgba(0,0,0,.35);
+    color:#fff;
+    border-radius:999px;
+    padding:6px 10px;
+    font-weight:900;
+    cursor:pointer;
+    font-size:12px;
+    transition: transform .12s ease, box-shadow .2s ease, filter .2s ease, border-color .2s ease;
+  }
+  .flags button:hover{
+    transform: translateY(-1px);
+    box-shadow:0 10px 18px rgba(0,0,0,.28);
+    filter: brightness(1.05);
+  }
+  .flags button.active{ outline:2px solid rgba(255,255,255,.65); }
+  .flags .t { background: rgba(229,57,53,.16); border-color: rgba(229,57,53,.70); }
+  .flags .b { background: rgba(46,125,50,.16); border-color: rgba(46,125,50,.70); }
+
+  .savebar{
+    position: fixed; left:50%; transform:translateX(-50%);
+    bottom: calc(env(safe-area-inset-bottom) + 8px);
+    z-index: 50;
+    display:none; gap:10px; align-items:center;
+    background: rgba(0,0,0,.7);
+    border:1px solid var(--line);
+    padding:10px 12px; border-radius:14px;
+    box-shadow: 0 10px 26px rgba(0,0,0,.35);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .savebar.show{ display:flex; }
+  .savebar .info{ color:var(--muted); font-weight:700; }
+
+  .toast{
+    position: fixed; left:50%; transform: translateX(-50%);
+    bottom: calc(70px + env(safe-area-inset-bottom));
+    background: rgba(22,163,74,.95);
+    color:#fff; font-weight:800; padding:10px 14px; border-radius: 12px;
+    border:1px solid rgba(255,255,255,.25);
+    box-shadow: 0 10px 26px rgba(0,0,0,.35);
+    display:none; z-index:60;
+  }
+  .toast.show{ display:block; }
+
+  .bulk-actions{ margin-left:auto; display:none; gap:8px; align-items:center; flex-wrap:wrap; }
+  .bulk-actions.show{ display:flex; }
+
+  @media (max-width: 520px){
+    header{ align-items: flex-start; }
+    .title{ order: 3; width: 100%; }
+  }
+</style>
+
+<script src="/freigabe.js?v=2025-09-11-REV2" defer></script>
 </head>
 
 <body>
-  <div class="page">
+<header>
+  <div class="actions">
+    <a class="back" href="Instruktor.html">Zurück</a>
+    <a id="toAblage" class="to-ablage" href="/ablage1.html" aria-label="Direkt zur Patientenablage">
+      Direkt zur Pat. Ablage
+    </a>
+  </div>
+  <div class="title">Patienten-Übersicht</div>
+</header>
 
-    <div class="card header">
-      <div class="left">
-        <div class="topRow">
-          <button class="btn" id="btnBack" type="button">Zurück</button>
-          <button class="btn primary" id="btnAblage" type="button">Direkt zur Pat. Ablage</button>
-        </div>
-      </div>
-      <div class="right">
-        <div class="statsRow">
-          <div class="pill" id="cntLoaded">Geladen 0</div>
-          <div class="pill" id="cntSelected">Ausgewählt 0</div>
-        </div>
-      </div>
-    </div>
+<style>
+  header { position: relative; z-index: 60; }
+  .savebar { z-index: 50; }
+</style>
 
-    <div class="card section">
-      <details class="accord" id="accTraining">
-        <summary>
-          <div class="sum-left">
-            <div class="sum-title">Patientenablage Training</div>
-            <div class="sum-sub">Einstellungen</div>
-          </div>
-          <div class="sum-right">
-            <div class="togglePill off" id="trainingToggle" role="button" aria-pressed="false">Aus</div>
-            <div style="opacity:.85;font-weight:1100">▼</div>
-          </div>
-        </summary>
+<div class="toolbar">
+  <span class="pill">Patienten geladen: <span id="count">0</span></span>
+  <span class="pill" id="selPill" style="display:none">Ausgewählt: <b id="selCount">0</b></span>
 
-        <div class="accordBody" id="trainingBody">
-          <div class="miniHint">
-            Schnell Auswahl wählt zufällig Patienten aus deiner Liste. Danach kannst du unten speichern, oder abbrechen.
-          </div>
+  <span class="pill" id="mixPill" style="display:none">
+    <small>Auswahl:</small>
+    🔴 <b id="mixRot">0</b> &nbsp;🟡 <b id="mixGelb">0</b> &nbsp;🟢 <b id="mixGruen">0</b> &nbsp;⚫ <b id="mixSchwarz">0</b>
+  </span>
 
-          <div class="quickRow" id="quickRow">
-            <div class="chipBtn" data-q="10">10</div>
-            <div class="chipBtn" data-q="15">15</div>
-            <div class="chipBtn" data-q="20">20</div>
-            <div class="chipBtn" data-q="25">25</div>
-            <div class="chipBtn" data-q="30">30</div>
-            <div class="chipBtn" data-q="35">35</div>
-            <div class="chipBtn" data-q="40">40</div>
-          </div>
+  <div class="bulk-actions" id="bulk">
+    <button id="bulkSelectAll" class="btn">Alle auswählen</button>
+    <button id="bulkClear" class="btn">Auswahl löschen</button>
+  </div>
+</div>
 
-          <div class="row2">
-            <button class="btn" id="mixBtn" type="button">Mix</button>
-            <select id="mixSelect" class="selectMini">
-              <option value="20,30,50">Mix 20,30,50</option>
-              <option value="25,25,50">Mix 25,25,50</option>
-              <option value="33,33,34">Mix 33,33,34</option>
-            </select>
-          </div>
-
-          <button class="btn" id="btnNewSelect" type="button">Neu auswählen</button>
-
-          <div class="warn">
-            Hinweis. Das Training schaltet nur die Auswahl und die Ablage Funktion frei. Patienten Regeln stellst du unter Szenario ein.
-          </div>
-        </div>
-      </details>
-
-      <details class="accord" id="accDeterioration">
-        <summary>
-          <div class="sum-left">
-            <div class="sum-title">Patientenverschlechterung im Training</div>
-            <div class="sum-sub">Regeln festlegen</div>
-          </div>
-          <div class="sum-right">
-            <div class="togglePill off" id="detToggle" role="button" aria-pressed="false">Aus</div>
-            <div style="opacity:.85;font-weight:1100">▼</div>
-          </div>
-        </summary>
-
-        <div class="accordBody">
-          <div class="miniHint">
-            Diese Regeln stellst du unter Szenario ein. Hier wird nur der Status angezeigt.
-          </div>
-          <button class="btn" id="btnOpenScenario" type="button">Einstellungen öffnen</button>
-        </div>
-      </details>
-
-      <details class="accord" id="accSelection">
-        <summary>
-          <div class="sum-left">
-            <div class="sum-title">Übersicht Auswahl</div>
-            <div class="sum-sub"><span id="selTotalTxt">0 ausgewählt</span></div>
-          </div>
-          <div class="sum-right">
-            <div style="opacity:.85;font-weight:1100">▼</div>
-          </div>
-        </summary>
-
-        <div class="accordBody">
-          <div class="countGrid">
-            <div class="countsPill"><span style="display:flex;align-items:center;gap:8px"><span class="dot rot"></span>Auswahl Rot</span><span id="selRot">0</span></div>
-            <div class="countsPill"><span style="display:flex;align-items:center;gap:8px"><span class="dot gelb"></span>Gelb</span><span id="selGelb">0</span></div>
-            <div class="countsPill"><span style="display:flex;align-items:center;gap:8px"><span class="dot gruen"></span>Grün</span><span id="selGruen">0</span></div>
-            <div class="countsPill"><span style="display:flex;align-items:center;gap:8px"><span class="dot schwarz"></span>Schwarz</span><span id="selSchwarz">0</span></div>
-          </div>
-
-          <div class="btnRow">
-            <button class="btn" id="bulkSelectAll" type="button">Alle auswählen</button>
-            <button class="btn" id="bulkClear" type="button">Auswahl löschen</button>
-          </div>
-
-          <div class="btnRow">
-            <button class="btn primary" id="bulkToAblage" type="button">In Ablage übernehmen</button>
-            <button class="btn danger" id="bulkCancel" type="button">Abbrechen</button>
-          </div>
-        </div>
-      </details>
-    </div>
-
-    <div class="card">
-      <div class="list" id="grid">
-        <div class="empty" id="emptyState">Lade Patienten</div>
-      </div>
-    </div>
-
+<div class="trainbar">
+  <div class="row">
+    <button id="trainingBtn" class="btn primary" type="button" aria-pressed="false">Training Patientenablage aktivieren</button>
   </div>
 
-  <script>
-    const LS_SELECTED_KEY = "ablage_selected_patients_v1";
-    const LS_TRAINING_KEY = "training_ablage_enabled_v1";
+  <div class="row" id="presetRow" style="display:none">
+    <span class="label">Schnellauswahl</span>
 
-    const elGrid = document.getElementById("grid");
-    const elEmpty = document.getElementById("emptyState");
+    <button class="btn mini preset" data-count="10" type="button">10</button>
+    <button class="btn mini preset" data-count="15" type="button">15</button>
+    <button class="btn mini preset" data-count="20" type="button">20</button>
+    <button class="btn mini preset" data-count="25" type="button">25</button>
+    <button class="btn mini preset" data-count="30" type="button">30</button>
+    <button class="btn mini preset" data-count="35" type="button">35</button>
+    <button class="btn mini preset" data-count="40" type="button">40</button>
 
-    const elCntLoaded = document.getElementById("cntLoaded");
-    const elCntSelected = document.getElementById("cntSelected");
+    <select id="mixMode" aria-label="Auswahlmodus">
+      <option value="mix" selected>Mix (20/30/50)</option>
+      <option value="only-rot">Nur ROT</option>
+      <option value="only-gelb">Nur GELB</option>
+      <option value="only-gruen">Nur GRÜN</option>
+      <option value="only-schwarz">Nur SCHWARZ</option>
+      <option value="manual">Manuell (nur selbst auswählen)</option>
+    </select>
 
-    const accTraining = document.getElementById("accTraining");
-    const accDeterioration = document.getElementById("accDeterioration");
-    const accSelection = document.getElementById("accSelection");
+    <button id="reselectBtn" class="btn mini" type="button" title="Neue Auswahl (gleiche Anzahl)">
+      Neu auswählen
+    </button>
+  </div>
+</div>
 
-    const trainingToggle = document.getElementById("trainingToggle");
-    const detToggle = document.getElementById("detToggle");
+<div class="viewport" id="viewport">
+  <div class="spacer" aria-hidden="true"></div>
+  <div id="list" aria-live="polite"></div>
+  <div class="spacer" aria-hidden="true"></div>
+</div>
 
-    const selTotalTxt = document.getElementById("selTotalTxt");
-    const selRot = document.getElementById("selRot");
-    const selGelb = document.getElementById("selGelb");
-    const selGruen = document.getElementById("selGruen");
-    const selSchwarz = document.getElementById("selSchwarz");
+<div id="savebar" class="savebar" role="region" aria-live="polite">
+  <span class="info"><span id="selCountBottom">0</span> ausgewählt</span>
+  <button id="saveBtn" class="btn primary" type="button">In Ablage übernehmen</button>
+  <button id="cancelBtn" class="btn" type="button">Abbrechen</button>
+</div>
 
-    const btnBack = document.getElementById("btnBack");
-    const btnAblage = document.getElementById("btnAblage");
-    const btnOpenScenario = document.getElementById("btnOpenScenario");
+<div class="toast" id="toast">In Ablage übernommen</div>
 
-    const bulkSelectAll = document.getElementById("bulkSelectAll");
-    const bulkClear = document.getElementById("bulkClear");
-    const bulkToAblage = document.getElementById("bulkToAblage");
-    const bulkCancel = document.getElementById("bulkCancel");
+<script>
+"use strict";
 
-    const quickRow = document.getElementById("quickRow");
-    const mixBtn = document.getElementById("mixBtn");
-    const mixSelect = document.getElementById("mixSelect");
-    const btnNewSelect = document.getElementById("btnNewSelect");
+/* ===== Storage Helpers ===== */
+function jget(k,f){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):f; }catch(_){ return f; } }
+function jset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } }
 
-    let patients = [];
-    let selected = new Set();
-    let trainingEnabled = false;
+/* Keys */
+const LS_ACTIVE  = 'ablage.active.v1';
+const LS_SESSION = 'ablage.sessionStart.v1';
+const AUTOSTART  = 'ablage.autostart.ok';
 
-    function setToggle(el, on){
-      el.classList.toggle("on", !!on);
-      el.classList.toggle("off", !on);
-      el.textContent = on ? "An" : "Aus";
-      el.setAttribute("aria-pressed", on ? "true" : "false");
-    }
+/* ======= AUTO-START-SPERRE ======= */
+function blockAutoStart() {
+  const ok = localStorage.getItem(AUTOSTART) === 'true';
+  if (ok) return;
 
-    function skClassFromValue(v){
-      const s = String(v || "").toLowerCase();
-      if(s.includes("rot") || s==="1" || s==="sk1") return "rot";
-      if(s.includes("gelb") || s==="2" || s==="sk2") return "gelb";
-      if(s.includes("grün") || s.includes("gruen") || s==="3" || s==="sk3") return "gruen";
-      if(s.includes("schwarz") || s==="4" || s==="sk4") return "schwarz";
-      return "rot";
-    }
+  let active = jget(LS_ACTIVE, []);
+  if (!Array.isArray(active) || !active.length) return;
 
-    function badgeTextFromSk(sk){
-      if(sk==="rot") return "SK1 ROT";
-      if(sk==="gelb") return "SK2 GELB";
-      if(sk==="gruen") return "SK3 GRÜN";
-      return "SCHWARZ";
-    }
+  let changed = false;
+  const now = Date.now();
 
-    function safeText(v){
-      if(v === null || v === undefined) return "";
-      return String(v);
-    }
+  active = active.map(item => {
+    if (!item || typeof item !== 'object') return item;
+    if (typeof item.queuedAt !== 'number') { item.queuedAt = now; changed = true; }
+    if (typeof item.offset !== 'number')   { item.offset = 0;   changed = true; }
+    if ('addedAt' in item) { delete item.addedAt; changed = true; }
+    if (item.startAt && (now - item.startAt) < 30000) { item.startAt = null; changed = true; }
+    return item;
+  });
 
-    function loadSelected(){
-      try{
-        const raw = localStorage.getItem(LS_SELECTED_KEY);
-        if(!raw) return;
-        const arr = JSON.parse(raw);
-        if(Array.isArray(arr)) selected = new Set(arr.map(String));
-      }catch(e){}
-    }
+  if (changed) jset(LS_ACTIVE, active);
+}
+function denyAutostart(){ localStorage.setItem(AUTOSTART, 'false'); blockAutoStart(); }
+window.addEventListener('pageshow', denyAutostart);
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState !== 'hidden') denyAutostart(); });
+window.addEventListener('beforeunload', denyAutostart);
 
-    function saveSelected(){
-      try{
-        localStorage.setItem(LS_SELECTED_KEY, JSON.stringify(Array.from(selected)));
-      }catch(e){}
-    }
+denyAutostart();
+const t0_guard = Date.now();
+const guardInterval = setInterval(()=>{
+  denyAutostart();
+  if (Date.now() - t0_guard > 8000) clearInterval(guardInterval);
+}, 150);
 
-    function loadTrainingState(){
-      trainingEnabled = localStorage.getItem(LS_TRAINING_KEY) === "1";
-      setToggle(trainingToggle, trainingEnabled);
-    }
-
-    function saveTrainingState(){
-      localStorage.setItem(LS_TRAINING_KEY, trainingEnabled ? "1" : "0");
-    }
-
-    function updateCounts(){
-      const map = { rot:0, gelb:0, gruen:0, schwarz:0 };
-      for(const id of selected){
-        const p = patients.find(x=>String(x.id)===String(id));
-        if(!p) continue;
-        map[p.sk] = (map[p.sk]||0) + 1;
-      }
-      const total = selected.size;
-
-      elCntLoaded.textContent = "Geladen " + patients.length;
-      elCntSelected.textContent = "Ausgewählt " + total;
-
-      selTotalTxt.textContent = total + " ausgewählt";
-      selRot.textContent = map.rot || 0;
-      selGelb.textContent = map.gelb || 0;
-      selGruen.textContent = map.gruen || 0;
-      selSchwarz.textContent = map.schwarz || 0;
-    }
-
-    function applyToSelectStyle(sel){
-      if(!sel) return;
-      sel.classList.remove("to-rot","to-gelb","to-gruen","to-schwarz");
-      const v = (sel.value||"").toLowerCase();
-      if(v==="rot") sel.classList.add("to-rot");
-      if(v==="gelb") sel.classList.add("to-gelb");
-      if(v==="gruen" || v==="grün") sel.classList.add("to-gruen");
-      if(v==="schwarz") sel.classList.add("to-schwarz");
-    }
-
-    function render(){
-      elGrid.innerHTML = "";
-      if(!patients.length){
-        const d = document.createElement("div");
-        d.className = "empty";
-        d.id = "emptyState";
-        d.textContent = "Keine Patienten gefunden. Prüfe Patienten.json";
-        elGrid.appendChild(d);
-        updateCounts();
-        return;
-      }
-
-      patients.forEach(p=>{
-        const wrap = document.createElement("div");
-        wrap.className = "pat sk-" + p.sk;
-        wrap.dataset.id = p.id;
-
-        const head = document.createElement("div");
-        head.className = "patHead";
-
-        const title = document.createElement("div");
-        title.className = "patTitle";
-        const name = document.createElement("div");
-        name.className = "name";
-        name.textContent = "Patient " + p.nr;
-        title.appendChild(name);
-
-        const badge = document.createElement("div");
-        badge.className = "badge " + p.sk;
-        badge.textContent = badgeTextFromSk(p.sk);
-
-        head.appendChild(title);
-        head.appendChild(badge);
-
-        const body = document.createElement("div");
-        body.className = "patBody";
-
-        const kv = document.createElement("div");
-        kv.className = "kv";
-
-        function addKV(k, v){
-          const kk = document.createElement("div");
-          kk.className = "k";
-          kk.textContent = k;
-          const vv = document.createElement("div");
-          vv.className = "v";
-          vv.textContent = v;
-          kv.appendChild(kk);
-          kv.appendChild(vv);
-        }
-
-        addKV("Alter", safeText(p.alter));
-        addKV("Geschlecht", safeText(p.geschlecht));
-        addKV("Darstellung", safeText(p.darstellung));
-        addKV("AF, Puls", safeText(p.af) + "/min, " + safeText(p.puls) + "/min");
-
-        const vm = document.createElement("div");
-        vm.style.marginTop = "6px";
-        vm.style.fontWeight = "1000";
-        vm.style.color = "rgba(229,231,235,.95)";
-        vm.textContent = "Verletzungsmuster: " + safeText(p.verletzung);
-        body.appendChild(kv);
-        body.appendChild(vm);
-
-        const foot = document.createElement("div");
-        foot.className = "patFoot";
-
-        const chkWrap = document.createElement("label");
-        chkWrap.className = "ablageCheck";
-        const chk = document.createElement("input");
-        chk.type = "checkbox";
-        chk.checked = selected.has(String(p.id));
-        const chkTxt = document.createElement("span");
-        chkTxt.textContent = "Für Ablage";
-        chkWrap.appendChild(chk);
-        chkWrap.appendChild(chkTxt);
-
-        chk.addEventListener("change", ()=>{
-          if(chk.checked) selected.add(String(p.id));
-          else selected.delete(String(p.id));
-          saveSelected();
-          updateCounts();
-        });
-
-        const preview = document.createElement("button");
-        preview.className = "previewBtn";
-        preview.type = "button";
-        preview.textContent = "Vorschau";
-        preview.addEventListener("click", ()=>{
-          const url = p.previewUrl || ("patient" + p.nr + ".html");
-          window.location.href = url;
-        });
-
-        foot.appendChild(chkWrap);
-        foot.appendChild(preview);
-
-        const opt = document.createElement("details");
-        opt.className = "patOpt";
-        const sum = document.createElement("summary");
-        sum.textContent = "Optionen";
-        opt.appendChild(sum);
-
-        const optBody = document.createElement("div");
-        optBody.className = "optBody";
-
-        const warn = document.createElement("div");
-        warn.className = "warn";
-        warn.textContent = "Patienten Verschlechterung wird zentral über Szenario gesteuert. Hier ist nur die Anzeige pro Patient.";
-        optBody.appendChild(warn);
-
-        opt.appendChild(optBody);
-
-        wrap.appendChild(head);
-        wrap.appendChild(body);
-        wrap.appendChild(foot);
-        wrap.appendChild(opt);
-
-        elGrid.appendChild(wrap);
+/* ===== Patienten laden ===== */
+async function loadPatients() {
+  const urls = ["patienten.json", "patients.json"];
+  let lastErr;
+  for (const url of urls){
+    try{
+      const res = await fetch(url, { cache:"no-store" });
+      if(!res.ok) throw new Error("HTTP "+res.status);
+      const raw = await res.json();
+      return raw.map(p=>{
+        const kat = String(p.kategorie||p.Kategorie||"").toLowerCase().replace("grün","gruen");
+        const base = ({rot:{af:28,puls:120},gelb:{af:22,puls:100},gruen:{af:16,puls:80},schwarz:{af:0,puls:0}})[kat] || {af:18,puls:85};
+        const gender = (p.gender??p.Gender??p.geschlecht??p.Geschlecht) ?? "—";
+        const age = (p.age??p.Age??p.alter??p.Alter) ?? "—";
+        const photo = p.photo || p.Photo || p.foto || p.Foto || null;
+        return {
+          id: Number(p.id ?? p.ID),
+          kategorie: ["rot","gelb","gruen","schwarz"].includes(kat) ? kat : "gelb",
+          darstellung: p.darstellung || p.Darstellung || "sitzend",
+          verletzung: p.verletzung || p.Verletzung || "—",
+          af: p.af ?? p.AF ?? base.af,
+          puls: p.puls ?? p.Puls ?? base.puls,
+          age, gender, photo
+        };
       });
+    }catch(e){ lastErr=e; }
+  }
+  throw new Error("Konnte patienten.json nicht laden: "+(lastErr?.message||"Unbekannt"));
+}
 
-      updateCounts();
-    }
+/* ===== Sichtungs-/Flag-Storage ===== */
+function getSMap(){ return jget('sichtungMap', {}); }
+function setSMap(map){ jset('sichtungMap', map); }
+function getFlagsFor(pid){ return jget('sicht_'+pid, {t:false,b:false}); }
+function setFlagsFor(pid, flags){ jset('sicht_'+pid, { t: !!flags.t, b: !!flags.b }); }
+function normalizeFlagsForCat(cat, flags){
+  const f = { t: !!flags.t, b: !!flags.b };
+  if (cat !== 'rot')   f.t = false;
+  if (cat !== 'gruen') f.b = false;
+  return f;
+}
 
-    function pickRandom(n){
-      if(!patients.length) return;
-      const all = patients.map(p=>String(p.id));
-      const pool = all.slice();
-      for(let i=pool.length-1;i>0;i--){
-        const j = Math.floor(Math.random()*(i+1));
-        const t = pool[i]; pool[i]=pool[j]; pool[j]=t;
-      }
-      selected = new Set(pool.slice(0, Math.min(n, pool.length)));
-      saveSelected();
-      render();
-    }
+/* ===== State + DOM Refs ===== */
+const listEl = document.getElementById("list");
+const countEl = document.getElementById("count");
+const toastEl = document.getElementById("toast");
 
-    function parseMix(str){
-      const parts = String(str||"").split(",").map(x=>parseInt(x.trim(),10)).filter(x=>Number.isFinite(x) && x>0);
-      if(parts.length!==3) return null;
-      return parts;
-    }
+const trainingBtn = document.getElementById("trainingBtn");
+const savebar = document.getElementById("savebar");
+const saveBtn = document.getElementById("saveBtn");
+const cancelBtn = document.getElementById("cancelBtn");
+const selPill = document.getElementById("selPill");
+const selCountTop = document.getElementById("selCount");
+const selCountBottom = document.getElementById("selCountBottom");
 
-    function pickMix(parts){
-      if(!patients.length) return;
-      const [g,y,r] = parts;
-      const greens = patients.filter(p=>p.sk==="gruen").map(p=>String(p.id));
-      const yellows = patients.filter(p=>p.sk==="gelb").map(p=>String(p.id));
-      const reds = patients.filter(p=>p.sk==="rot").map(p=>String(p.id));
+const bulkBox = document.getElementById('bulk');
+const bulkSelectAllBtn = document.getElementById('bulkSelectAll');
+const bulkClearBtn = document.getElementById('bulkClear');
 
-      function takeRandom(arr, n){
-        const a = arr.slice();
-        for(let i=a.length-1;i>0;i--){
-          const j = Math.floor(Math.random()*(i+1));
-          const t=a[i]; a[i]=a[j]; a[j]=t;
-        }
-        return a.slice(0, Math.min(n,a.length));
-      }
+const presetRow = document.getElementById('presetRow');
+const mixPill = document.getElementById('mixPill');
+const mixRot = document.getElementById('mixRot');
+const mixGelb = document.getElementById('mixGelb');
+const mixGruen = document.getElementById('mixGruen');
+const mixSchwarz = document.getElementById('mixSchwarz');
 
-      const pick = [
-        ...takeRandom(greens, g),
-        ...takeRandom(yellows, y),
-        ...takeRandom(reds, r)
-      ];
+const mixModeSel = document.getElementById('mixMode');
+const reselectBtn = document.getElementById('reselectBtn');
 
-      selected = new Set(pick);
-      saveSelected();
-      render();
-    }
+let allPatients = [];
+let training = false;
+let lastPresetCount = 0;
+let selected = new Map(); // id -> { sk:null|..., t:false, b:false }
 
-    async function loadPatients(){
-      const urls = ['Patienten.json','patienten.json','patients.json','Patients.json','/Patienten.json','/patienten.json','/patients.json'];
-      let lastErr = null;
+/* ===== Render ===== */
+function cardHTML(p){
+  const katClass = p.kategorie === "gruen" ? "gruen" : p.kategorie;
+  const katLabel = (p.kategorie === "gruen" ? "GRÜN" : p.kategorie.toUpperCase());
+  return `
+    <article class="card ${katClass}" data-id="${p.id}">
+      <h2>Patient ${p.id}</h2>
+      <div class="meta"><b>Alter:</b> ${p.age}</div>
+      <div class="meta"><b>Geschlecht:</b> ${p.gender}</div>
+      <div class="meta"><b>Darstellung:</b> ${p.darstellung||"—"}</div>
+      <div class="meta"><b>Verletzungsmuster:</b> ${p.verletzung||"—"}</div>
+      <div class="meta"><b>AF:</b> ${p.af}/min&nbsp;&nbsp;&nbsp;<b>Puls:</b> ${p.puls}/min</div>
+      <span class="sichtung">${katLabel}</span><br/>
+      <button class="open" type="button">Vorschau</button>
 
-      for(const url of urls){
-        try{
-          const res = await fetch(url, { cache:"no-store" });
-          if(!res.ok) throw new Error("HTTP " + res.status);
-          const raw = await res.json();
+      <div class="train-controls" aria-hidden="true" hidden inert>
+        <div class="group check">
+          <input type="checkbox" class="pick" id="pick-${p.id}" />
+          <label for="pick-${p.id}">Für Ablage</label>
+        </div>
 
-          const arr = Array.isArray(raw) ? raw : (raw.patienten || raw.patients || raw.Patienten || raw.Patients || raw.data || []);
-          const mapped = arr.map(p=>{
-            const id = p.id ?? p.nr ?? p.patientId ?? p.patient ?? ("p"+Math.random());
-            const nr = p.nr ?? p.patient ?? p.patientNr ?? p.patientenNr ?? p.id ?? "";
-            const sk = skClassFromValue(p.sk ?? p.sichtung ?? p.skklasse ?? p.sk_klasse ?? p.kategorie ?? "rot");
-            return {
-              id: String(id),
-              nr: safeText(nr),
-              sk,
-              alter: safeText(p.alter ?? p.age ?? ""),
-              geschlecht: safeText(p.geschlecht ?? p.sex ?? ""),
-              darstellung: safeText(p.darstellung ?? p.position ?? "unbekannt"),
-              af: safeText(p.af ?? p.resp ?? ""),
-              puls: safeText(p.puls ?? p.hr ?? ""),
-              verletzung: safeText(p.verletzungsmuster ?? p.verletzung ?? p.injury ?? ""),
-              previewUrl: p.url ?? p.seite ?? p.page ?? null
-            };
-          });
+        <div class="group seg" aria-label="Sichtungsklasse wählen">
+          <button type="button" data-sk="rot" title="SK1 ROT">ROT</button>
+          <button type="button" data-sk="gelb" title="SK2 GELB">GELB</button>
+          <button type="button" data-sk="gruen" title="SK3 GRÜN">GRÜN</button>
+          <button type="button" data-sk="schwarz" title="SCHWARZ">SCHWARZ</button>
+        </div>
 
-          patients = mapped.filter(x=>x.id);
-          return;
-        }catch(e){
-          lastErr = e;
-        }
-      }
+        <div class="group flags" aria-label="Zusatz-Flags">
+          <button type="button" data-flag="t" class="t" title="Transportpriorität (nur SK1)">T</button>
+          <button type="button" data-flag="b" class="b" title="Betroffener (nur SK3)">B</button>
+        </div>
+      </div>
+    </article>
+  `;
+}
 
-      console.error("Patienten laden fehlgeschlagen", lastErr);
-      patients = [];
-    }
+function renderList(){
+  listEl.innerHTML = allPatients.map(cardHTML).join("");
+  attachCardEvents();
+  syncTrainingUI();
+}
 
-    function initAccordionsClosed(){
-      accTraining.removeAttribute("open");
-      accDeterioration.removeAttribute("open");
-      accSelection.removeAttribute("open");
-    }
+function attachCardEvents(){
+  document.querySelectorAll(".card").forEach(card=>{
+    const id = Number(card.dataset.id);
+    const p = allPatients.find(x=>x.id===id);
 
-    function wireToggles(){
-      trainingToggle.addEventListener("click", (e)=>{
-        e.preventDefault();
-        trainingEnabled = !trainingEnabled;
-        setToggle(trainingToggle, trainingEnabled);
-        saveTrainingState();
-      });
-
-      detToggle.addEventListener("click", (e)=>{
-        e.preventDefault();
-        const on = detToggle.classList.contains("on");
-        setToggle(detToggle, !on);
-      });
-    }
-
-    function wireButtons(){
-      btnBack.addEventListener("click", ()=>{ window.location.href = "instruktor.html"; });
-      btnAblage.addEventListener("click", ()=>{ window.location.href = "ablage1.html"; });
-      btnOpenScenario.addEventListener("click", ()=>{ window.location.href = "szenario.html"; });
-
-      bulkSelectAll.addEventListener("click", ()=>{
-        selected = new Set(patients.map(p=>String(p.id)));
-        saveSelected();
-        render();
-      });
-
-      bulkClear.addEventListener("click", ()=>{
-        selected = new Set();
-        saveSelected();
-        render();
-      });
-
-      bulkCancel.addEventListener("click", ()=>{
-        selected = new Set();
-        saveSelected();
-        render();
-      });
-
-      bulkToAblage.addEventListener("click", ()=>{
-        saveSelected();
-        window.location.href = "ablage1.html";
-      });
-
-      quickRow.querySelectorAll(".chipBtn").forEach(btn=>{
-        btn.addEventListener("click", ()=>{
-          const n = parseInt(btn.getAttribute("data-q"), 10);
-          pickRandom(n);
-        });
-      });
-
-      mixBtn.addEventListener("click", ()=>{
-        const parts = parseMix(mixSelect.value);
-        if(!parts){
-          alert("Mix Auswahl ungültig");
-          return;
-        }
-        pickMix(parts);
-      });
-
-      btnNewSelect.addEventListener("click", ()=>{
-        const any = selected.size || 20;
-        pickRandom(any);
-      });
-    }
-
-    window.addEventListener("DOMContentLoaded", async ()=>{
-      initAccordionsClosed();
-
-      loadSelected();
-      loadTrainingState();
-      setToggle(detToggle, false);
-
-      wireToggles();
-      wireButtons();
-
-      await loadPatients();
-      render();
+    card.querySelector(".open").addEventListener("click", e=>{
+      e.stopPropagation();
+      try{ sessionStorage.setItem("currentPatient", JSON.stringify(p)); }catch(_){ }
+      location.href = `patient${id}.html`;
     });
-  </script>
 
-  <script src="/metrics.js" defer></script>
+    const cb = card.querySelector(".pick");
+    cb.addEventListener("change", ()=>{
+      if(cb.checked){
+        if(!selected.has(id)) selected.set(id, { sk: null, t:false, b:false });
+      }else{
+        selected.delete(id);
+        card.querySelectorAll('.seg button').forEach(b=>b.classList.remove('active'));
+        card.querySelectorAll('.flags button').forEach(b=>b.classList.remove('active'));
+      }
+      updateCountersAndSavebar();
+    });
+
+    card.querySelectorAll('.seg button').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        if(!cb.checked){ cb.checked = true; }
+        if(!selected.has(id)) selected.set(id, { sk: null, t:false, b:false });
+
+        const entry = selected.get(id);
+        const sk = btn.getAttribute('data-sk');
+
+        card.querySelectorAll('.seg button').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+
+        entry.sk = sk;
+        const norm = normalizeFlagsForCat(sk, entry);
+        entry.t = norm.t; entry.b = norm.b;
+
+        const fT = card.querySelector('.flags [data-flag="t"]');
+        const fB = card.querySelector('.flags [data-flag="b"]');
+        fT.toggleAttribute('disabled', entry.sk !== 'rot');
+        fB.toggleAttribute('disabled', entry.sk !== 'gruen');
+        fT.classList.toggle('active', !!entry.t);
+        fB.classList.toggle('active', !!entry.b);
+
+        selected.set(id, entry);
+        updateCountersAndSavebar();
+      });
+    });
+
+    card.querySelectorAll('.flags [data-flag]').forEach(b=>{
+      b.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        if(!cb.checked){ cb.checked = true; }
+        if(!selected.has(id)) selected.set(id, { sk: null, t:false, b:false });
+        const entry = selected.get(id);
+
+        const flag = b.getAttribute('data-flag');
+        if (flag==='t' && entry.sk!=='rot') return;
+        if (flag==='b' && entry.sk!=='gruen') return;
+
+        entry[flag] = !entry[flag];
+        b.classList.toggle('active', !!entry[flag]);
+
+        selected.set(id, entry);
+        updateCountersAndSavebar();
+      });
+    });
+
+    card.addEventListener("click", ()=>{ if(!training) location.href = `patient${id}.html`; });
+  });
+}
+
+/* ===== Training UI ===== */
+trainingBtn.addEventListener("click", ()=>{
+  training = !training;
+  trainingBtn.classList.toggle("active", training);
+  trainingBtn.setAttribute("aria-pressed", String(training));
+  trainingBtn.textContent = training ? "Training Patientenablage läuft" : "Training Patientenablage aktivieren";
+
+  if(!training){
+    clearSelectionUI();
+  }
+  syncTrainingUI();
+});
+
+function syncTrainingUI(){
+  document.querySelectorAll(".card .train-controls").forEach(el=>{
+    const visible = training;
+    el.classList.toggle("show", visible);
+    el.toggleAttribute("hidden", !visible);
+    el.setAttribute("aria-hidden", String(!visible));
+    el.inert = !visible;
+  });
+
+  selPill.style.display = training ? "" : "none";
+  presetRow.style.display = training ? "" : "none";
+  mixPill.style.display = training ? "" : "none";
+  bulkBox.classList.toggle('show', training);
+
+  updateCountersAndSavebar();
+}
+
+/* ===== Auswahl-Helpers ===== */
+function shuffle(arr){
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function computeTargets(total, weights){
+  const cats = Object.keys(weights);
+  const raw = cats.map(c => ({ c, v: total * weights[c] }));
+  const base = {};
+  raw.forEach(x => base[x.c] = Math.floor(x.v));
+
+  let used = Object.values(base).reduce((s,n)=>s+n,0);
+  let rest = total - used;
+
+  raw
+    .map(x => ({ c:x.c, frac: x.v - Math.floor(x.v) }))
+    .sort((a,b)=>b.frac - a.frac)
+    .forEach(x => { if(rest>0){ base[x.c]++; rest--; } });
+
+  return base;
+}
+
+function clearSelectionUI(){
+  selected.clear();
+  document.querySelectorAll(".card .pick").forEach(cb=>cb.checked=false);
+  document.querySelectorAll(".card .seg button").forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll(".card .flags button").forEach(b=>b.classList.remove('active'));
+}
+
+function selectIds(ids){
+  ids.forEach(id=>{
+    const card = document.querySelector(`.card[data-id="${id}"]`);
+    if(!card) return;
+    const cb = card.querySelector(".pick");
+    if(!cb.checked) cb.checked = true;
+    if(!selected.has(id)) selected.set(id, { sk: null, t:false, b:false });
+    card.querySelectorAll('.seg button').forEach(b=>b.classList.remove('active'));
+    card.querySelectorAll('.flags button').forEach(b=>b.classList.remove('active'));
+  });
+}
+
+function pickOnly(cat, total){
+  const pool = shuffle(allPatients.filter(p=>p.kategorie===cat));
+  return pool.slice(0, total).map(p=>p.id);
+}
+
+function pickMix(total){
+  const targets = computeTargets(total, { rot:0.2, gelb:0.3, gruen:0.5, schwarz:0.0 });
+
+  const pools = {
+    rot: shuffle(allPatients.filter(p=>p.kategorie==="rot")),
+    gelb: shuffle(allPatients.filter(p=>p.kategorie==="gelb")),
+    gruen: shuffle(allPatients.filter(p=>p.kategorie==="gruen")),
+    schwarz: shuffle(allPatients.filter(p=>p.kategorie==="schwarz")),
+  };
+
+  const chosen = [];
+  const chosenIds = new Set();
+
+  (["rot","gelb","gruen","schwarz"]).forEach(cat=>{
+    const need = Math.max(0, targets[cat] || 0);
+    const pool = pools[cat].filter(p=>!chosenIds.has(p.id));
+    pool.slice(0, need).forEach(p=>{ chosen.push(p); chosenIds.add(p.id); });
+  });
+
+  let missing = total - chosen.length;
+  if (missing > 0){
+    const allRest = shuffle(allPatients).filter(p=>!chosenIds.has(p.id));
+    allRest.slice(0, missing).forEach(p=>{ chosen.push(p); chosenIds.add(p.id); });
+  }
+
+  return chosen.slice(0,total).map(p=>p.id);
+}
+
+function applyPreset(count){
+  if(!training) trainingBtn.click();
+
+  const mode = mixModeSel.value || "mix";
+  lastPresetCount = count;
+
+  if (mode === "manual"){
+    toast("Manuell aktiv – bitte selbst auswählen");
+    return;
+  }
+
+  bulkClearBtn.click();
+
+  let ids = [];
+  if (mode === "mix") ids = pickMix(count);
+  else if (mode === "only-rot") ids = pickOnly("rot", count);
+  else if (mode === "only-gelb") ids = pickOnly("gelb", count);
+  else if (mode === "only-gruen") ids = pickOnly("gruen", count);
+  else if (mode === "only-schwarz") ids = pickOnly("schwarz", count);
+  else ids = pickMix(count);
+
+  selectIds(ids);
+
+  const wanted = count, got = ids.length;
+  const label = mixModeSel.selectedOptions?.[0]?.textContent || "Preset";
+
+  if (mode.startsWith("only-") && got < wanted){
+    toast(`${label}: ${got}/${wanted} verfügbar (Rest leer)`);
+  } else {
+    toast(`${label}: ${got} vorbereitet`);
+  }
+
+  updateCountersAndSavebar();
+}
+
+/* ===== Counter / Mix Anzeige ===== */
+function updateCountersAndSavebar(){
+  const n = selected.size;
+  selCountTop.textContent = String(n);
+  selCountBottom.textContent = String(n);
+  savebar.classList.toggle("show", training && n>0);
+
+  let r=0,g=0,gr=0,s=0;
+  for(const [id, entry] of selected.entries()){
+    let sk = entry?.sk;
+    if(!sk){
+      const p = allPatients.find(x=>x.id===id);
+      sk = p?.kategorie || null;
+    }
+    if(sk==="rot") r++;
+    else if(sk==="gelb") g++;
+    else if(sk==="gruen") gr++;
+    else if(sk==="schwarz") s++;
+  }
+  mixRot.textContent = String(r);
+  mixGelb.textContent = String(g);
+  mixGruen.textContent = String(gr);
+  mixSchwarz.textContent = String(s);
+}
+
+/* ===== Bulk Actions ===== */
+bulkSelectAllBtn.addEventListener('click', ()=>{
+  document.querySelectorAll(".card").forEach(card=>{
+    const id = Number(card.dataset.id);
+    const cb = card.querySelector(".pick");
+    if(!cb.checked) cb.checked = true;
+    if(!selected.has(id)) selected.set(id, { sk: null, t:false, b:false });
+  });
+  updateCountersAndSavebar();
+});
+
+bulkClearBtn.addEventListener('click', ()=>{
+  clearSelectionUI();
+  updateCountersAndSavebar();
+});
+
+/* ===== Preset Buttons ===== */
+document.querySelectorAll(".preset").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    const count = Number(btn.getAttribute("data-count") || "0");
+    applyPreset(count);
+  });
+});
+
+reselectBtn.addEventListener("click", ()=>{
+  const n = lastPresetCount || selected.size;
+  if(!training || !n) return;
+  applyPreset(n);
+});
+
+/* ===== Speichern → Ablage (ohne Start) ===== */
+saveBtn.addEventListener("click", ()=>{
+  if(selected.size===0) return;
+
+  denyAutostart();
+
+  const now = Date.now();
+  if(!jget(LS_SESSION, null)) jset(LS_SESSION, now);
+
+  let active = jget(LS_ACTIVE, []);
+  if(!Array.isArray(active)) active = [];
+  const have = new Set(active.map(a=>a && a.id));
+  let sMap = getSMap();
+
+  for(const [id, entry] of selected.entries()){
+    const p = allPatients.find(x=>x.id===id);
+    if(!p) continue;
+    const pid = `patient${p.id}`;
+
+    const sk = entry?.sk || p.kategorie;
+    const flags = normalizeFlagsForCat(sk, entry || {});
+
+    sMap[pid] = sk;
+    setFlagsFor(pid, flags);
+
+    if(!have.has(pid)){
+      active.push({
+        id: pid,
+        label: `Patient ${p.id}`,
+        url: `patient${p.id}.html`,
+        sk,
+        queuedAt: now,
+        startAt: null,
+        offset: 0,
+        from: "overview-training"
+      });
+      have.add(pid);
+    }else{
+      const i = active.findIndex(a=>a && a.id===pid);
+      if(i>=0){
+        active[i].sk = sk;
+        if(typeof active[i].queuedAt !== 'number') active[i].queuedAt = now;
+        active[i].startAt = null;
+        if(typeof active[i].offset !== 'number') active[i].offset = 0;
+        if('addedAt' in active[i]) delete active[i].addedAt;
+      }
+    }
+  }
+
+  setSMap(sMap);
+  jset(LS_ACTIVE, active);
+
+  const t0 = Date.now();
+  const g = setInterval(()=>{
+    denyAutostart();
+    if (Date.now() - t0 > 5000) clearInterval(g);
+  }, 150);
+
+  toast("In Ablage übernommen");
+  clearSelectionUI();
+  updateCountersAndSavebar();
+});
+
+cancelBtn.addEventListener("click", ()=>{
+  clearSelectionUI();
+  updateCountersAndSavebar();
+});
+
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  setTimeout(()=>toastEl.classList.remove('show'), 1600);
+}
+
+/* ===== Init ===== */
+(async function init(){
+  try{
+    denyAutostart();
+    allPatients = await loadPatients();
+    countEl.textContent = String(allPatients.length);
+
+    jset('patientsData', allPatients.map(p => ({
+      id: p.id,
+      age: p.age,
+      gender: p.gender,
+      photo: p.photo || null
+    })));
+
+    renderList();
+  }catch(e){
+    listEl.innerHTML =
+      '<div style="background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.2);padding:16px;border-radius:12px">'
+      + '<b>Fehler beim Laden:</b> '+e.message+'<br/>Prüfe Dateiname/Ort, JSON-Syntax und Cache.'
+      + '</div>';
+    console.error(e);
+  }
+})();
+</script>
+
+<script>
+  window.METRICS_URL = "https://1rettungsmittel.de/metrics.php";
+</script>
+<script src="/metrics.js" defer></script>
+
 </body>
 </html>
-
-
