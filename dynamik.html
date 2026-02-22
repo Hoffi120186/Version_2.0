@@ -140,6 +140,37 @@
         <button class="btnSmall" type="button" id="btnShowPlan">Plan anzeigen</button>
       </div>
 
+      <details class="help" style="margin-top:12px;">
+        <summary style="cursor:pointer; font-weight:700;">Hilfe zur Dynamik</summary>
+        <div style="margin-top:10px; line-height:1.35;">
+          <div style="opacity:.9;">
+            Dynamik steuert Verschlechterungen direkt in der Ablage, komplett offline. Wenn Aktiv aus ist, bleibt alles wie bisher.
+          </div>
+
+          <div style="margin-top:10px; font-weight:800;">Modus Fix</div>
+          <div style="opacity:.9; margin-top:4px;">
+            Du legst konkrete Ereignisse fest, z.B. Patient 30 wird nach 3 Minuten von SK2 zu SK1. Das ist ideal für feste Lernziele.
+          </div>
+
+          <div style="margin-top:10px; font-weight:800;">Modus Zufall</div>
+          <div style="opacity:.9; margin-top:4px;">
+            Du gibst nur Rahmen vor. Startfenster, Anzahl, Mindestabstand, erlaubte SK Klassen. Die App würfelt pro Übung einen Plan und speichert ihn, damit es während der Übung konsistent bleibt.
+          </div>
+
+          <div style="margin-top:10px; font-weight:800;">Zeitbasis</div>
+          <div style="opacity:.9; margin-top:4px;">
+            Basis Patient bedeutet. Zeit zählt ab dem Moment, in dem der Patient in der Ablage ist. Basis Einsatz bedeutet. Zeit zählt ab Übungsstart.
+          </div>
+
+          <div style="margin-top:10px; font-weight:800;">Tipps</div>
+          <ul style="margin:8px 0 0 18px; opacity:.92;">
+            <li>Für realistische Dynamik. Mindestens 60 Sekunden Abstand zwischen Ereignissen setzen.</li>
+            <li>Wenn du Fairness willst. Nur Verschlechterung zu schlechter, nicht wieder besser.</li>
+            <li>Wenn du testen willst. Kleines Startfenster wie 1 bis 2 Minuten wählen.</li>
+          </ul>
+        </div>
+      </details>
+
       <div class="grid" style="margin-top:12px;">
         <div>
           <label for="mode">Modus</label><br>
@@ -193,6 +224,37 @@
     <div class="card" id="randomCard" style="display:none;">
       <div style="font-weight:900;font-size:18px;">Zufall Einstellungen</div>
       <div class="muted" style="margin-top:6px;">Die App erzeugt einen Plan und speichert ihn. Dadurch ist die Übung stabil und reproduzierbar.</div>
+
+      <details class="help" style="margin-top:12px;">
+        <summary style="cursor:pointer; font-weight:700;">Hilfe zur Dynamik</summary>
+        <div style="margin-top:10px; line-height:1.35;">
+          <div style="opacity:.9;">
+            Dynamik steuert Verschlechterungen direkt in der Ablage, komplett offline. Wenn Aktiv aus ist, bleibt alles wie bisher.
+          </div>
+
+          <div style="margin-top:10px; font-weight:800;">Modus Fix</div>
+          <div style="opacity:.9; margin-top:4px;">
+            Du legst konkrete Ereignisse fest, z.B. Patient 30 wird nach 3 Minuten von SK2 zu SK1. Das ist ideal für feste Lernziele.
+          </div>
+
+          <div style="margin-top:10px; font-weight:800;">Modus Zufall</div>
+          <div style="opacity:.9; margin-top:4px;">
+            Du gibst nur Rahmen vor. Startfenster, Anzahl, Mindestabstand, erlaubte SK Klassen. Die App würfelt pro Übung einen Plan und speichert ihn, damit es während der Übung konsistent bleibt.
+          </div>
+
+          <div style="margin-top:10px; font-weight:800;">Zeitbasis</div>
+          <div style="opacity:.9; margin-top:4px;">
+            Basis Patient bedeutet. Zeit zählt ab dem Moment, in dem der Patient in der Ablage ist. Basis Einsatz bedeutet. Zeit zählt ab Übungsstart.
+          </div>
+
+          <div style="margin-top:10px; font-weight:800;">Tipps</div>
+          <ul style="margin:8px 0 0 18px; opacity:.92;">
+            <li>Für realistische Dynamik. Mindestens 60 Sekunden Abstand zwischen Ereignissen setzen.</li>
+            <li>Wenn du Fairness willst. Nur Verschlechterung zu schlechter, nicht wieder besser.</li>
+            <li>Wenn du testen willst. Kleines Startfenster wie 1 bis 2 Minuten wählen.</li>
+          </ul>
+        </div>
+      </details>
 
       <div class="grid" style="margin-top:12px;">
         <div>
