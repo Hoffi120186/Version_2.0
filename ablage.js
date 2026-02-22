@@ -34,7 +34,21 @@
   function getDynPlan(){ return load(LS_DYN_PLAN, { createdAt:0, basis:'patient', mode:'off', events:[] }); }
   function setDynPlan(v){ save(LS_DYN_PLAN, v||{}); }
 
-  function skToCat(sk){
+  
+  function dynSignature(dyn){
+    try{
+      var clean = {
+        enabled: !!(dyn && dyn.enabled),
+        mode: String((dyn && dyn.mode) || 'off'),
+        basis: String((dyn && dyn.basis) || 'patient'),
+        random: dyn && dyn.random ? dyn.random : null,
+        fixed: dyn && dyn.fixed ? dyn.fixed : null
+      };
+      return JSON.stringify(clean);
+    }catch(_){ return ''; }
+  }
+
+function skToCat(sk){
     var n = Number(String(sk).replace(/\D/g,'')) || 0;
     if(n===1) return 'rot';
     if(n===2) return 'gelb';
@@ -72,8 +86,10 @@
   function ensureRandomPlan(dyn){
     var plan = getDynPlan();
     var sessionStart = ensureSessionStart();
+    var sig = dynSignature(dyn);
+    var sig = dynSignature(dyn);
     // Plan neu, wenn keine Events existieren oder Session gewechselt
-    if(plan && plan.createdAt && plan.sessionStart === sessionStart && Array.isArray(plan.events) && plan.events.length){
+    if(plan && plan.createdAt && plan.sessionStart === sessionStart && plan.dynSig === sig && Array.isArray(plan.events) && plan.events.length){
       return plan;
     }
 
@@ -145,6 +161,7 @@
     plan = {
       createdAt: now(),
       sessionStart: sessionStart,
+      dynSig: sig,
       basis: dyn.basis || 'patient',
       mode: 'random',
       events: events
@@ -156,7 +173,8 @@
   function ensureFixedPlan(dyn){
     var plan = getDynPlan();
     var sessionStart = ensureSessionStart();
-    if(plan && plan.createdAt && plan.sessionStart === sessionStart && plan.mode === 'fixed' && Array.isArray(plan.events)){
+    var sig = dynSignature(dyn);
+    if(plan && plan.createdAt && plan.sessionStart === sessionStart && plan.dynSig === sig && plan.mode === 'fixed' && Array.isArray(plan.events)){
       return plan;
     }
     var events = asArray(dyn.fixed).map(function(x){
@@ -170,7 +188,7 @@
       return { id:id, atMs:Math.max(0,atMs), action:'sk', delta:(x && x.delta!=null)? Number(x.delta) : null, to:to, done:false };
     }).filter(Boolean);
 
-    plan = { createdAt: now(), sessionStart: sessionStart, basis: dyn.basis || 'patient', mode:'fixed', events: events };
+    plan = { createdAt: now(), sessionStart: sessionStart, dynSig: sig, basis: dyn.basis || 'patient', mode:'fixed', events: events };
     setDynPlan(plan);
     return plan;
   }
@@ -274,7 +292,6 @@
       }
     }
   }
-  
 
   // Session-Start (einmal pro Einsatz, falls noch nicht vorhanden)
   function ensureSessionStart(){
@@ -496,6 +513,7 @@
   // ---------- Public API ----------
   window.Ablage = {
     hydrateCards, stopPatient, resetAll,
+    startOnEnter: startTimersOnEntry,
     _getActive:getActive, _getHistory:getHistory, _getDone:getDone
   };
 
