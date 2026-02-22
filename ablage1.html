@@ -1142,6 +1142,79 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
   setTimeout(startOnEnterOnShow, 1200);
 })();
 </script>
+<script>
+(function(){
+  'use strict';
 
+  var box = document.createElement('div');
+  box.style.position = 'fixed';
+  box.style.right = '10px';
+  box.style.bottom = '10px';
+  box.style.zIndex = '100000';
+  box.style.padding = '10px 12px';
+  box.style.borderRadius = '12px';
+  box.style.background = 'rgba(0,0,0,.65)';
+  box.style.border = '1px solid rgba(255,255,255,.20)';
+  box.style.fontSize = '12px';
+  box.style.lineHeight = '1.25';
+  box.style.maxWidth = '70vw';
+  box.style.backdropFilter = 'blur(6px)';
+
+  var txt = document.createElement('div');
+  var btn = document.createElement('button');
+  btn.textContent = 'Test Popup';
+  btn.className = 'btn';
+  btn.style.marginTop = '8px';
+
+  box.appendChild(txt);
+  box.appendChild(btn);
+  document.body.appendChild(box);
+
+  function safeParse(key, fallback){
+    try{
+      var raw = localStorage.getItem(key);
+      if(!raw) return fallback;
+      return JSON.parse(raw);
+    }catch(_){ return fallback; }
+  }
+
+  function status(){
+    var hasA = !!(window.Ablage);
+    var hasHyd = !!(window.Ablage && typeof window.Ablage.hydrateCards === 'function');
+    var hasStart = !!(window.Ablage && typeof window.Ablage.startOnEnter === 'function');
+
+    var plan = safeParse('ablage.dynamik.plan.v1', null);
+    var active = safeParse('ablage.active.v1', []);
+    var smap = safeParse('sichtungMap', {});
+
+    var planEvents = (plan && plan.events && Array.isArray(plan.events)) ? plan.events.length : 0;
+    var activeN = Array.isArray(active) ? active.length : 0;
+    var seenN = smap ? Object.keys(smap).length : 0;
+
+    txt.innerHTML =
+      'Ablage: ' + (hasA ? 'JA' : 'NEIN') + '<br>' +
+      'hydrateCards: ' + (hasHyd ? 'JA' : 'NEIN') + '<br>' +
+      'startOnEnter: ' + (hasStart ? 'JA' : 'NEIN') + '<br>' +
+      'plan.events: ' + planEvents + '<br>' +
+      'active: ' + activeN + '<br>' +
+      'sichtungMap keys: ' + seenN + '<br>' +
+      'time: ' + new Date().toLocaleTimeString();
+  }
+
+  btn.addEventListener('click', function(){
+    try{
+      window.dispatchEvent(new CustomEvent('ablage:dynamik:fired', {
+        detail:{
+          fired:[{ id:'patient27', label:'Patient 27', fromCat:'gelb', toCat:'rot', afterMs:120000 }]
+        }
+      }));
+    }catch(_){}
+  });
+
+  status();
+  setInterval(status, 1000);
+})();
+</script>
 </body>
 </html>
+
