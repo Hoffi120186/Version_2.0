@@ -213,6 +213,18 @@ h2{
 <script type="module">
 'use strict';
 
+/* iOS Fix. Warte auf window.Ablage aus defer Script */
+function waitForAblage(maxMs = 3500){
+  const start = Date.now();
+  return new Promise((resolve) => {
+    (function tick(){
+      if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') return resolve(true);
+      if (Date.now() - start > maxMs) return resolve(false);
+      setTimeout(tick, 30);
+    })();
+  });
+}
+
 /* Auto Start Guard */
 const AUTOSTART = 'ablage.autostart.ok';
 function allowAutostart(){ localStorage.setItem(AUTOSTART, 'true'); }
@@ -588,7 +600,7 @@ function removeCard(id){
 }
 
 /* Suche */
-document.addEventListener('input', e=>{
+document.addEventListener('input', async e=>{
   if(e.target.id!=='search') return;
   const q=e.target.value.toLowerCase();
   const all=(window.__PAT_DATA__||[]);
@@ -597,6 +609,8 @@ document.addEventListener('input', e=>{
   (q ? all.filter(p =>
     `${p.id} ${p.label} ${p.age||''} ${p.gender||''} ${p.injury||''} ${p.vitals||''}`.toLowerCase().includes(q)
   ) : all).forEach(upsertCard);
+
+  await waitForAblage();
 
   if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
     window.Ablage.hydrateCards({
@@ -713,7 +727,10 @@ async function load(){
     highlightAssignButtons();
   }
 }
-load();
+
+/* iOS Fix. Erst warten, dann initial laden */
+await waitForAblage();
+await load();
 
 /* Dynamik UI Update */
 window.addEventListener('ablage:dynamik', () => {
@@ -757,10 +774,12 @@ window.addEventListener('storage', (e)=>{
         const num=id.replace('patient','');
         const entry={ id, label: `Patient ${num}`, url: `patient${num}.html` };
 
-        fetchPatientData(entry).then(p=>{
+        fetchPatientData(entry).then(async p=>{
           (window.__PAT_DATA__ = (window.__PAT_DATA__||[])).push(p);
           upsertCard(p);
           allowAutostart();
+
+          await waitForAblage();
 
           if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
             window.Ablage.hydrateCards({
