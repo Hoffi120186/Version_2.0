@@ -176,54 +176,7 @@ h2{
 .btn-assign-clinic:active{ transform:scale(.99); }
 
 @media print{ header{display:none !important} .stats{display:none !important} }
-
-.toast{
-  pointer-events:none;
-  min-width:min(92vw,520px);
-  max-width:min(92vw,520px);
-  display:flex;
-  gap:10px;
-  align-items:flex-start;
-  padding:12px 14px;
-  border-radius:16px;
-  background:rgba(17,24,39,.92);
-  border:1px solid rgba(255,255,255,.14);
-  box-shadow:0 16px 34px rgba(0,0,0,.55);
-  backdrop-filter: blur(10px);
-}
-.toast .dot{
-  width:12px;height:12px;border-radius:999px;margin-top:4px;flex:0 0 auto;
-}
-.toast .t-title{ font-weight:900; margin:0; font-size:14px; }
-.toast .t-msg{ margin:2px 0 0 0; opacity:.92; font-size:13px; line-height:1.25; }
-.toast-rot .dot{ background:#e53935; }
-.toast-gelb .dot{ background:#f3fc02; }
-.toast-gruen .dot{ background:#2e7d32; }
-.toast-schwarz .dot{ background:#111; border:1px solid rgba(255,255,255,.18); }
-
-
-
-.det-modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:1200; background:rgba(0,0,0,.78); padding:18px; }
-.det-modal.show{ display:flex; }
-.det-box{ width:min(520px, 92vw); border-radius:18px; border:2px solid rgba(255,255,255,.22); background:rgba(15,23,42,.88); backdrop-filter: blur(10px); box-shadow:0 24px 70px rgba(0,0,0,.6); overflow:hidden; }
-.det-head{ padding:16px 16px 10px; }
-.det-title{ font-size:22px; font-weight:1000; letter-spacing:.2px; }
-.det-sub{ margin-top:4px; opacity:.85; font-weight:700; }
-.det-body{ padding:10px 16px 16px; }
-.det-patient{ font-size:18px; font-weight:900; margin-bottom:12px; }
-.det-change{ display:flex; align-items:center; justify-content:center; gap:10px; font-size:20px; font-weight:1000; }
-.det-chip{ padding:10px 14px; border-radius:999px; border:2px solid rgba(255,255,255,.22); background:rgba(255,255,255,.10); min-width:110px; text-align:center; }
-.det-chip.rot{ background:rgba(229,57,53,.25); border-color:rgba(229,57,53,.8); }
-.det-chip.gelb{ background:rgba(243,252,2,.20); border-color:rgba(243,252,2,.75); color:#111; }
-.det-chip.gruen{ background:rgba(46,125,50,.25); border-color:rgba(46,125,50,.8); }
-.det-chip.schwarz{ background:rgba(0,0,0,.55); border-color:rgba(255,255,255,.28); }
-.det-arrow{ opacity:.85; }
-.det-ok{ width:100%; border:0; padding:16px; font-size:18px; font-weight:1000; color:#fff; cursor:pointer; background:linear-gradient(180deg, #e53935, #b71c1c); }
-
-.det-modal.blink .det-box{ animation: detBlink 0.8s infinite; }
-@keyframes detBlink{ 0%{ box-shadow:0 0 0 rgba(229,57,53,.0), 0 24px 70px rgba(0,0,0,.6);} 50%{ box-shadow:0 0 0 6px rgba(229,57,53,.35), 0 24px 70px rgba(0,0,0,.6);} 100%{ box-shadow:0 0 0 rgba(229,57,53,.0), 0 24px 70px rgba(0,0,0,.6);} }
-
-</style>
+  </style>
 
   <link rel="stylesheet" href="/app-flow.css">
 </head>
@@ -256,10 +209,6 @@ h2{
   <div class="lightbox" id="lightbox" aria-hidden="true" title="Zum Schließen klicken">
     <img id="lightboxImg" src="" alt="Patientenfoto">
   </div>
-
-
-
-  <div id="toastWrap" style="position:fixed;left:0;right:0;bottom:18px;display:flex;justify-content:center;pointer-events:none;z-index:9999;"></div>
 
 <script type="module">
 'use strict';
@@ -769,312 +718,15 @@ async function load(){
 }
 load();
 
-
-const LS_DET_ALERTS = 'ablage.det.alerts.v1';
-let __audioUnlocked = false;
-let __audioCtx = null;
-
-function unlockAudio(){
-  if(__audioUnlocked) return;
+/* Dynamik Updates aus ablage.js, auch im selben Tab */
+window.addEventListener('ablage:dynamik', () => {
   try{
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if(!AC) return;
-    __audioCtx = new AC();
-    const o = __audioCtx.createOscillator();
-    const g = __audioCtx.createGain();
-    o.frequency.value = 880;
-    g.gain.value = 0.0001;
-    o.connect(g);
-    g.connect(__audioCtx.destination);
-    o.start();
-    o.stop(__audioCtx.currentTime + 0.01);
-    __audioUnlocked = true;
-  }catch{}
-}
-
-window.addEventListener('pointerdown', unlockAudio, { once:true });
-
-function beepAlarm(){
-  try{
-    if(!__audioUnlocked) return;
-    const ctx = __audioCtx;
-    if(!ctx) return;
-    const now = ctx.currentTime;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, now);
-    g.gain.linearRampToValueAtTime(0.12, now + 0.01);
-    g.gain.linearRampToValueAtTime(0.0001, now + 0.25);
-    g.connect(ctx.destination);
-
-    const o = ctx.createOscillator();
-    o.type = 'square';
-    o.frequency.setValueAtTime(880, now);
-    o.frequency.setValueAtTime(660, now + 0.12);
-    o.connect(g);
-    o.start(now);
-    o.stop(now + 0.26);
-  }catch{}
-}
-
-function enqueueDetAlert(evt){
-  try{
-    const list = JSON.parse(localStorage.getItem(LS_DET_ALERTS) || '[]');
-    list.push(evt);
-    localStorage.setItem(LS_DET_ALERTS, JSON.stringify(list));
-  }catch{}
-}
-
-function dequeueDetAlert(){
-  try{
-    const list = JSON.parse(localStorage.getItem(LS_DET_ALERTS) || '[]');
-    const first = list.shift();
-    localStorage.setItem(LS_DET_ALERTS, JSON.stringify(list));
-    return first || null;
-  }catch{
-    return null;
-  }
-}
-
-function catToLabel(cat){
-  if(cat==='rot') return 'SK1 ROT';
-  if(cat==='gelb') return 'SK2 GELB';
-  if(cat==='gruen') return 'SK3 GRÜN';
-  if(cat==='schwarz') return 'SK4 SCHWARZ';
-  return String(cat||'—');
-}
-
-let __detShowing = false;
-function showNextDetAlert(){
-  if(__detShowing) return;
-  const evt = dequeueDetAlert();
-  if(!evt) return;
-
-  __detShowing = true;
-
-  const modal = document.getElementById('detModal');
-  const pEl = document.getElementById('detPatient');
-  const fromEl = document.getElementById('detFrom');
-  const toEl = document.getElementById('detTo');
-
-  pEl.textContent = evt.label || evt.id || 'Patient';
-  fromEl.textContent = catToLabel(evt.from);
-  toEl.textContent = catToLabel(evt.to);
-
-  fromEl.className = 'det-chip ' + (evt.from || '');
-  toEl.className = 'det-chip ' + (evt.to || '');
-
-  modal.classList.add('show');
-  modal.classList.add('blink');
-  modal.setAttribute('aria-hidden','false');
-
-  try{
-    if(navigator.vibrate) navigator.vibrate([200,120,200]);
-  }catch{}
-
-  beepAlarm();
-
-  const ok = document.getElementById('detOk');
-  ok.focus();
-  ok.onclick = () => {
-    modal.classList.remove('show');
-    modal.classList.remove('blink');
-    modal.setAttribute('aria-hidden','true');
-    __detShowing = false;
-    setTimeout(showNextDetAlert, 60);
-  };
-}
-
-setInterval(showNextDetAlert, 600);
-
-
-
-
-function showToastDeterioration(patientLabel, fromCat, toCat){
-  const wrap = document.getElementById('toastWrap');
-  if(!wrap) return;
-
-  const cls = 'toast toast-' + (toCat || 'rot');
-  const el = document.createElement('div');
-  el.className = cls;
-
-  const fromTxt = fromCat ? __labelFromCat(fromCat) : '—';
-  const toTxt = toCat ? __labelFromCat(toCat) : '—';
-
-  el.innerHTML = `<div class="dot"></div>
-    <div>
-      <p class="t-title">Verschlechterung</p>
-      <p class="t-msg">${patientLabel || ''} ${fromTxt} zu ${toTxt}</p>
-    </div>`;
-
-  wrap.innerHTML = '';
-  wrap.appendChild(el);
-
-  try{ playWarnBeep(); }catch{}
-  try{ if(navigator.vibrate) navigator.vibrate([80,50,80]); }catch{}
-
-  setTimeout(()=>{ if(wrap.contains(el)) wrap.innerHTML=''; }, 2400);
-}
-
-function playWarnBeep(){
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const o = ctx.createOscillator();
-  const g = ctx.createGain();
-  o.type = 'sine';
-  o.frequency.value = 880;
-  g.gain.value = 0.0001;
-
-  o.connect(g);
-  g.connect(ctx.destination);
-
-  const t = ctx.currentTime;
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(0.12, t + 0.02);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
-
-  o.start(t);
-  o.stop(t + 0.23);
-
-  o.onended = ()=>{ try{ ctx.close(); }catch{} };
-}
-
-/* ===== Verschlechterung in Ablage ===== */
-const LS_ACTIVE = 'ablage.active.v1';
-const LS_DET_GLOBAL = 'ablage.deterioration.global.v1';
-const LS_DET_PERPAT = 'ablage.deterioration.perPatient.v1';
-
-function jgetLS(k,f){ try{ const v=localStorage.getItem(k); return v ? JSON.parse(v) : f; }catch{ return f; } }
-function jsetLS(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
-
-function normalizeCat(c){
-  const x = String(c||'').toLowerCase().replace('grün','gruen');
-  if(['rot','gelb','gruen','schwarz'].includes(x)) return x;
-  return null;
-}
-
-function readDetGlobal(){
-  const g = jgetLS(LS_DET_GLOBAL, { enabled:false, steps:{} });
-  if(!g || typeof g !== 'object') return { enabled:false, steps:{} };
-  g.enabled = !!g.enabled;
-  g.steps = (g.steps && typeof g.steps === 'object') ? g.steps : {};
-  return g;
-}
-
-function readDetPerPatient(){
-  const m = jgetLS(LS_DET_PERPAT, {});
-  return (m && typeof m === 'object') ? m : {};
-}
-
-function pickRuleFor(patientId, currentCat){
-  const per = readDetPerPatient();
-  const ov = per[patientId];
-
-  if(ov && typeof ov === 'object'){
-    if(ov.enabled === false) return null;
-    if(ov.enabled === true){
-      const afterMin = Number(ov.afterMin || 0);
-      const to = normalizeCat(ov.to);
-      if(afterMin > 0 && to) return { afterSec: Math.round(afterMin * 60), to };
-      return null;
-    }
-  }
-
-  const g = readDetGlobal();
-  if(!g.enabled) return null;
-
-  const step = g.steps[currentCat];
-  if(!step || typeof step !== 'object') return null;
-
-  const afterMin = Number(step.afterMin || 0);
-  const to = normalizeCat(step.to);
-  if(afterMin > 0 && to) return { afterSec: Math.round(afterMin * 60), to };
-
-  return null;
-}
-
-function getActiveList(){
-  const active = jgetLS(LS_ACTIVE, []);
-  return Array.isArray(active) ? active : [];
-}
-
-function checkDeteriorationTick(){
-  const active = getActiveList();
-  if(!active.length) return;
-
-  const done = getDoneSet();
-  const sMap = getSMap();
-
-  const now = Date.now();
-  let changed = false;
-
-  for(const item of active){
-    if(!item || typeof item !== 'object') continue;
-
-    const pid = String(item.id || '');
-    if(!pid) continue;
-
-    if(done.has(pid)) continue;
-
-    const since = Number(item.queuedAt || 0);
-    if(!since) continue;
-
-    const elapsedSec = Math.floor((now - since) / 1000);
-
-    let current = normalizeCat(sMap[pid]);
-    if(!current) continue;
-
-    let loopGuard = 0;
-    while(loopGuard < 6){
-      loopGuard++;
-
-      const rule = pickRuleFor(pid, current);
-      if(!rule) break;
-
-      if(elapsedSec < rule.afterSec) break;
-      if(current === rule.to) break;
-
-      const fromCat = current;
-      const __from = current;
-      current = rule.to;
-      sMap[pid] = current;
-      changed = true;
-      enqueueDetAlert({ id: pid, label: 'Patient ' + String(pid).replace(/\D/g,''), from: __from, to: current, ts: Date.now() });
-
-      let pLabel = '';
-      try{
-        const num = pid.replace('patient','');
-        pLabel = 'Patient ' + num;
-        const found = (window.__PAT_DATA__ || []).find(x=>x.id===pid);
-        if(found && found.label) pLabel = found.label;
-      }catch{}
-
-      enqueueDetAlert({ id: pid, label: pLabel, from: fromCat, to: current, ts: Date.now() });
-
-try{
-        const key = 'sicht_' + pid;
-        const flags = __readTogglePayload(pid) || {};
-        if(current !== 'rot') flags.t = false;
-        if(current !== 'gruen') flags.b = false;
-        localStorage.setItem(key, JSON.stringify(flags));
-      }catch{}
-    }
-  }
-
-  if(changed){
-    localStorage.setItem('sichtungMap', JSON.stringify(sMap));
-
-    if(Array.isArray(window.__PAT_DATA__)){
-      window.__PAT_DATA__.sort((a,b)=>{
-        const aCat = sichtungFor(a.id) || '';
-        const bCat = sichtungFor(b.id) || '';
-        const pa = __readTogglePayload(a.id) || {};
-        const pb = __readTogglePayload(b.id) || {};
-        const d  = __prio(aCat, pa) - __prio(bCat, pb);
-        return d !== 0 ? d : (__numFromId(a.id) - __numFromId(b.id));
-      });
-
+    // Karten neu zeichnen, damit SK Badges und Farben aktualisieren
+    const all = (window.__PAT_DATA__ || []);
+    if(all.length){
       listEl.innerHTML = '';
-      window.__PAT_DATA__.forEach(upsertCard);
-
+      all.forEach(upsertCard);
+      updateStats();
       if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
         window.Ablage.hydrateCards({
           containerSelector: '#list',
@@ -1084,14 +736,11 @@ try{
         });
         highlightAssignButtons();
       }
+    } else {
+      load();
     }
-
-    updateStats();
-  }
-
-}
-
-setInterval(checkDeteriorationTick, 2000);
+  }catch(_){}
+});
 
 
 /* Live-Updates (Sichtung/T/B/DONE) */
@@ -1197,24 +846,5 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 
 <script src="/metrics.js" defer></script>
 <script src="/ablage.js?v=8"></script>
-
-  <div id="detModal" class="det-modal" aria-hidden="true">
-    <div class="det-box" role="dialog" aria-modal="true">
-      <div class="det-head">
-        <div class="det-title">Patient verschlechtert</div>
-        <div class="det-sub" id="detSub">Bitte bestätigen</div>
-      </div>
-      <div class="det-body">
-        <div class="det-patient" id="detPatient">Patient</div>
-        <div class="det-change">
-          <span id="detFrom" class="det-chip">SK</span>
-          <span class="det-arrow">→</span>
-          <span id="detTo" class="det-chip">SK</span>
-        </div>
-      </div>
-      <button id="detOk" class="det-ok" type="button">Bestätigen</button>
-    </div>
-  </div>
-
 </body>
 </html>
