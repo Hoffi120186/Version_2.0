@@ -248,108 +248,11 @@ function loadLS(key, fallback){
 function saveLS(key, value){
   try{ localStorage.setItem(key, JSON.stringify(value)); }catch{}
 }
-
-function nextWorse(cat){
-  const c = String(cat||'').toLowerCase().replace('grün','gruen');
-  if(c === 'gruen') return 'gelb';
-  if(c === 'gelb') return 'rot';
-  if(c === 'rot') return 'schwarz';
-  return '';
+function normCat(x){
+  return String(x||'').toLowerCase().replace('grün','gruen').trim();
 }
 
-function ensurePlanFallback(){
-  const cfg =
-    loadLS('ablage.dynamik.v1', null) ||
-    loadLS('dynamik.v1', null) ||
-    loadLS('patientendynamik.v1', null);
-
-  if(!cfg || !(cfg.enabled || cfg.active || cfg.on)) return;
-
-  const existing = loadLS('ablage.dynamik.plan.v1', null);
-  if(existing && Array.isArray(existing.events) && existing.events.length) return;
-
-  const active = loadLS('ablage.active.v1', []);
-  if(!Array.isArray(active) || !active.length) return;
-
-  const sMap = loadLS('sichtungMap', {});
-  const mode = (cfg.mode || 'off').toString().toLowerCase();
-
-  let events = [];
-
-  if(mode === 'fixed' && Array.isArray(cfg.fixed) && cfg.fixed.length){
-    for(const f of cfg.fixed){
-      if(!f) continue;
-      const id = String(f.id || '');
-      const to = String(f.to || f.toCat || f.newCat || '').toLowerCase().replace('grün','gruen');
-      const atMs = Number(f.atMs != null ? f.atMs : (Number(f.atMin||0) * 60000));
-      if(!id || !to || !Number.isFinite(atMs)) continue;
-      events.push({ id, to, atMs, done:false });
-    }
-  } else if(mode === 'random'){
-    const rnd = cfg.random || {};
-    const count = Math.max(0, Number(rnd.count || 0));
-    const minMs = Math.max(0, Number(rnd.minMin || 0) * 60000);
-    const maxMs = Math.max(minMs, Number(rnd.maxMin || 0) * 60000);
-    const minGapMs = Math.max(0, Number(rnd.minGapSec || 0) * 1000);
-    const allow = rnd.allow || { sk1:true, sk2:true, sk3:true, sk4:false };
-    const toLowerOnly = !!rnd.toLowerOnly;
-
-    const pool = active
-      .map(a => ({ id:String(a.id||''), label:a.label||'', startAt:a.startAt }))
-      .filter(x => x.id);
-
-    function allowedTo(cat){
-      if(cat === 'rot') return !!allow.sk1;
-      if(cat === 'gelb') return !!allow.sk2;
-      if(cat === 'gruen') return !!allow.sk3;
-      if(cat === 'schwarz') return !!allow.sk4;
-      return false;
-    }
-
-    let used = new Set();
-    let lastAt = -999999999;
-
-    for(let i=0;i<count && pool.length;i++){
-      const pick = pool[Math.floor(Math.random() * pool.length)];
-      if(!pick || !pick.id) continue;
-      if(used.has(pick.id)) continue;
-
-      const from = (sMap[pick.id] || '').toString().toLowerCase().replace('grün','gruen');
-      let to = '';
-
-      if(toLowerOnly){
-        to = nextWorse(from);
-      } else {
-        const opts = ['gruen','gelb','rot','schwarz'].filter(allowedTo);
-        to = opts[Math.floor(Math.random() * opts.length)] || '';
-      }
-
-      if(!to) continue;
-      if(!allowedTo(to)) continue;
-
-      let atMs = Math.floor(minMs + Math.random() * (maxMs - minMs + 1));
-      if(atMs < lastAt + minGapMs) atMs = lastAt + minGapMs;
-      lastAt = atMs;
-
-      used.add(pick.id);
-      events.push({ id:pick.id, to, atMs, done:false });
-    }
-  } else {
-    return;
-  }
-
-  if(!events.length) return;
-
-  const plan = {
-    mode: mode,
-    basis: cfg.basis || 'patient',
-    createdAt: Date.now(),
-    events: events
-  };
-
-  saveLS('ablage.dynamik.plan.v1', plan);
-}
-
+/* Datenquellen */
 function normGender(g){
   if(!g) return null;
   const x = String(g).trim().toLowerCase();
@@ -358,8 +261,6 @@ function normGender(g){
   if (x === 'd' || /divers|non[\s]?binary/.test(x)) return 'divers';
   return null;
 }
-
-/* Datenquellen */
 function getPatMeta(){ try { return JSON.parse(localStorage.getItem('patMeta') || '{}'); } catch { return {}; } }
 function getPatientsData(){ try { return JSON.parse(localStorage.getItem('patientsData') || '[]'); } catch { return []; } }
 
@@ -382,7 +283,7 @@ function overlayFromJson(info){
 /* Sichtungen */
 function getSMap(){ try{ return JSON.parse(localStorage.getItem('sichtungMap')||'{}'); }catch{ return {}; } }
 function sichtungFor(id){
-  const k = (getSMap()[id]||'').toString().toLowerCase().replace('grün','gruen');
+  const k = normCat((getSMap()[id]||''));
   return ['rot','gelb','gruen','schwarz'].includes(k) ? k : null;
 }
 function sightedIds(){
@@ -401,7 +302,7 @@ function __readTogglePayload(id){
   try { return JSON.parse(raw)||{}; } catch { return {}; }
 }
 function __labelFromCat(cat){
-  const c = String(cat||'').toLowerCase();
+  const c = normCat(cat);
   if (c === 'rot') return 'SK1';
   if (c === 'gelb') return 'SK2';
   if (c === 'gruen') return 'SK3';
@@ -410,22 +311,24 @@ function __labelFromCat(cat){
 }
 function getSichtungDisplay(id, cat){
   const p = __readTogglePayload(id);
-  if (cat === 'rot') return 'SK1' + (p.t ? ' , T' : '');
-  if (cat === 'gelb') return 'SK2';
-  if (cat === 'gruen') return 'SK3' + (p.b ? ' , B' : '');
-  if (cat === 'schwarz') return 'SK4';
+  const c = normCat(cat);
+  if (c === 'rot') return 'SK1' + (p.t ? ' , T' : '');
+  if (c === 'gelb') return 'SK2';
+  if (c === 'gruen') return 'SK3' + (p.b ? ' , B' : '');
+  if (c === 'schwarz') return 'SK4';
   return '';
 }
 
 /* Priorität */
 function __prio(cat, flags){
+  const c = normCat(cat);
   const t=!!flags?.t, b=!!flags?.b;
-  if (cat==='rot' && t) return 0;
-  if (cat==='rot') return 1;
-  if (cat==='gelb') return 2;
-  if (cat==='gruen' && b) return 3;
-  if (cat==='gruen') return 4;
-  if (cat==='schwarz') return 5;
+  if (c==='rot' && t) return 0;
+  if (c==='rot') return 1;
+  if (c==='gelb') return 2;
+  if (c==='gruen' && b) return 3;
+  if (c==='gruen') return 4;
+  if (c==='schwarz') return 5;
   return 6;
 }
 function __numFromId(id){ return parseInt(String(id).replace(/\D/g,''))||99999; }
@@ -478,7 +381,10 @@ async function findPhoto({ html, baseUrl, index }){
   const EXT = ['jpg','jpeg','png','webp','JPG','JPEG','PNG','WEBP'];
   const rx = new RegExp(`(^|\\/)(pat(?:ient)?${index})[^\\/]*\\.(${EXT.join('|')})$`, 'i');
   const allImgs = [...html.matchAll(/<img[^>]*src=["']([^"']+)["'][^>]*>/ig)];
-  for(const m of allImgs){ const url = abs(m[1], baseUrl); if(rx.test(url)) return url; }
+  for(const m of allImgs){
+    const url = abs(m[1], baseUrl);
+    if(rx.test(url)) return url;
+  }
 
   for(const suf of SUFFIXES){
     for(const ex of EXT){
@@ -772,6 +678,31 @@ function observeImage(img){
   else img.src=img.dataset.src;
 }
 
+/* Helfer für externe Scripts */
+function applyDynamikToSichtungMap(firedArr){
+  if(!Array.isArray(firedArr) || !firedArr.length) return;
+
+  let map = {};
+  try{ map = JSON.parse(localStorage.getItem('sichtungMap')||'{}') || {}; }catch{ map = {}; }
+
+  for(const it of firedArr){
+    const id = String(it?.id || '');
+    const to = normCat(it?.toCat || it?.to || '');
+    if(id && to) map[id] = to;
+  }
+  try{ localStorage.setItem('sichtungMap', JSON.stringify(map)); }catch{}
+
+  const all = (window.__PAT_DATA__||[]);
+  for(const it of firedArr){
+    const id = String(it?.id || '');
+    const p = all.find(x => x && x.id === id);
+    if(p) upsertCard(p);
+  }
+
+  updateStats();
+  highlightAssignButtons();
+}
+
 /* Laden */
 async function load(){
   const done = getDoneSet();
@@ -827,14 +758,6 @@ async function load(){
     highlightAssignButtons();
   }
 }
-
-/* Wichtig für iOS, Plan früh erzeugen */
-ensurePlanFallback();
-window.addEventListener('pageshow', () => {
-  try{ ensurePlanFallback(); }catch{}
-});
-
-/* Start */
 load();
 
 /* Dynamik UI Update */
@@ -958,6 +881,9 @@ function imageToDataURL(src){
 }
 
 window.addEventListener('beforeunload', () => { denyAutostart(); });
+
+/* Exports für Popup Script */
+window.__AblageDynApply = applyDynamikToSichtungMap;
 </script>
 
 <!-- Dynamik Warnmeldung -->
@@ -968,6 +894,11 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
       <div id="dynAlertTag" style="font-size:12px; opacity:.85; padding:4px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.18);"></div>
     </div>
     <div id="dynAlertBody" style="margin-top:10px; line-height:1.35;"></div>
+
+    <div id="dynAudioHint" style="display:none; margin-top:10px; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.08); font-size:13px; opacity:.92;">
+      Ton ist auf iOS erst nach einem Tipp erlaubt. Tippe einmal auf Bestätigen, dann kommt der Alarm sofort.
+    </div>
+
     <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
       <button id="dynAlertOk" class="btn btnPrimary" type="button">Bestätigen</button>
     </div>
@@ -1012,14 +943,28 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
   var _audioUnlocked = false;
   var _alarmCtx = null;
   var _alarmTimer = null;
+  var _alarmPending = false;
+
+  function isUnlockedFlag(){
+    try{ return localStorage.getItem('ablage.audio.unlocked.v1') === '1'; }catch(_){ return false; }
+  }
+  function setUnlockedFlag(){
+    try{ localStorage.setItem('ablage.audio.unlocked.v1','1'); }catch(_){}
+  }
 
   function unlockAudioOnce(){
-    if(_audioUnlocked) return;
-    _audioUnlocked = true;
+    if(_audioUnlocked) return true;
+
     try{
       var Ctx = window.AudioContext || window.webkitAudioContext;
-      if(!Ctx) return;
-      _alarmCtx = new Ctx();
+      if(!Ctx) return false;
+
+      _alarmCtx = _alarmCtx || new Ctx();
+
+      if(_alarmCtx.state === 'suspended'){
+        _alarmCtx.resume().catch(function(){});
+      }
+
       var o = _alarmCtx.createOscillator();
       var g = _alarmCtx.createGain();
       g.gain.value = 0.0001;
@@ -1027,12 +972,40 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
       g.connect(_alarmCtx.destination);
       o.start();
       o.stop(_alarmCtx.currentTime + 0.05);
-    }catch(e){}
+
+      _audioUnlocked = true;
+      setUnlockedFlag();
+
+      if(_alarmPending){
+        _alarmPending = false;
+        try{ startAlarmLoop(); }catch(_e){}
+      }
+
+      return true;
+    }catch(e){
+      return false;
+    }
   }
 
-  document.addEventListener('pointerdown', unlockAudioOnce, { once:true });
+  function bindUnlock(){
+    try{ document.addEventListener('touchstart', unlockAudioOnce, { passive:true, once:true }); }catch(_){}
+    try{ document.addEventListener('pointerdown', unlockAudioOnce, { passive:true, once:true }); }catch(_){}
+    try{ document.addEventListener('mousedown', unlockAudioOnce, { passive:true, once:true }); }catch(_){}
+    try{ document.addEventListener('click', unlockAudioOnce, { passive:true, once:true }); }catch(_){}
+    try{ document.addEventListener('keydown', unlockAudioOnce, { once:true }); }catch(_){}
+  }
+  bindUnlock();
+
+  if(isUnlockedFlag()){
+    _audioUnlocked = true;
+  }
 
   function startAlarmLoop(){
+    if(!_audioUnlocked){
+      _alarmPending = true;
+      return;
+    }
+
     try{
       if(!_alarmCtx){
         var Ctx = window.AudioContext || window.webkitAudioContext;
@@ -1052,7 +1025,7 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
         var g = _alarmCtx.createGain();
         o.type = 'square';
         o.frequency.value = 880;
-        g.gain.value = 0.10;
+        g.gain.value = 0.18;
         o.connect(g);
         g.connect(_alarmCtx.destination);
         o.start();
@@ -1075,39 +1048,20 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
     }
   }
 
-  function getSichtungCatFor(id){
-    try{
-      var m = JSON.parse(localStorage.getItem('sichtungMap')||'{}');
-      var c = (m[id]||'').toString().toLowerCase().replace('grün','gruen');
-      return (c==='rot' || c==='gelb' || c==='gruen' || c==='schwarz') ? c : '';
-    }catch(_){ return ''; }
-  }
-
-  function getToCatFromPlan(id, afterMs){
-    try{
-      var plan = JSON.parse(localStorage.getItem('ablage.dynamik.plan.v1')||'null');
-      if(!plan || !plan.events) return '';
-      for(var k=0;k<plan.events.length;k++){
-        var ev = plan.events[k];
-        if(!ev) continue;
-        if(String(ev.id) !== String(id)) continue;
-        if(afterMs != null && Number(ev.atMs||0) !== Number(afterMs||0)) continue;
-        var c = (ev.toCat || ev.to || ev.newCat || '').toString().toLowerCase().replace('grün','gruen');
-        return c;
-      }
-    }catch(_){}
-    return '';
-  }
-
   var q = [];
   var showing = false;
   var backdrop = document.getElementById('dynAlertBackdrop');
   var body = document.getElementById('dynAlertBody');
   var tag = document.getElementById('dynAlertTag');
   var ok = document.getElementById('dynAlertOk');
+  var hint = document.getElementById('dynAudioHint');
+
+  function normCat(x){
+    return (x||'').toString().toLowerCase().replace('grün','gruen');
+  }
 
   function catLabel(cat){
-    var c = (cat||'').toString().toLowerCase().replace('grün','gruen');
+    var c = normCat(cat);
     if(c === 'rot') return 'SK1 (rot)';
     if(c === 'gelb') return 'SK2 (gelb)';
     if(c === 'gruen') return 'SK3 (grün)';
@@ -1119,15 +1073,12 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
     if(showing) return;
     if(!q.length) return;
     showing = true;
+
     var item = q.shift();
 
     var name = item.label || item.id || 'Patient';
-    var fromCat = (item.fromCat || item.from || '').toString().toLowerCase().replace('grün','gruen');
-    var toCat = (item.toCat || item.to || '').toString().toLowerCase().replace('grün','gruen');
-
-    if(!fromCat) fromCat = getSichtungCatFor(item.id);
-    if(!toCat) toCat = getToCatFromPlan(item.id, item.afterMs);
-
+    var fromCat = normCat(item.fromCat || item.from || '');
+    var toCat = normCat(item.toCat || item.to || '');
     var fromTxt = catLabel(fromCat);
     var toTxt = catLabel(toCat);
 
@@ -1162,6 +1113,11 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
       void modal.offsetWidth;
       modal.classList.add('pulse');
     }
+
+    if(hint){
+      hint.style.display = _audioUnlocked ? 'none' : 'block';
+    }
+
     startAlarmLoop();
   }
 
@@ -1172,27 +1128,40 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
     setTimeout(showNext, 20);
   }
 
-  if(ok) ok.addEventListener('click', close);
+  if(ok) ok.addEventListener('click', function(){
+    unlockAudioOnce();
+    close();
+  });
 
   window.addEventListener('ablage:dynamik:fired', function(e){
+    var firedArr = null;
     try{
       var d = e && e.detail ? e.detail : null;
-      var fired = d && d.fired ? d.fired : null;
-      if(Array.isArray(fired)){
-        for(var i=0;i<fired.length;i++) q.push(fired[i]);
+      firedArr = d && d.fired ? d.fired : null;
+    }catch(_){ firedArr = null; }
+
+    try{
+      if(Array.isArray(firedArr) && firedArr.length && typeof window.__AblageDynApply === 'function'){
+        window.__AblageDynApply(firedArr);
+      }
+    }catch(_){}
+
+    try{
+      if(Array.isArray(firedArr)){
+        for(var i=0;i<firedArr.length;i++) q.push(firedArr[i]);
       }else{
         q.push({ label:'Patient', fromCat:'', toCat:'' });
       }
     }catch(_){
       q.push({ label:'Patient', fromCat:'', toCat:'' });
     }
+
     showNext();
   });
 
 })();
 </script>
 
-<!-- Watchdog Fallback, prüft jede Sekunde fällige Events -->
 <script>
 (function(){
   'use strict';
@@ -1214,14 +1183,6 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
     var p = safeParseKey('ablage.dynamik.plan.v1', null);
     if(!p || !p.events || !Array.isArray(p.events)) return null;
     return p;
-  }
-
-  function getSichtungCatFor(id){
-    try{
-      var m = JSON.parse(localStorage.getItem('sichtungMap')||'{}');
-      var c = (m[id]||'').toString().toLowerCase().replace('grün','gruen');
-      return (c==='rot' || c==='gelb' || c==='gruen' || c==='schwarz') ? c : '';
-    }catch(_){ return ''; }
   }
 
   function tick(){
@@ -1247,20 +1208,20 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
           if(String(ev.id) !== String(a.id)) continue;
 
           if(elapsed >= Number(ev.atMs||0)){
-            var fromCat = getSichtungCatFor(a.id);
-            var toCat = (ev.toCat || ev.to || ev.newCat || '').toString().toLowerCase().replace('grün','gruen');
-
             try{
               window.dispatchEvent(new CustomEvent('ablage:dynamik:fired', {
                 detail:{
-                  fired:[{ id:a.id, label:a.label||a.id, fromCat:fromCat, toCat:toCat, afterMs:ev.atMs }],
+                  fired:[{
+                    id:a.id,
+                    label:a.label||a.id,
+                    fromCat: ev.from || ev.fromCat || '',
+                    toCat: ev.to || ev.toCat || '',
+                    afterMs:ev.atMs
+                  }],
                   plan:plan
                 }
               }));
             }catch(_e){}
-
-            ev.done = true;
-            try{ localStorage.setItem('ablage.dynamik.plan.v1', JSON.stringify(plan)); }catch(_){}
             return;
           }
         }
@@ -1272,7 +1233,6 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 })();
 </script>
 
-<!-- startOnEnter zusätzlich bei pageshow -->
 <script>
 (function(){
   'use strict';
