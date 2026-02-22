@@ -187,10 +187,19 @@
     if(!toSk) return false;
 
 
+    var fromSk = curSk;
+
     sMap[id] = skToCat(toSk);
     setSichtungMap(sMap);
     ev.done = true;
-    return true;
+
+    return {
+      id: id,
+      fromSk: fromSk,
+      toSk: toSk,
+      fromCat: skToCat(fromSk),
+      toCat: skToCat(toSk)
+    };
   }
 
   function dynCheck(active, tNow){
@@ -220,6 +229,15 @@
       }
     }
 
+    var fired = [];
+    var labelMap = {};
+    for(var a=0;a<active.length;a++){
+      var it = active[a];
+      if(it && it.id){
+        labelMap[String(it.id)] = it.label || it.id;
+      }
+    }
+
     for(var j=0;j<plan.events.length;j++){
       var ev = plan.events[j];
       if(!ev || ev.done) continue;
@@ -227,7 +245,14 @@
       var elapsed = elapsedMap[id2];
       if(elapsed == null) continue; // Patient nicht in aktiver Ablage
       if(elapsed >= Number(ev.atMs||0)){
-        if(applyDynEvent(ev)) changed = true;
+        var info = applyDynEvent(ev);
+        if(info){
+          changed = true;
+          info.label = labelMap[info.id] || info.id;
+          info.afterMs = Number(ev.atMs||0);
+          info.elapsedMs = elapsed;
+          fired.push(info);
+        }
       }
     }
 
@@ -236,8 +261,14 @@
       try{ window.dispatchEvent(new CustomEvent('ablage:dynamik', { detail: plan })); }catch(_){
         try{ window.dispatchEvent(new Event('ablage:dynamik')); }catch(__){}
       }
+      if(fired.length){
+        try{ window.dispatchEvent(new CustomEvent('ablage:dynamik:fired', { detail: { fired: fired, plan: plan } })); }catch(_e){
+          try{ window.dispatchEvent(new Event('ablage:dynamik:fired')); }catch(__e){}
+        }
+      }
     }
   }
+  
 
   // Session-Start (einmal pro Einsatz, falls noch nicht vorhanden)
   function ensureSessionStart(){
