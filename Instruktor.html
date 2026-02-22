@@ -4,12 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+  <!-- PWA -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="/manifest.json">
 
   <title>Instruktor Übersicht</title>
+
 
   <style>
     :root {
@@ -43,6 +45,7 @@
     .btn:active{ transform:translateY(1px); background:rgba(255,255,255,.18); }
     .btn[disabled]{ opacity:.55; filter:grayscale(40%); cursor:not-allowed; transform:none !important; }
 
+    /* Startseite-Button */
     .btn-start{
       position:fixed; bottom:calc(18px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
       background:#a54524; color:#fff; padding:14px 26px; border-radius:var(--radius);
@@ -50,6 +53,7 @@
     }
     .btn-start:hover{ filter:brightness(1.1); }
 
+    /* ===== Schutz UI ===== */
     .lock-indicator{
       display:inline-flex; gap:10px; align-items:center; justify-content:center;
       margin:6px 0 14px; width:min(100%,420px);
@@ -80,19 +84,19 @@
     .small{ font-size:13px; opacity:.9; }
     .muted{ opacity:.8; }
 
+    /* Nachrichten-Badge (rechts im Button) */
     #msgBadge{
       display:none; position:absolute; top:8px; right:14px;
       background:#ef4444; color:#fff; font-weight:800; font-size:.9em; line-height:1;
       padding:.2rem .55rem; border-radius:999px; box-shadow:0 0 6px rgba(0,0,0,.3);
     }
   </style>
-
   <link rel="stylesheet" href="/app-flow.css">
 </head>
-
 <body>
   <div class="header">Instruktor Übersicht</div>
 
+  <!-- Status + Verwaltung -->
   <div class="lock-indicator">
     <div id="lockState" class="small">🔓 Menü aktuell ohne Schutz</div>
     <button id="lockManage" class="chip" type="button">🔒 Schutz verwalten</button>
@@ -101,22 +105,24 @@
   <div class="button-container">
     <button class="btn" type="button" onclick="safeGo('/szenario.html')">Szenario auswählen</button>
     <button class="btn" type="button" onclick="safeGo('/patienten.html')">Patientenübersicht</button>
-    <button class="btn" type="button" onclick="safeGo('/qr.html')">QR-Codes Patienten,Szenarien</button>
+    <button class="btn" type="button" onclick="safeGo('/dynamik.html')">Ablage Dynamik</button>
+    <button class="btn" type="button" onclick="safeGo('/qr.html')">QR-Codes Patienten/Szenarien</button>
     <button class="btn" type="button" onclick="safeGo('/feedback.html')">Feedback und Bewertung der App</button>
-    <button class="btn" type="button" onclick="safeGo('/last-run.html')">Letzte Übung anzeigen</button>
-
-    <button class="btn" type="button" onclick="goCoopStart()">Coop Übung starten</button>
-    <button class="btn" type="button" onclick="goCoopJoin()">Coop Übung beitreten</button>
-
+    <button class="btn" type="button" onclick="safeGo('/last-run.html')">Letzte Übung anzeigen
+      </button>
+    <!-- Push -->
     <button id="pushBtn" class="btn" type="button">Benachrichtigungen aktivieren</button>
 
+    <!-- Nachrichten -->
     <button id="msgBtn" class="btn" type="button" onclick="safeGo('/nachrichten.html')">
       Nachrichten <span id="msgBadge"></span>
     </button>
   </div>
 
+  <!-- Start -->
   <a href="/index.html" class="btn-start" onclick="event.preventDefault(); safeGo('/index.html')">Startseite</a>
 
+  <!-- Modal für Instruktor-Schutz -->
   <div id="pinModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal">
       <h3 id="modalTitle">Instruktor-Schutz</h3>
@@ -163,60 +169,62 @@
     </div>
   </div>
 
+  <!-- Skripte -->
   <script type="module" src="/freigabe.js?cache=9"></script>
   <script defer src="/warmup.js?v=2025-08-22-1"></script>
 
- <script>
-  window.__NAV_READY__ = false;
-  (async function(){
-    if (!('serviceWorker' in navigator)) { window.__NAV_READY__ = true; return; }
-    if (!navigator.serviceWorker.controller) {
-      navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
-      setTimeout(()=>window.__NAV_READY__=true, 1500);
-      return;
+  <!-- SW-Gate + Offline Navigation -->
+  <script>
+    window.__NAV_READY__ = false;
+    (async function(){
+      if (!('serviceWorker' in navigator)) { window.__NAV_READY__ = true; return; }
+      if (!navigator.serviceWorker.controller) {
+        navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
+        setTimeout(()=>window.__NAV_READY__=true, 1500);
+        return;
+      }
+      try{ await navigator.serviceWorker.ready; }catch{}
+      const markReady = () => (window.__NAV_READY__ = true);
+      if (document.readyState === 'complete') {
+        let t=setTimeout(markReady, 1000);
+        addEventListener('warmup:done', ()=>{ clearTimeout(t); markReady(); }, { once:true });
+      } else addEventListener('load', markReady, { once:true });
+    })();
+
+    async function safeGo(path){
+      const go = async () => {
+        const target = new URL(path, location.origin).pathname;
+
+        // 🔹 Herkunft & Ziel merken (Session)
+        try {
+          sessionStorage.setItem('nav_from', location.pathname);
+          sessionStorage.setItem('nav_to',   target);
+          if (location.pathname === '/index.html' && target === '/instruktor.html') {
+            sessionStorage.setItem('needInstrPIN', '1');
+          }
+        } catch {}
+
+        try{
+          const names = await caches.keys();
+          const name = names.find(n=>n.startsWith('mein-pwa-cache-')) || names[0];
+          if (name){
+            const c = await caches.open(name);
+            const hit = await c.match(target);
+            if (hit){ location.assign(target); return; }
+          }
+        }catch{}
+        location.assign(target);
+      };
+      if (window.__NAV_READY__) return go();
+      addEventListener('controllerchange', go, { once:true });
     }
-    try{ await navigator.serviceWorker.ready; }catch{}
-    const markReady = () => (window.__NAV_READY__ = true);
-    if (document.readyState === 'complete') {
-      let t=setTimeout(markReady, 1000);
-      addEventListener('warmup:done', ()=>{ clearTimeout(t); markReady(); }, { once:true });
-    } else addEventListener('load', markReady, { once:true });
-  })();
+  </script>
 
-  async function safeGo(path){
-    const go = async () => {
-      const target = new URL(path, location.origin).pathname;
-
-      try {
-        sessionStorage.setItem('nav_from', location.pathname);
-        sessionStorage.setItem('nav_to',   target);
-        if (location.pathname === '/index.html' && target === '/instruktor.html') {
-          sessionStorage.setItem('needInstrPIN', '1');
-        }
-      } catch {}
-
-      try{
-        const names = await caches.keys();
-        const name = names.find(n=>n.startsWith('mein-pwa-cache-')) || names[0];
-        if (name){
-          const c = await caches.open(name);
-          const hit = await c.match(target);
-          if (hit){ location.assign(target); return; }
-        }
-      }catch{}
-      location.assign(target);
-    };
-    if (window.__NAV_READY__) return go();
-    addEventListener('controllerchange', go, { once:true });
-  }
-
-  function goCoopStart(){ safeGo('/coop_start.html'); }
-  function goCoopJoin(){  safeGo('/coop_join.html'); }
-</script>
-
+  <!-- Push + Nachrichten Badge + Lizenz-Gate -->
   <script>
     const VAPID_PUBLIC='BGfo_fq3L9NVou1-0HAWd2s1_Crd6BMLLGswUQHulrs1NUINsoBh5ak1pwosrOr8NF55ITsVn6ZCpZd_CDXjRCQ';
 
+    // ---- Lizenz prüfen (Backend optional, sonst Fallback auf localStorage) ----
     async function getLicenseState(){
       try{
         const r = await fetch('/.netlify/functions/license-status?ts='+Date.now(), { cache:'no-store' });
@@ -237,6 +245,7 @@
       return { active:true, status: status || 'unknown' };
     }
 
+    // ---- Nachrichten-Badge (NUR pro Gerät lokal zählen – KEIN unreadCount) ----
     async function loadMsgBadge(){
       const el = document.getElementById('msgBadge');
       const hide = () => { el.textContent=''; el.style.display='none'; };
@@ -270,6 +279,7 @@
       }
     }
 
+    // ✅ EINMALIG außerhalb von Funktionen:
     if (navigator.serviceWorker) {
       let pingTimer;
       navigator.serviceWorker.addEventListener('message', (ev) => {
@@ -280,6 +290,7 @@
       });
     }
 
+    // ---- Push (nur wenn Lizenz aktiv) ----
     const toKey=b=>{
       const p='='.repeat((4-b.length%4)%4);
       const s=(b+p).replace(/-/g,'+').replace(/_/g,'/');
@@ -288,11 +299,12 @@
       return a;
     };
 
+    // NEW: stabile Geräte-ID (einmalig pro Gerät)
     function getDeviceId() {
       const KEY = 'push_device_id_v1';
       let id = localStorage.getItem(KEY);
       if (!id) {
-        id = (crypto && crypto.randomUUID ? crypto.randomUUID() : (Math.random().toString(36).slice(2) + Date.now()));
+        id = (crypto?.randomUUID?.() || (Math.random().toString(36).slice(2) + Date.now()));
         localStorage.setItem(KEY, id);
       }
       return id;
@@ -301,8 +313,9 @@
     async function reflectPushState(){
       const btn=document.getElementById('pushBtn');
       const license = await getLicenseState();
+      // Lizenz inaktiv -> Button deaktivieren + Label anpassen
       if (!license.active){
-        btn.textContent = 'Lizenz abgelaufen. Benachrichtigungen deaktiviert';
+        btn.textContent = 'Lizenz abgelaufen – Benachrichtigungen deaktiviert';
         btn.disabled = true;
         return;
       }
@@ -324,8 +337,7 @@
     async function enablePush(){
       const btn=document.getElementById('pushBtn');
       const license = await getLicenseState();
-      if (!license.active){ return; }
-
+      if (!license.active){ return; } // Safety
       try{
         const perm=await Notification.requestPermission();
         if(perm!=='granted') return;
@@ -333,18 +345,20 @@
         const reg=await navigator.serviceWorker.ready;
         const existing=await reg.pushManager.getSubscription();
 
-        const deviceId = getDeviceId();
-        const licenseType = license && (license.type || license.plan) ? (license.type || license.plan) : '';
+        // Werte für den Server
+        const deviceId = getDeviceId();                      // NEW
+        const licenseType = license?.type || license?.plan || '';
         const appId = 'prod';
 
         if (existing) {
+          // NEW: auch bei bestehendem Abo einmal Upsert senden
           await fetch('/.netlify/functions/save-sub',{
             method:'POST', headers:{'Content-Type':'application/json'},
             body:JSON.stringify({
               deviceId,
               appId,
               subscription: existing,
-              profile: { licenseType, deviceId }
+              profile: { licenseType, deviceId } // deviceId auch im profile zur Rückwärtskompat.
             })
           });
           await reflectPushState();
@@ -356,6 +370,7 @@
           applicationServerKey:toKey(VAPID_PUBLIC)
         });
 
+        // NEW: deterministisch speichern (Server upsertet pro deviceId)
         await fetch('/.netlify/functions/save-sub',{
           method:'POST', headers:{'Content-Type':'application/json'},
           body:JSON.stringify({
@@ -389,6 +404,7 @@
       }
     }
 
+    // ---- Initialisierung + Live-Updates ----
     addEventListener('load', () => {
       reflectPushState();
       loadMsgBadge();
@@ -401,6 +417,7 @@
       }
     });
 
+    // reagiert auf updateBadgeSignal() aus nachrichten.html
     window.addEventListener('storage', (ev) => {
       if (ev.key === 'inbox_badge_ping' || ev.key === 'inbox_hidden_v1' || ev.key === 'inbox_seen_v1') {
         loadMsgBadge();
@@ -408,217 +425,238 @@
     });
   </script>
 
-  <script>
-    const LS = localStorage;
+ <!-- Schutz-Logik -->
+<script>
+  const LS = localStorage;
 
-    function getScopeId(){
-      const cand =
-        LS.getItem('license_id')     || LS.getItem('lizenz_id')     ||
-        LS.getItem('license_token')  || LS.getItem('lizenz_token')  ||
-        LS.getItem('device_id')      || LS.getItem('geraet_id')     ||
-        LS.getItem('license_key')    || LS.getItem('lizenz_key');
+  // ==== SCOPE-Erkennung: pro Lizenz/Device eigene Keys ====
+  function getScopeId(){
+    const cand =
+      LS.getItem('license_id')     || LS.getItem('lizenz_id')     ||
+      LS.getItem('license_token')  || LS.getItem('lizenz_token')  ||
+      LS.getItem('device_id')      || LS.getItem('geraet_id')     ||
+      LS.getItem('license_key')    || LS.getItem('lizenz_key');
 
-      if (cand && String(cand).trim()) return String(cand).trim();
+    if (cand && String(cand).trim()) return String(cand).trim();
 
-      let iid = LS.getItem('install_id');
-      if (!iid){
-        iid = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
-          (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-        );
-        LS.setItem('install_id', iid);
-      }
-      return `install-${iid}`;
+    // Fallback: einmalige Installations-ID (gerätelokal)
+    let iid = LS.getItem('install_id');
+    if (!iid){
+      iid = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+      );
+      LS.setItem('install_id', iid);
     }
-    const SCOPE = getScopeId();
+    return `install-${iid}`;
+  }
+  const SCOPE = getScopeId();
 
-    (function migrateOldKeys(){
-      const OLD_ENABLED = 'instr.lock.enabled';
-      const OLD_HASH    = 'instr.lock.pinHash';
-      const NEW_ENABLED = `instr.lock.enabled.${SCOPE}`;
-      const NEW_HASH    = `instr.lock.pinHash.${SCOPE}`;
+  // Migration alter globaler Keys -> scoped Keys
+  (function migrateOldKeys(){
+    const OLD_ENABLED = 'instr.lock.enabled';
+    const OLD_HASH    = 'instr.lock.pinHash';
+    const NEW_ENABLED = `instr.lock.enabled.${SCOPE}`;
+    const NEW_HASH    = `instr.lock.pinHash.${SCOPE}`;
 
-      if (LS.getItem(OLD_ENABLED) !== null && LS.getItem(NEW_ENABLED) === null) {
-        LS.setItem(NEW_ENABLED, LS.getItem(OLD_ENABLED));
-      }
-      if (LS.getItem(OLD_HASH) !== null && LS.getItem(NEW_HASH) === null) {
-        LS.setItem(NEW_HASH, LS.getItem(OLD_HASH));
-      }
+    if (LS.getItem(OLD_ENABLED) !== null && LS.getItem(NEW_ENABLED) === null) {
+      LS.setItem(NEW_ENABLED, LS.getItem(OLD_ENABLED));
+    }
+    if (LS.getItem(OLD_HASH) !== null && LS.getItem(NEW_HASH) === null) {
+      LS.setItem(NEW_HASH, LS.getItem(OLD_HASH));
+    }
+    // Optional: alte Keys aufräumen, wenn sicher:
+    // LS.removeItem(OLD_ENABLED);
+    // LS.removeItem(OLD_HASH);
+  })();
+
+  // === Scoped Keys (pro Lizenz/Device) ===
+  const KEY_ENABLED = `instr.lock.enabled.${SCOPE}`;
+  const KEY_HASH    = `instr.lock.pinHash.${SCOPE}`;
+
+  // ==== UI-Elemente ====
+  const lockState   = document.querySelector('#lockState');
+  const btnManage   = document.querySelector('#lockManage');
+
+  const modal       = document.querySelector('#pinModal');
+  const modalTitle  = document.querySelector('#modalTitle');
+  const modalHint   = document.querySelector('#modalHint');
+
+  const viewLogin   = document.querySelector('#viewLogin');
+  const viewVerify  = document.querySelector('#viewVerify');
+  const viewSetup   = document.querySelector('#viewSetup');
+
+  const pinLogin    = document.querySelector('#pinLogin');
+  const pinVerify   = document.querySelector('#pinVerify');
+  const pinNew1     = document.querySelector('#pinNew1');
+  const pinNew2     = document.querySelector('#pinNew2');
+
+  const btnLogin        = document.querySelector('#btnLogin');
+  const btnLoginCancel  = document.querySelector('#btnLoginCancel');
+  const btnVerify       = document.querySelector('#btnVerify');
+  const btnVerifyCancel = document.querySelector('#btnVerifyCancel');
+  const btnSave         = document.querySelector('#btnSave');
+  const btnBack         = document.querySelector('#btnBack');
+
+  const chkEnabled  = document.querySelector('#chkEnabled');
+
+  const msgLogin = document.querySelector('#msgLogin');
+  const msgVerify = document.querySelector('#msgVerify');
+  const msgSetup = document.querySelector('#msgSetup');
+
+  // ==== Helpers (scoped) ====
+  function isEnabled(){ return LS.getItem(KEY_ENABLED) === 'true'; }
+  function setEnabled(v){ LS.setItem(KEY_ENABLED, v ? 'true' : 'false'); }
+  function getHash(){ return LS.getItem(KEY_HASH) || ''; }
+  function setHash(h){ if (h) LS.setItem(KEY_HASH, h); else LS.removeItem(KEY_HASH); }
+
+  function updateIndicator(){
+    const on = isEnabled();
+    lockState.textContent = on ? '🔐 Menü ist geschützt' : '🔓 Menü aktuell ohne Schutz';
+    btnManage.textContent = on ? '⚙️ Schutz verwalten'   : '🔒 Schutz verwalten';
+  }
+
+  async function sha256Hex(text){
+    const enc = new TextEncoder().encode(text);
+    const buf = await crypto.subtle.digest('SHA-256', enc);
+    return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  function showModal(which){
+    msgLogin.textContent = '';
+    msgVerify.textContent = '';
+    msgSetup.textContent = '';
+    viewLogin.style.display = 'none';
+    viewVerify.style.display = 'none';
+    viewSetup.style.display = 'none';
+
+    if (which === 'login'){
+      modalTitle.textContent = 'Instruktor-Schutz';
+      modalHint.textContent  = 'Gib die PIN ein, um dieses Menü zu öffnen.';
+      viewLogin.style.display = '';
+      modal.style.display = 'flex';
+      setTimeout(()=>pinLogin.focus(), 0);
+    } else if (which === 'verify'){
+      modalTitle.textContent = 'Schutz verwalten';
+      modalHint.textContent  = 'Zur Sicherheit bitte zuerst die aktuelle PIN eingeben.';
+      viewVerify.style.display = '';
+      modal.style.display = 'flex';
+      setTimeout(()=>pinVerify.focus(), 0);
+    } else if (which === 'setup'){
+      modalTitle.textContent = 'Schutz verwalten';
+      modalHint.textContent  = 'PIN ändern (optional) und Schutz ein-/ausschalten.';
+      chkEnabled.checked = isEnabled();
+      pinNew1.value = ''; pinNew2.value = '';
+      viewSetup.style.display = '';
+      modal.style.display = 'flex';
+    }
+  }
+  function closeModal(){ modal.style.display='none'; }
+
+  // ==== Initialisierung ====
+  document.addEventListener('DOMContentLoaded', ()=>{
+    updateIndicator();
+
+    const hasPIN  = !!getHash();
+    const enabled = isEnabled();
+
+    // Herkunft robust erkennen: Session-Flag ODER Nav-Trace ODER Referrer
+    const fromSession  = sessionStorage.getItem('needInstrPIN') === '1';
+    const fromNav      = (sessionStorage.getItem('nav_from') || '') === '/index.html';
+    const fromReferrer = (() => {
+      try { return new URL(document.referrer).pathname === '/index.html'; }
+      catch { return /\/index\.html(?:$|\?)/.test(document.referrer || ''); }
     })();
 
-    const KEY_ENABLED = `instr.lock.enabled.${SCOPE}`;
-    const KEY_HASH    = `instr.lock.pinHash.${SCOPE}`;
+    const cameFromIndex = fromSession || fromNav || fromReferrer;
 
-    const lockState   = document.querySelector('#lockState');
-    const btnManage   = document.querySelector('#lockManage');
+    // Flag nur für diesen Aufruf leeren
+    sessionStorage.removeItem('needInstrPIN');
 
-    const modal       = document.querySelector('#pinModal');
-    const modalTitle  = document.querySelector('#modalTitle');
-    const modalHint   = document.querySelector('#modalHint');
-
-    const viewLogin   = document.querySelector('#viewLogin');
-    const viewVerify  = document.querySelector('#viewVerify');
-    const viewSetup   = document.querySelector('#viewSetup');
-
-    const pinLogin    = document.querySelector('#pinLogin');
-    const pinVerify   = document.querySelector('#pinVerify');
-    const pinNew1     = document.querySelector('#pinNew1');
-    const pinNew2     = document.querySelector('#pinNew2');
-
-    const btnLogin        = document.querySelector('#btnLogin');
-    const btnLoginCancel  = document.querySelector('#btnLoginCancel');
-    const btnVerify       = document.querySelector('#btnVerify');
-    const btnVerifyCancel = document.querySelector('#btnVerifyCancel');
-    const btnSave         = document.querySelector('#btnSave');
-    const btnBack         = document.querySelector('#btnBack');
-
-    const chkEnabled  = document.querySelector('#chkEnabled');
-
-    const msgLogin = document.querySelector('#msgLogin');
-    const msgVerify = document.querySelector('#msgVerify');
-    const msgSetup = document.querySelector('#msgSetup');
-
-    function isEnabled(){ return LS.getItem(KEY_ENABLED) === 'true'; }
-    function setEnabled(v){ LS.setItem(KEY_ENABLED, v ? 'true' : 'false'); }
-    function getHash(){ return LS.getItem(KEY_HASH) || ''; }
-    function setHash(h){ if (h) LS.setItem(KEY_HASH, h); else LS.removeItem(KEY_HASH); }
-
-    function updateIndicator(){
-      const on = isEnabled();
-      lockState.textContent = on ? '🔐 Menü ist geschützt' : '🔓 Menü aktuell ohne Schutz';
-      btnManage.textContent = on ? '⚙️ Schutz verwalten'   : '🔒 Schutz verwalten';
+    // Gate nur bei aktivem Schutz, vorhandener PIN und Sprung von /index.html
+    if (enabled && hasPIN && cameFromIndex) {
+      showModal('login');
     }
 
-    async function sha256Hex(text){
-      const enc = new TextEncoder().encode(text);
-      const buf = await crypto.subtle.digest('SHA-256', enc);
-      return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
-    }
-
-    function showModal(which){
-      msgLogin.textContent = '';
-      msgVerify.textContent = '';
-      msgSetup.textContent = '';
-      viewLogin.style.display = 'none';
-      viewVerify.style.display = 'none';
-      viewSetup.style.display = 'none';
-
-      if (which === 'login'){
-        modalTitle.textContent = 'Instruktor-Schutz';
-        modalHint.textContent  = 'Gib die PIN ein, um dieses Menü zu öffnen.';
-        viewLogin.style.display = '';
-        modal.style.display = 'flex';
-        setTimeout(()=>pinLogin.focus(), 0);
-      } else if (which === 'verify'){
-        modalTitle.textContent = 'Schutz verwalten';
-        modalHint.textContent  = 'Zur Sicherheit bitte zuerst die aktuelle PIN eingeben.';
-        viewVerify.style.display = '';
-        modal.style.display = 'flex';
-        setTimeout(()=>pinVerify.focus(), 0);
-      } else if (which === 'setup'){
-        modalTitle.textContent = 'Schutz verwalten';
-        modalHint.textContent  = 'PIN ändern (optional) und Schutz ein oder aus schalten.';
-        chkEnabled.checked = isEnabled();
-        pinNew1.value = ''; pinNew2.value = '';
-        viewSetup.style.display = '';
-        modal.style.display = 'flex';
-      }
-    }
-    function closeModal(){ modal.style.display='none'; }
-
-    document.addEventListener('DOMContentLoaded', ()=>{
+    // Safety: Schutz ohne PIN deaktivieren
+    if (enabled && !hasPIN) {
+      setEnabled(false);
       updateIndicator();
+    }
+  });
 
-      const hasPIN  = !!getHash();
-      const enabled = isEnabled();
+  // ==== Verwaltung öffnen ====
+  btnManage.addEventListener('click', ()=>{
+    if (isEnabled() && getHash()) showModal('verify');
+    else showModal('setup');
+  });
 
-      const fromSession  = sessionStorage.getItem('needInstrPIN') === '1';
-      const fromNav      = (sessionStorage.getItem('nav_from') || '') === '/index.html';
-      const fromReferrer = (() => {
-        try { return new URL(document.referrer).pathname === '/index.html'; }
-        catch { return /\/index\.html(?:$|\?)/.test(document.referrer || ''); }
-      })();
+  // ==== Login ====
+  btnLogin.addEventListener('click', async ()=>{
+    msgLogin.textContent = '';
+    const pin = (pinLogin.value || '').trim();
+    if (!/^\d{4,8}$/.test(pin)){ msgLogin.textContent='Ungültige PIN (4–8 Ziffern).'; return; }
+    const ok = await sha256Hex(pin) === getHash();
+    if (!ok){ msgLogin.textContent='Falsche PIN.'; return; }
+    closeModal();
+  });
+  pinLogin.addEventListener('keydown', e=>{ if(e.key==='Enter') btnLogin.click(); });
+  btnLoginCancel.addEventListener('click', ()=>{ closeModal(); safeGo('/index.html'); });
 
-      const cameFromIndex = fromSession || fromNav || fromReferrer;
-      sessionStorage.removeItem('needInstrPIN');
+  // ==== Verify (vor Setup) ====
+  btnVerify.addEventListener('click', async ()=>{
+    msgVerify.textContent = '';
+    const pin = (pinVerify.value || '').trim();
+    if (!/^\d{4,8}$/.test(pin)){ msgVerify.textContent='Ungültige PIN.'; return; }
+    const ok = await sha256Hex(pin) === getHash();
+    if (!ok){ msgVerify.textContent='Falsche PIN.'; return; }
+    showModal('setup');
+  });
+  pinVerify.addEventListener('keydown', e=>{ if(e.key==='Enter') btnVerify.click(); });
+  btnVerifyCancel.addEventListener('click', closeModal);
 
-      if (enabled && hasPIN && cameFromIndex) {
-        showModal('login');
-      }
+  // ==== Setup speichern ====
+  btnSave.addEventListener('click', async ()=>{
+    msgSetup.textContent = '';
+    const wantEnabled = chkEnabled.checked;
+    const new1 = (pinNew1.value || '').trim();
+    const new2 = (pinNew2.value || '').trim();
 
-      if (enabled && !hasPIN) {
-        setEnabled(false);
-        updateIndicator();
-      }
-    });
-
-    btnManage.addEventListener('click', ()=>{
-      if (isEnabled() && getHash()) showModal('verify');
-      else showModal('setup');
-    });
-
-    btnLogin.addEventListener('click', async ()=>{
-      msgLogin.textContent = '';
-      const pin = (pinLogin.value || '').trim();
-      if (!/^\d{4,8}$/.test(pin)){ msgLogin.textContent='Ungültige PIN (4–8 Ziffern).'; return; }
-      const ok = await sha256Hex(pin) === getHash();
-      if (!ok){ msgLogin.textContent='Falsche PIN.'; return; }
-      closeModal();
-    });
-    pinLogin.addEventListener('keydown', e=>{ if(e.key==='Enter') btnLogin.click(); });
-    btnLoginCancel.addEventListener('click', ()=>{ closeModal(); safeGo('/index.html'); });
-
-    btnVerify.addEventListener('click', async ()=>{
-      msgVerify.textContent = '';
-      const pin = (pinVerify.value || '').trim();
-      if (!/^\d{4,8}$/.test(pin)){ msgVerify.textContent='Ungültige PIN.'; return; }
-      const ok = await sha256Hex(pin) === getHash();
-      if (!ok){ msgVerify.textContent='Falsche PIN.'; return; }
-      showModal('setup');
-    });
-    pinVerify.addEventListener('keydown', e=>{ if(e.key==='Enter') btnVerify.click(); });
-    btnVerifyCancel.addEventListener('click', closeModal);
-
-    btnSave.addEventListener('click', async ()=>{
-      msgSetup.textContent = '';
-      const wantEnabled = chkEnabled.checked;
-      const new1 = (pinNew1.value || '').trim();
-      const new2 = (pinNew2.value || '').trim();
-
-      if (!wantEnabled){
-        setEnabled(false);
-        setHash('');
-        updateIndicator();
-        closeModal();
-        return;
-      }
-
-      if (wantEnabled && !getHash() && !(new1 && new2)) {
-        msgSetup.textContent = 'Zum Aktivieren bitte eine neue PIN (4–8 Ziffern) setzen und wiederholen.';
-        return;
-      }
-
-      if (new1 || new2){
-        if (!/^\d{4,8}$/.test(new1) || new1 !== new2){
-          msgSetup.textContent = 'PIN muss 4–8 Ziffern lang sein und übereinstimmen.';
-          return;
-        }
-        const h = await sha256Hex(new1);
-        setHash(h);
-      }
-
-      setEnabled(true);
+    // Schutz AUS -> Hash löschen
+    if (!wantEnabled){
+      setEnabled(false);
+      setHash('');
       updateIndicator();
       closeModal();
-    });
+      return;
+    }
 
-    btnBack.addEventListener('click', ()=>{
-      if (getHash()) showModal('verify'); else closeModal();
-    });
-  </script>
+    // Schutz AN ohne vorhandene PIN -> neue setzen erforderlich
+    if (wantEnabled && !getHash() && !(new1 && new2)) {
+      msgSetup.textContent = 'Zum Aktivieren bitte eine neue PIN (4–8 Ziffern) setzen und wiederholen.';
+      return;
+    }
 
-  <script src="/metrics.js" defer></script>
+    // Optional neue PIN prüfen/setzen
+    if (new1 || new2){
+      if (!/^\d{4,8}$/.test(new1) || new1 !== new2){
+        msgSetup.textContent = 'PIN muss 4–8 Ziffern lang sein und übereinstimmen.';
+        return;
+      }
+      const h = await sha256Hex(new1);
+      setHash(h);
+    }
+
+    setEnabled(true);
+    updateIndicator();
+    closeModal();
+  });
+
+  btnBack.addEventListener('click', ()=>{
+    if (getHash()) showModal('verify'); else closeModal();
+  });
+</script>
+
+
+ <script src="/metrics.js" defer></script>
 </body>
 </html>
-
-
-
