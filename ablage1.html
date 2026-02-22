@@ -213,18 +213,6 @@ h2{
 <script type="module">
 'use strict';
 
-/* iOS Fix. Warte auf window.Ablage aus defer Script */
-function waitForAblage(maxMs = 3500){
-  const start = Date.now();
-  return new Promise((resolve) => {
-    (function tick(){
-      if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') return resolve(true);
-      if (Date.now() - start > maxMs) return resolve(false);
-      setTimeout(tick, 30);
-    })();
-  });
-}
-
 /* Auto Start Guard */
 const AUTOSTART = 'ablage.autostart.ok';
 function allowAutostart(){ localStorage.setItem(AUTOSTART, 'true'); }
@@ -247,6 +235,120 @@ function abs(href, base){
   }
 }
 const withV = (u)=> u + (u.includes('?') ? '&' : '?') + VERSION;
+
+function loadLS(key, fallback){
+  try{
+    const raw = localStorage.getItem(key);
+    if(!raw) return fallback;
+    return JSON.parse(raw);
+  }catch{
+    return fallback;
+  }
+}
+function saveLS(key, value){
+  try{ localStorage.setItem(key, JSON.stringify(value)); }catch{}
+}
+
+function nextWorse(cat){
+  const c = String(cat||'').toLowerCase().replace('grün','gruen');
+  if(c === 'gruen') return 'gelb';
+  if(c === 'gelb') return 'rot';
+  if(c === 'rot') return 'schwarz';
+  return '';
+}
+
+function ensurePlanFallback(){
+  const cfg =
+    loadLS('ablage.dynamik.v1', null) ||
+    loadLS('dynamik.v1', null) ||
+    loadLS('patientendynamik.v1', null);
+
+  if(!cfg || !(cfg.enabled || cfg.active || cfg.on)) return;
+
+  const existing = loadLS('ablage.dynamik.plan.v1', null);
+  if(existing && Array.isArray(existing.events) && existing.events.length) return;
+
+  const active = loadLS('ablage.active.v1', []);
+  if(!Array.isArray(active) || !active.length) return;
+
+  const sMap = loadLS('sichtungMap', {});
+  const mode = (cfg.mode || 'off').toString().toLowerCase();
+
+  let events = [];
+
+  if(mode === 'fixed' && Array.isArray(cfg.fixed) && cfg.fixed.length){
+    for(const f of cfg.fixed){
+      if(!f) continue;
+      const id = String(f.id || '');
+      const to = String(f.to || f.toCat || f.newCat || '').toLowerCase().replace('grün','gruen');
+      const atMs = Number(f.atMs != null ? f.atMs : (Number(f.atMin||0) * 60000));
+      if(!id || !to || !Number.isFinite(atMs)) continue;
+      events.push({ id, to, atMs, done:false });
+    }
+  } else if(mode === 'random'){
+    const rnd = cfg.random || {};
+    const count = Math.max(0, Number(rnd.count || 0));
+    const minMs = Math.max(0, Number(rnd.minMin || 0) * 60000);
+    const maxMs = Math.max(minMs, Number(rnd.maxMin || 0) * 60000);
+    const minGapMs = Math.max(0, Number(rnd.minGapSec || 0) * 1000);
+    const allow = rnd.allow || { sk1:true, sk2:true, sk3:true, sk4:false };
+    const toLowerOnly = !!rnd.toLowerOnly;
+
+    const pool = active
+      .map(a => ({ id:String(a.id||''), label:a.label||'', startAt:a.startAt }))
+      .filter(x => x.id);
+
+    function allowedTo(cat){
+      if(cat === 'rot') return !!allow.sk1;
+      if(cat === 'gelb') return !!allow.sk2;
+      if(cat === 'gruen') return !!allow.sk3;
+      if(cat === 'schwarz') return !!allow.sk4;
+      return false;
+    }
+
+    let used = new Set();
+    let lastAt = -999999999;
+
+    for(let i=0;i<count && pool.length;i++){
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      if(!pick || !pick.id) continue;
+      if(used.has(pick.id)) continue;
+
+      const from = (sMap[pick.id] || '').toString().toLowerCase().replace('grün','gruen');
+      let to = '';
+
+      if(toLowerOnly){
+        to = nextWorse(from);
+      } else {
+        const opts = ['gruen','gelb','rot','schwarz'].filter(allowedTo);
+        to = opts[Math.floor(Math.random() * opts.length)] || '';
+      }
+
+      if(!to) continue;
+      if(!allowedTo(to)) continue;
+
+      let atMs = Math.floor(minMs + Math.random() * (maxMs - minMs + 1));
+      if(atMs < lastAt + minGapMs) atMs = lastAt + minGapMs;
+      lastAt = atMs;
+
+      used.add(pick.id);
+      events.push({ id:pick.id, to, atMs, done:false });
+    }
+  } else {
+    return;
+  }
+
+  if(!events.length) return;
+
+  const plan = {
+    mode: mode,
+    basis: cfg.basis || 'patient',
+    createdAt: Date.now(),
+    events: events
+  };
+
+  saveLS('ablage.dynamik.plan.v1', plan);
+}
 
 function normGender(g){
   if(!g) return null;
@@ -600,7 +702,7 @@ function removeCard(id){
 }
 
 /* Suche */
-document.addEventListener('input', async e=>{
+document.addEventListener('input', e=>{
   if(e.target.id!=='search') return;
   const q=e.target.value.toLowerCase();
   const all=(window.__PAT_DATA__||[]);
@@ -609,8 +711,6 @@ document.addEventListener('input', async e=>{
   (q ? all.filter(p =>
     `${p.id} ${p.label} ${p.age||''} ${p.gender||''} ${p.injury||''} ${p.vitals||''}`.toLowerCase().includes(q)
   ) : all).forEach(upsertCard);
-
-  await waitForAblage();
 
   if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
     window.Ablage.hydrateCards({
@@ -728,9 +828,14 @@ async function load(){
   }
 }
 
-/* iOS Fix. Erst warten, dann initial laden */
-await waitForAblage();
-await load();
+/* Wichtig für iOS, Plan früh erzeugen */
+ensurePlanFallback();
+window.addEventListener('pageshow', () => {
+  try{ ensurePlanFallback(); }catch{}
+});
+
+/* Start */
+load();
 
 /* Dynamik UI Update */
 window.addEventListener('ablage:dynamik', () => {
@@ -774,12 +879,10 @@ window.addEventListener('storage', (e)=>{
         const num=id.replace('patient','');
         const entry={ id, label: `Patient ${num}`, url: `patient${num}.html` };
 
-        fetchPatientData(entry).then(async p=>{
+        fetchPatientData(entry).then(p=>{
           (window.__PAT_DATA__ = (window.__PAT_DATA__||[])).push(p);
           upsertCard(p);
           allowAutostart();
-
-          await waitForAblage();
 
           if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
             window.Ablage.hydrateCards({
@@ -972,6 +1075,30 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
     }
   }
 
+  function getSichtungCatFor(id){
+    try{
+      var m = JSON.parse(localStorage.getItem('sichtungMap')||'{}');
+      var c = (m[id]||'').toString().toLowerCase().replace('grün','gruen');
+      return (c==='rot' || c==='gelb' || c==='gruen' || c==='schwarz') ? c : '';
+    }catch(_){ return ''; }
+  }
+
+  function getToCatFromPlan(id, afterMs){
+    try{
+      var plan = JSON.parse(localStorage.getItem('ablage.dynamik.plan.v1')||'null');
+      if(!plan || !plan.events) return '';
+      for(var k=0;k<plan.events.length;k++){
+        var ev = plan.events[k];
+        if(!ev) continue;
+        if(String(ev.id) !== String(id)) continue;
+        if(afterMs != null && Number(ev.atMs||0) !== Number(afterMs||0)) continue;
+        var c = (ev.toCat || ev.to || ev.newCat || '').toString().toLowerCase().replace('grün','gruen');
+        return c;
+      }
+    }catch(_){}
+    return '';
+  }
+
   var q = [];
   var showing = false;
   var backdrop = document.getElementById('dynAlertBackdrop');
@@ -997,6 +1124,10 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
     var name = item.label || item.id || 'Patient';
     var fromCat = (item.fromCat || item.from || '').toString().toLowerCase().replace('grün','gruen');
     var toCat = (item.toCat || item.to || '').toString().toLowerCase().replace('grün','gruen');
+
+    if(!fromCat) fromCat = getSichtungCatFor(item.id);
+    if(!toCat) toCat = getToCatFromPlan(item.id, item.afterMs);
+
     var fromTxt = catLabel(fromCat);
     var toTxt = catLabel(toCat);
 
@@ -1085,6 +1216,14 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
     return p;
   }
 
+  function getSichtungCatFor(id){
+    try{
+      var m = JSON.parse(localStorage.getItem('sichtungMap')||'{}');
+      var c = (m[id]||'').toString().toLowerCase().replace('grün','gruen');
+      return (c==='rot' || c==='gelb' || c==='gruen' || c==='schwarz') ? c : '';
+    }catch(_){ return ''; }
+  }
+
   function tick(){
     try{
       var plan = getPlan();
@@ -1108,14 +1247,20 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
           if(String(ev.id) !== String(a.id)) continue;
 
           if(elapsed >= Number(ev.atMs||0)){
+            var fromCat = getSichtungCatFor(a.id);
+            var toCat = (ev.toCat || ev.to || ev.newCat || '').toString().toLowerCase().replace('grün','gruen');
+
             try{
               window.dispatchEvent(new CustomEvent('ablage:dynamik:fired', {
                 detail:{
-                  fired:[{ id:a.id, label:a.label||a.id, fromCat:'', toCat:'', afterMs:ev.atMs }],
+                  fired:[{ id:a.id, label:a.label||a.id, fromCat:fromCat, toCat:toCat, afterMs:ev.atMs }],
                   plan:plan
                 }
               }));
             }catch(_e){}
+
+            ev.done = true;
+            try{ localStorage.setItem('ablage.dynamik.plan.v1', JSON.stringify(plan)); }catch(_){}
             return;
           }
         }
@@ -1142,79 +1287,6 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
   setTimeout(startOnEnterOnShow, 1200);
 })();
 </script>
-<script>
-(function(){
-  'use strict';
 
-  var box = document.createElement('div');
-  box.style.position = 'fixed';
-  box.style.right = '10px';
-  box.style.bottom = '10px';
-  box.style.zIndex = '100000';
-  box.style.padding = '10px 12px';
-  box.style.borderRadius = '12px';
-  box.style.background = 'rgba(0,0,0,.65)';
-  box.style.border = '1px solid rgba(255,255,255,.20)';
-  box.style.fontSize = '12px';
-  box.style.lineHeight = '1.25';
-  box.style.maxWidth = '70vw';
-  box.style.backdropFilter = 'blur(6px)';
-
-  var txt = document.createElement('div');
-  var btn = document.createElement('button');
-  btn.textContent = 'Test Popup';
-  btn.className = 'btn';
-  btn.style.marginTop = '8px';
-
-  box.appendChild(txt);
-  box.appendChild(btn);
-  document.body.appendChild(box);
-
-  function safeParse(key, fallback){
-    try{
-      var raw = localStorage.getItem(key);
-      if(!raw) return fallback;
-      return JSON.parse(raw);
-    }catch(_){ return fallback; }
-  }
-
-  function status(){
-    var hasA = !!(window.Ablage);
-    var hasHyd = !!(window.Ablage && typeof window.Ablage.hydrateCards === 'function');
-    var hasStart = !!(window.Ablage && typeof window.Ablage.startOnEnter === 'function');
-
-    var plan = safeParse('ablage.dynamik.plan.v1', null);
-    var active = safeParse('ablage.active.v1', []);
-    var smap = safeParse('sichtungMap', {});
-
-    var planEvents = (plan && plan.events && Array.isArray(plan.events)) ? plan.events.length : 0;
-    var activeN = Array.isArray(active) ? active.length : 0;
-    var seenN = smap ? Object.keys(smap).length : 0;
-
-    txt.innerHTML =
-      'Ablage: ' + (hasA ? 'JA' : 'NEIN') + '<br>' +
-      'hydrateCards: ' + (hasHyd ? 'JA' : 'NEIN') + '<br>' +
-      'startOnEnter: ' + (hasStart ? 'JA' : 'NEIN') + '<br>' +
-      'plan.events: ' + planEvents + '<br>' +
-      'active: ' + activeN + '<br>' +
-      'sichtungMap keys: ' + seenN + '<br>' +
-      'time: ' + new Date().toLocaleTimeString();
-  }
-
-  btn.addEventListener('click', function(){
-    try{
-      window.dispatchEvent(new CustomEvent('ablage:dynamik:fired', {
-        detail:{
-          fired:[{ id:'patient27', label:'Patient 27', fromCat:'gelb', toCat:'rot', afterMs:120000 }]
-        }
-      }));
-    }catch(_){}
-  });
-
-  status();
-  setInterval(status, 1000);
-})();
-</script>
 </body>
 </html>
-
