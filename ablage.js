@@ -167,7 +167,7 @@
       if(!atMs && x.afterMin != null) atMs = Number(x.afterMin)*60*1000;
       if(!atMs && x.afterSec != null) atMs = Number(x.afterSec)*1000;
       if(!to) to = Number(x.toSK || 0);
-      return { id:id, atMs:Math.max(0,atMs), action:'sk', to:to, done:false };
+      return { id:id, atMs:Math.max(0,atMs), action:'sk', delta:(x && x.delta!=null)? Number(x.delta) : null, to:to, done:false };
     }).filter(Boolean);
 
     plan = { createdAt: now(), sessionStart: sessionStart, basis: dyn.basis || 'patient', mode:'fixed', events: events };
@@ -184,8 +184,14 @@
     var curCat = (sMap[id]||'').toString().toLowerCase().replace('grün','gruen');
     var curSk = catToSk(curCat);
     var toSk = Number(ev.to||0);
+    // Fix Modus: delta (z.B. -1) hat Vorrang, damit man nicht vorher die SK kennen muss
+    if(ev.delta != null){
+      var d = Number(ev.delta);
+      if(!isFinite(d)) d = 0;
+      toSk = curSk + d;
+    }
+    toSk = Math.max(1, Math.min(4, toSk));
     if(!toSk) return false;
-
 
     var fromSk = curSk;
 
