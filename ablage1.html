@@ -179,6 +179,7 @@ h2{
   </style>
 
   <link rel="stylesheet" href="/app-flow.css">
+  <script src="/ablage.js?v=20260222_ios1" defer></script>
 </head>
 
 <body>
@@ -702,11 +703,15 @@ async function load(){
 
   allowAutostart();
 
-  if (window.Ablage && typeof window.Ablage.startAllOnEnter === 'function') {
-    window.Ablage.startAllOnEnter();
+  if(window.Ablage && typeof window.Ablage.startOnEnter === 'function'){
+    window.Ablage.startOnEnter();
   }
 
-  if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
+  if(window.Ablage && typeof window.Ablage.startOnEnter === 'function'){
+    window.Ablage.startOnEnter();
+  }
+
+    if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
     window.Ablage.hydrateCards({
       containerSelector: '#list',
       cardSelector: '.card',
@@ -881,7 +886,6 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 </style>
 
 <script src="/metrics.js" defer></script>
-<script src="/ablage.js?v=20260222"></script>
 
 <script>
 (function(){
@@ -1051,7 +1055,21 @@ tag.textContent = name;
 })();
 </script>
 
+
+<script>
+(function(){
+  'use strict';
+  function startOnEnterOnShow(){
+    try{
+      if(window.Ablage && typeof window.Ablage.startOnEnter === 'function'){
+        window.Ablage.startOnEnter();
+      }
+    }catch(_){}
+  }
+  window.addEventListener('pageshow', startOnEnterOnShow);
+  setTimeout(startOnEnterOnShow, 1200);
+})();
+</script>
+
 </body>
 </html>
-
-
