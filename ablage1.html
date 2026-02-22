@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>Patientenablage – gesichtete Patienten</title>
+  <title>Patientenablage , gesichtete Patienten</title>
   <meta name="mobile-web-app-capable" content="yes" />
   <link rel="manifest" href="/manifest.json" />
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
@@ -54,7 +54,7 @@ header h1{margin:0;font-size:20px}
   background:var(--glass);border:2px solid rgba(255,255,255,.55);border-radius:12px;box-shadow:var(--shadow);
   padding:12px;break-inside:avoid;page-break-inside:avoid;
   border-left: 10px solid rgba(255,255,255,.25);
-  position:relative; /* wichtig für saubere Overlays (falls später) */
+  position:relative;
 }
 
 .k-rot{     border-left-color:#e53935 !important; }
@@ -95,7 +95,6 @@ h2{
 .badge-gruen{   background:#2e7d32; color:#fff; border-color:#2e7d32; }
 .badge-schwarz{ background:#111;    color:#fff; border-color:#111; }
 
-/* farbige Sub-Badges passend zur Kategorie */
 .badge-rot .flag{     background:#e53935; color:#fff; border-color:#e53935; }
 .badge-gelb .flag{    background:#f3fc02; color:#111; border-color:#f3fc02; }
 .badge-gruen .flag{   background:#2e7d32; color:#fff; border-color:#2e7d32; }
@@ -160,7 +159,7 @@ h2{
   .ablage-actions .btn { flex:1 1 100%; }
 }
 
-/* === Klinik zuweisen: Primary Action (NUR OPTIK) === */
+/* Klinik zuweisen Button */
 .btn-assign-clinic{
   background: linear-gradient(180deg, #e53935, #b71c1c) !important;
   color:#fff !important;
@@ -179,7 +178,7 @@ h2{
   </style>
 
   <link rel="stylesheet" href="/app-flow.css">
-  <script src="/ablage.js?v=20260222_ios1" defer></script>
+  <script src="/ablage.js?v=20260222_ios3" defer></script>
 </head>
 
 <body>
@@ -214,7 +213,7 @@ h2{
 <script type="module">
 'use strict';
 
-/* ====== Auto-Start Guard ====== */
+/* Auto Start Guard */
 const AUTOSTART = 'ablage.autostart.ok';
 function allowAutostart(){ localStorage.setItem(AUTOSTART, 'true'); }
 function denyAutostart(){  localStorage.setItem(AUTOSTART, 'false'); }
@@ -225,7 +224,7 @@ document.addEventListener('visibilitychange', () => {
 });
 allowAutostart();
 
-/* ===== Setups & Helpers ===== */
+/* Helpers */
 const VERSION = 'v-0901-06';
 function abs(href, base){
   try{
@@ -241,19 +240,19 @@ function normGender(g){
   if(!g) return null;
   const x = String(g).trim().toLowerCase();
   if (x === 'm' || /^m(ännlich|aennlich)$/.test(x) || ['male','mann','herr'].includes(x)) return 'männlich';
-  if (x === 'w' || ['weiblich','female','frau','weibl'].includes(x))                   return 'weiblich';
-  if (x === 'd' || /divers|non[-\s]?binary/.test(x))                                   return 'divers';
+  if (x === 'w' || ['weiblich','female','frau','weibl'].includes(x)) return 'weiblich';
+  if (x === 'd' || /divers|non[\s]?binary/.test(x)) return 'divers';
   return null;
 }
 
-/* ===== Datenquellen ===== */
+/* Datenquellen */
 function getPatMeta(){ try { return JSON.parse(localStorage.getItem('patMeta') || '{}'); } catch { return {}; } }
 function getPatientsData(){ try { return JSON.parse(localStorage.getItem('patientsData') || '[]'); } catch { return []; } }
 
 /* Overlays */
 function overlayFromPatMeta(info){
   const meta = getPatMeta()[info.id] || {};
-  if(meta.age)    info.age = String(meta.age);
+  if(meta.age) info.age = String(meta.age);
   if(meta.gender) info.gender = normGender(meta.gender) || meta.gender;
   if(meta.photo && !info.img) info.img = abs(meta.photo, info.url);
 }
@@ -266,7 +265,7 @@ function overlayFromJson(info){
   if(!info.img && j.photo) info.img = abs(j.photo, info.url);
 }
 
-/* ===== Sichtungen & Flags ===== */
+/* Sichtungen */
 function getSMap(){ try{ return JSON.parse(localStorage.getItem('sichtungMap')||'{}'); }catch{ return {}; } }
 function sichtungFor(id){
   const k = (getSMap()[id]||'').toString().toLowerCase().replace('grün','gruen');
@@ -289,35 +288,35 @@ function __readTogglePayload(id){
 }
 function __labelFromCat(cat){
   const c = String(cat||'').toLowerCase();
-  if (c === 'rot')     return 'SK1';
-  if (c === 'gelb')    return 'SK2';
-  if (c === 'gruen')   return 'SK3';
+  if (c === 'rot') return 'SK1';
+  if (c === 'gelb') return 'SK2';
+  if (c === 'gruen') return 'SK3';
   if (c === 'schwarz') return 'SK4';
   return '';
 }
 function getSichtungDisplay(id, cat){
   const p = __readTogglePayload(id);
-  if (cat === 'rot')      return 'SK1' + (p.t ? ' · T' : '');
-  if (cat === 'gelb')     return 'SK2';
-  if (cat === 'gruen')    return 'SK3' + (p.b ? ' · B' : '');
-  if (cat === 'schwarz')  return 'SK4';
-  return '—';
+  if (cat === 'rot') return 'SK1' + (p.t ? ' , T' : '');
+  if (cat === 'gelb') return 'SK2';
+  if (cat === 'gruen') return 'SK3' + (p.b ? ' , B' : '');
+  if (cat === 'schwarz') return 'SK4';
+  return '';
 }
 
-/* ===== Priorität (Sortierung) ===== */
+/* Priorität */
 function __prio(cat, flags){
   const t=!!flags?.t, b=!!flags?.b;
-  if (cat==='rot'   && t) return 0;
-  if (cat==='rot')        return 1;
-  if (cat==='gelb')       return 2;
+  if (cat==='rot' && t) return 0;
+  if (cat==='rot') return 1;
+  if (cat==='gelb') return 2;
   if (cat==='gruen' && b) return 3;
-  if (cat==='gruen')      return 4;
-  if (cat==='schwarz')    return 5;
+  if (cat==='gruen') return 4;
+  if (cat==='schwarz') return 5;
   return 6;
 }
 function __numFromId(id){ return parseInt(String(id).replace(/\D/g,''))||99999; }
 
-/* ===== DONE-Set aus Ablage.js ===== */
+/* DONE Set */
 function getDoneSet(){
   try{
     const list = (window.Ablage && window.Ablage._getDone) ? window.Ablage._getDone() : [];
@@ -325,7 +324,7 @@ function getDoneSet(){
   }catch{ return new Set(); }
 }
 
-/* ===== Stats ===== */
+/* Stats */
 function updateStats(){
   const done = getDoneSet();
   const ids = sightedIds().filter(id => !done.has(id));
@@ -342,7 +341,7 @@ function updateStats(){
   set('cnt-rot',rot); set('cnt-gelb',gelb); set('cnt-gruen',gruen); set('cnt-schwarz',schwarz); set('cnt-total',total);
 }
 
-/* ===== NUR OPTIK: Klinik zuweisen Button stylen ===== */
+/* Optik */
 function highlightAssignButtons(){
   document.querySelectorAll('.card button').forEach(btn=>{
     const t = (btn.textContent || '').trim().toLowerCase();
@@ -352,7 +351,7 @@ function highlightAssignButtons(){
   });
 }
 
-/* ===== Bildsuche (Fallbacks) ===== */
+/* Bildsuche */
 const SUFFIXES = ['', 'messer', 'kopf', 'arm', 'bein', 'bauch', 'brust', 'foto', '_1', '_a'];
 async function findPhoto({ html, baseUrl, index }){
   const im = html.match(/<img[^>]*id=["']patient-photo["'][^>]*src=["']([^"']+)["']/i);
@@ -388,7 +387,7 @@ function probeImage(url){
   });
 }
 
-/* ===== Cache + Fetch der Patientenseiten ===== */
+/* Cache + Fetch */
 const listEl = document.getElementById('list');
 const CACHE_KEY = `pat-cache-${VERSION}`;
 function readCache(){ try{ return JSON.parse(sessionStorage.getItem(CACHE_KEY)||'{}'); }catch{return{};} }
@@ -399,7 +398,7 @@ async function fetchPatientData(entry){
   if(cache[entry.id]) return cache[entry.id];
 
   const idx = +entry.id.replace('patient','');
-  const info = { id:entry.id, label:entry.label, url:entry.url, age:null, gender:null, injury:'—', vitals:null, img:null, code:null, error:null };
+  const info = { id:entry.id, label:entry.label, url:entry.url, age:null, gender:null, injury:'', vitals:null, img:null, code:null, error:null };
 
   try{
     const res = await fetch(withV(entry.url), { cache:'no-store' });
@@ -414,11 +413,11 @@ async function fetchPatientData(entry){
     if(s){
       try{
         const j = JSON.parse(s[1]);
-        if(j.age)    info.age    = String(j.age);
+        if(j.age) info.age = String(j.age);
         if(j.gender) info.gender = String(j.gender);
-        if(j.code)   info.code   = String(j.code);
+        if(j.code) info.code = String(j.code);
         if(j.injury) info.injury = String(j.injury);
-        if(j.photo)  info.img    = abs(j.photo, entry.url);
+        if(j.photo) info.img = abs(j.photo, entry.url);
         if(j.vitals) info.vitals = String(j.vitals);
       }catch{}
     }
@@ -431,7 +430,7 @@ async function fetchPatientData(entry){
       if(!info.gender){ const v = pick('gender'); if(v) info.gender = String(v); }
       if(!info.code){ const v = pick('code'); if(v) info.code = String(v); }
       if(!info.img){ const v = pick('photo'); if(v) info.img = abs(v, entry.url); }
-      if(info.injury==='—'){ const v = pick('injury'); if(v) info.injury = String(v); }
+      if(!info.injury){ const v = pick('injury'); if(v) info.injury = String(v); }
       if(!info.vitals){ const v = pick('vitals'); if(v) info.vitals = String(v); }
     }
 
@@ -439,7 +438,7 @@ async function fetchPatientData(entry){
     if(btn1){
       const raw = btn1[1];
       const text = cleanText(raw);
-      if(info.injury==='—') info.injury = extractMainInjuryFromButtonHTML(raw);
+      if(!info.injury) info.injury = extractMainInjuryFromButtonHTML(raw);
       if(!info.vitals){
         const vit = extractVitalsFromText(text);
         if(vit) info.vitals = vit;
@@ -449,7 +448,7 @@ async function fetchPatientData(entry){
     if(btn2){
       const raw2 = btn2[1];
       const inj2 = extractMainInjuryFromButtonHTML(raw2);
-      if((!info.injury || info.injury==='—') && inj2 && inj2 !== '—') info.injury = inj2;
+      if((!info.injury) && inj2) info.injury = inj2;
       if(!info.vitals){
         const vit2 = extractVitalsFromText(cleanText(raw2));
         if(vit2) info.vitals = vit2;
@@ -486,7 +485,7 @@ function extractMainInjuryFromButtonHTML(rawHtml){
   base = base.replace(/^[\s\-\|•·–—]+/, '').split(/[\|—–\-•·]/)[0].trim();
   const p = base.indexOf('.');
   if (p>0 && p<80) base = base.slice(0,p).trim();
-  return base || '—';
+  return base || '';
 }
 function extractVitalsFromText(t){
   if(!t) return null;
@@ -500,7 +499,7 @@ function extractVitalsFromText(t){
   return `Puls ${hr}/min`;
 }
 
-/* ===== UI ===== */
+/* UI Render */
 function renderSkeletons(ids){
   listEl.innerHTML='';
   for(const id of ids){
@@ -524,16 +523,15 @@ function renderSkeletons(ids){
 function upsertCard(p){
   const kat = sichtungFor(p.id);
   const flags = __readTogglePayload(p.id) || {};
-  const label = kat ? __labelFromCat(kat) : '—';
-  const flagChar = (kat==='rot'   && flags.t) ? 'T'
-                 : (kat==='gruen' && flags.b) ? 'B'
-                 : '';
+  const label = kat ? __labelFromCat(kat) : '';
+  const flagChar = (kat==='rot' && flags.t) ? 'T' : (kat==='gruen' && flags.b) ? 'B' : '';
   const katBadgeClass = kat ? `badge-${kat}` : '';
 
-  let injText = p.injury ?? '—';
+  let injText = p.injury || '';
   if(p.vitals && !/af\s*\d+|puls\s*\d+/i.test((injText||'').toLowerCase())){
-    injText += ` — ${p.vitals}`;
+    injText += ` , ${p.vitals}`;
   }
+  if(!injText) injText = ' ';
 
   const badge = `<span class="badge ${katBadgeClass}">
                    <span class="sk">${label}</span>
@@ -550,7 +548,7 @@ function upsertCard(p){
     </div>
     <div>
       <h2>${p.label} ${badge}</h2>
-      <div class="meta">Alter: ${p.age ?? '—'} | Geschlecht: ${p.gender ?? '—'}</div>
+      <div class="meta">Alter: ${p.age ?? ''} | Geschlecht: ${p.gender ?? ''}</div>
       <div class="injury"><b>Hauptverletzung:</b> ${injText}</div>
       ${p.error ? `<div style="color:#ffd2d2;margin-top:6px;font-size:12px;">⚠ ${p.error}</div>` : ''}
     </div>
@@ -584,7 +582,6 @@ function upsertCard(p){
   if(img) observeImage(img);
 }
 
-/* Entfernen */
 function removeCard(id){
   const el = listEl.querySelector(`.card[data-id="${id}"]`);
   if(el) el.remove();
@@ -601,7 +598,7 @@ document.addEventListener('input', e=>{
     `${p.id} ${p.label} ${p.age||''} ${p.gender||''} ${p.injury||''} ${p.vitals||''}`.toLowerCase().includes(q)
   ) : all).forEach(upsertCard);
 
-  if (window.Ablage) {
+  if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
     window.Ablage.hydrateCards({
       containerSelector: '#list',
       cardSelector: '.card',
@@ -612,7 +609,7 @@ document.addEventListener('input', e=>{
   }
 });
 
-/* Clicks (Lightbox & PDF) */
+/* Clicks */
 document.addEventListener('click', async e=>{
   const target=e.target;
 
@@ -661,7 +658,7 @@ function observeImage(img){
   else img.src=img.dataset.src;
 }
 
-/* ===== Laden & Sortiertes Rendern ===== */
+/* Laden */
 async function load(){
   const done = getDoneSet();
   const ids = sightedIds().filter(id => !done.has(id));
@@ -700,18 +697,13 @@ async function load(){
   data.forEach(upsertCard);
   window.__PAT_DATA__ = data;
   updateStats();
-
   allowAutostart();
 
   if(window.Ablage && typeof window.Ablage.startOnEnter === 'function'){
     window.Ablage.startOnEnter();
   }
 
-  if(window.Ablage && typeof window.Ablage.startOnEnter === 'function'){
-    window.Ablage.startOnEnter();
-  }
-
-    if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
+  if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
     window.Ablage.hydrateCards({
       containerSelector: '#list',
       cardSelector: '.card',
@@ -723,10 +715,9 @@ async function load(){
 }
 load();
 
-/* Dynamik Updates aus ablage.js, auch im selben Tab */
+/* Dynamik UI Update */
 window.addEventListener('ablage:dynamik', () => {
   try{
-    // Karten neu zeichnen, damit SK Badges und Farben aktualisieren
     const all = (window.__PAT_DATA__ || []);
     if(all.length){
       listEl.innerHTML = '';
@@ -744,11 +735,10 @@ window.addEventListener('ablage:dynamik', () => {
     } else {
       load();
     }
-  }catch(_){}
+  }catch{}
 });
 
-
-/* Live-Updates (Sichtung/T/B/DONE) */
+/* Live Updates */
 window.addEventListener('storage', (e)=>{
   if(!e || !e.key) return;
   if(e.key==='sichtungMap' || e.key==='ablage.done.v1' || e.key.startsWith('sicht_')){
@@ -756,7 +746,7 @@ window.addEventListener('storage', (e)=>{
 
     const done = getDoneSet();
     const want = new Set(sightedIds().filter(id => !done.has(id)));
-    const have = new Set([...document.querySelectorAll('.card[data-id]')].map(el=>el.dataset.id)); // FIX!
+    const have = new Set([...document.querySelectorAll('.card[data-id]')].map(el=>el.dataset.id));
 
     for(const id of have){
       if(!want.has(id)) removeCard(id);
@@ -787,7 +777,7 @@ window.addEventListener('storage', (e)=>{
   }
 });
 
-/* === PDF: Einzelkarte (inkl. SKx · T/B) === */
+/* PDF */
 function ensureJsPDF(){ return window.jspdf && window.jspdf.jsPDF; }
 
 async function pdfSingle(p){
@@ -797,7 +787,7 @@ async function pdfSingle(p){
   let y=20;
 
   const kat = sichtungFor(p.id);
-  const display = kat ? getSichtungDisplay(p.id, kat) : '—';
+  const display = kat ? getSichtungDisplay(p.id, kat) : '';
 
   doc.setFontSize(16);
   doc.text(p.label + (p.code ? ` [${p.code}]` : ''), W/2, y, { align:'center' });
@@ -805,15 +795,15 @@ async function pdfSingle(p){
 
   doc.setFontSize(12);
   doc.text(`Sichtung: ${display}`, 20, y); y+=7;
-  doc.text(`Alter: ${p.age ?? '—'}`, 20, y); y+=7;
-  doc.text(`Geschlecht: ${p.gender ?? '—'}`, 20, y); y+=10;
+  doc.text(`Alter: ${p.age ?? ''}`, 20, y); y+=7;
+  doc.text(`Geschlecht: ${p.gender ?? ''}`, 20, y); y+=10;
 
-  let inj=p.injury ?? '—';
+  let inj=p.injury || '';
   const haveVitals=/af\s*\d+|puls\s*\d+/i.test((inj||'').toLowerCase());
-  if(p.vitals && !haveVitals) inj += ` — ${p.vitals}`;
+  if(p.vitals && !haveVitals) inj += ` , ${p.vitals}`;
 
   doc.text('Hauptverletzung:', 20, y); y+=6;
-  const txt=doc.splitTextToSize(inj, W-40);
+  const txt=doc.splitTextToSize(inj || ' ', W-40);
   doc.text(txt, 20, y);
   y+=txt.length*6+10;
 
@@ -845,10 +835,8 @@ function imageToDataURL(src){
   });
 }
 
-/* Beim Verlassen Autostart verbieten */
 window.addEventListener('beforeunload', () => { denyAutostart(); });
 </script>
-
 
 <!-- Dynamik Warnmeldung -->
 <div id="dynAlertBackdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:9999; align-items:center; justify-content:center; padding:18px;">
@@ -863,7 +851,6 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
     </div>
   </div>
 </div>
-
 
 <style>
   .dynModal{ position:relative; }
@@ -885,7 +872,16 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
   .dynBadge.sk4{ background:rgba(148,163,184,.16); border:1px solid rgba(148,163,184,.45); color:#e2e8f0; }
 </style>
 
-<script src="/metrics.js" defer></script>
+<!-- metrics.js robust laden -->
+<script>
+  (function(){
+    var s=document.createElement('script');
+    s.src='/metrics.js';
+    s.defer=true;
+    s.onerror=function(){};
+    document.head.appendChild(s);
+  })();
+</script>
 
 <script>
 (function(){
@@ -957,7 +953,6 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
     }
   }
 
-
   var q = [];
   var showing = false;
   var backdrop = document.getElementById('dynAlertBackdrop');
@@ -989,10 +984,11 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
     var modal = document.getElementById('dynAlertModal');
     if(modal){
       modal.classList.remove('sk1','sk2','sk3','sk4','pulse');
-      var toSk = (toCat==='rot')?'sk1':(toCat==='gelb')?'sk2':(toCat==='gruen')?'sk3':(toCat==='schwarz')?'sk4':'';
+      var toSk = (toCat==='rot') ? 'sk1' : (toCat==='gelb') ? 'sk2' : (toCat==='gruen') ? 'sk3' : (toCat==='schwarz') ? 'sk4' : '';
       if(toSk) modal.classList.add(toSk);
     }
-tag.textContent = name;
+
+    if(tag) tag.textContent = name;
 
     var extra = '';
     if(item.afterMs != null){
@@ -1017,10 +1013,6 @@ tag.textContent = name;
       modal.classList.add('pulse');
     }
     startAlarmLoop();
-
-    try{
-      if(typeof renderAll === 'function') renderAll();
-    }catch(_){}
   }
 
   function close(){
@@ -1047,15 +1039,76 @@ tag.textContent = name;
     showNext();
   });
 
-  window.addEventListener('ablage:dynamik', function(){
-    try{
-      if(typeof renderAll === 'function') renderAll();
-    }catch(_){}
-  });
 })();
 </script>
 
+<!-- Watchdog Fallback, prüft jede Sekunde fällige Events -->
+<script>
+(function(){
+  'use strict';
 
+  function safeParseKey(key, fallback){
+    try{
+      var raw = localStorage.getItem(key);
+      if(!raw) return fallback;
+      return JSON.parse(raw);
+    }catch(_){ return fallback; }
+  }
+
+  function getActive(){
+    var a = safeParseKey('ablage.active.v1', []);
+    return Array.isArray(a) ? a : [];
+  }
+
+  function getPlan(){
+    var p = safeParseKey('ablage.dynamik.plan.v1', null);
+    if(!p || !p.events || !Array.isArray(p.events)) return null;
+    return p;
+  }
+
+  function tick(){
+    try{
+      var plan = getPlan();
+      if(!plan || !plan.events.length) return;
+
+      var active = getActive();
+      if(!active.length) return;
+
+      var t = Date.now();
+
+      for(var i=0;i<active.length;i++){
+        var a = active[i];
+        if(!a || !a.id) continue;
+        if(typeof a.startAt !== 'number') continue;
+
+        var elapsed = t - a.startAt + (Number(a.offset)||0);
+
+        for(var j=0;j<plan.events.length;j++){
+          var ev = plan.events[j];
+          if(!ev || ev.done) continue;
+          if(String(ev.id) !== String(a.id)) continue;
+
+          if(elapsed >= Number(ev.atMs||0)){
+            try{
+              window.dispatchEvent(new CustomEvent('ablage:dynamik:fired', {
+                detail:{
+                  fired:[{ id:a.id, label:a.label||a.id, fromCat:'', toCat:'', afterMs:ev.atMs }],
+                  plan:plan
+                }
+              }));
+            }catch(_e){}
+            return;
+          }
+        }
+      }
+    }catch(_){}
+  }
+
+  setInterval(tick, 1000);
+})();
+</script>
+
+<!-- startOnEnter zusätzlich bei pageshow -->
 <script>
 (function(){
   'use strict';
