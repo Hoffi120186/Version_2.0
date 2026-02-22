@@ -844,8 +844,106 @@ function imageToDataURL(src){
 window.addEventListener('beforeunload', () => { denyAutostart(); });
 </script>
 
+
+<!-- Dynamik Warnmeldung -->
+<div id="dynAlertBackdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:9999; align-items:center; justify-content:center; padding:18px;">
+  <div style="max-width:520px; width:100%; background:rgba(20,25,35,.95); border:1px solid rgba(255,255,255,.18); border-radius:16px; box-shadow:0 18px 60px rgba(0,0,0,.55); padding:16px 16px 14px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+      <div style="font-weight:800; font-size:18px; letter-spacing:.2px;">Patientenverschlechterung</div>
+      <div id="dynAlertTag" style="font-size:12px; opacity:.85; padding:4px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.18);"></div>
+    </div>
+    <div id="dynAlertBody" style="margin-top:10px; line-height:1.35;"></div>
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
+      <button id="dynAlertOk" class="btn btnPrimary" type="button">Bestätigen</button>
+    </div>
+  </div>
+</div>
+
 <script src="/metrics.js" defer></script>
-<script src="/ablage.js?v=22"></script>
+<script src="/ablage.js?v=8"></script>
+
+<script>
+(function(){
+  'use strict';
+
+  var q = [];
+  var showing = false;
+  var backdrop = document.getElementById('dynAlertBackdrop');
+  var body = document.getElementById('dynAlertBody');
+  var tag = document.getElementById('dynAlertTag');
+  var ok = document.getElementById('dynAlertOk');
+
+  function catLabel(cat){
+    var c = (cat||'').toString().toLowerCase().replace('grün','gruen');
+    if(c === 'rot') return 'SK1 (rot)';
+    if(c === 'gelb') return 'SK2 (gelb)';
+    if(c === 'gruen') return 'SK3 (grün)';
+    if(c === 'schwarz') return 'SK4 (schwarz)';
+    return String(cat||'');
+  }
+
+  function showNext(){
+    if(showing) return;
+    if(!q.length) return;
+    showing = true;
+    var item = q.shift();
+
+    var name = item.label || item.id || 'Patient';
+    var fromTxt = catLabel(item.fromCat || item.from || '');
+    var toTxt = catLabel(item.toCat || item.to || '');
+
+    tag.textContent = name;
+
+    var extra = '';
+    if(item.afterMs != null){
+      var sec = Math.max(0, Math.round(Number(item.afterMs)/1000));
+      var m = Math.floor(sec/60);
+      var s = sec%60;
+      extra = '<div style="opacity:.85; margin-top:6px; font-size:13px;">Auslöser nach ' + m + ':' + String(s).padStart(2,'0') + ' Minuten in der Ablage.</div>';
+    }
+
+    body.innerHTML =
+      '<div style="font-size:15px;"><b>' + name + '</b> hat sich verschlechtert.</div>' +
+      '<div style="margin-top:8px; font-size:14px;">Einstufung. <b>' + fromTxt + '</b> zu <b>' + toTxt + '</b></div>' +
+      extra;
+
+    backdrop.style.display = 'flex';
+
+    try{
+      if(typeof renderAll === 'function') renderAll();
+    }catch(_){}
+  }
+
+  function close(){
+    backdrop.style.display = 'none';
+    showing = false;
+    setTimeout(showNext, 20);
+  }
+
+  if(ok) ok.addEventListener('click', close);
+
+  window.addEventListener('ablage:dynamik:fired', function(e){
+    try{
+      var d = e && e.detail ? e.detail : null;
+      var fired = d && d.fired ? d.fired : null;
+      if(Array.isArray(fired)){
+        for(var i=0;i<fired.length;i++) q.push(fired[i]);
+      }else{
+        q.push({ label:'Patient', fromCat:'', toCat:'' });
+      }
+    }catch(_){
+      q.push({ label:'Patient', fromCat:'', toCat:'' });
+    }
+    showNext();
+  });
+
+  window.addEventListener('ablage:dynamik', function(){
+    try{
+      if(typeof renderAll === 'function') renderAll();
+    }catch(_){}
+  });
+})();
+</script>
+
 </body>
 </html>
-
