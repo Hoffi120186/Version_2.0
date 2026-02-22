@@ -847,7 +847,7 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 
 <!-- Dynamik Warnmeldung -->
 <div id="dynAlertBackdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:9999; align-items:center; justify-content:center; padding:18px;">
-  <div style="max-width:520px; width:100%; background:rgba(20,25,35,.95); border:1px solid rgba(255,255,255,.18); border-radius:16px; box-shadow:0 18px 60px rgba(0,0,0,.55); padding:16px 16px 14px;">
+  <div id="dynAlertModal" class="dynModal" style="max-width:520px; width:100%; background:rgba(20,25,35,.95); border:1px solid rgba(255,255,255,.18); border-radius:16px; box-shadow:0 18px 60px rgba(0,0,0,.55); padding:16px 16px 14px;">
     <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
       <div style="font-weight:800; font-size:18px; letter-spacing:.2px;">Patientenverschlechterung</div>
       <div id="dynAlertTag" style="font-size:12px; opacity:.85; padding:4px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.18);"></div>
@@ -859,12 +859,100 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
   </div>
 </div>
 
+
+<style>
+  .dynModal{ position:relative; }
+  .dynModal.pulse{ animation: dynPulse 0.95s ease-in-out 4; }
+  @keyframes dynPulse{
+    0%{ transform:scale(1); box-shadow:0 18px 60px rgba(0,0,0,.55); }
+    50%{ transform:scale(1.012); box-shadow:0 18px 60px rgba(0,0,0,.55), 0 0 0 2px rgba(255,255,255,.10), 0 0 26px rgba(255,255,255,.16); }
+    100%{ transform:scale(1); box-shadow:0 18px 60px rgba(0,0,0,.55); }
+  }
+  .dynModal.sk1{ border-color: rgba(239,68,68,.55) !important; }
+  .dynModal.sk2{ border-color: rgba(234,179,8,.55) !important; }
+  .dynModal.sk3{ border-color: rgba(34,197,94,.55) !important; }
+  .dynModal.sk4{ border-color: rgba(148,163,184,.55) !important; }
+
+  .dynBadge{ display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; font-weight:800; font-size:12px; letter-spacing:.2px; }
+  .dynBadge.sk1{ background:rgba(239,68,68,.20); border:1px solid rgba(239,68,68,.55); color:#fecaca; }
+  .dynBadge.sk2{ background:rgba(234,179,8,.20); border:1px solid rgba(234,179,8,.55); color:#fde68a; }
+  .dynBadge.sk3{ background:rgba(34,197,94,.20); border:1px solid rgba(34,197,94,.55); color:#bbf7d0; }
+  .dynBadge.sk4{ background:rgba(148,163,184,.16); border:1px solid rgba(148,163,184,.45); color:#e2e8f0; }
+</style>
+
 <script src="/metrics.js" defer></script>
-<script src="/ablage.js?v=8"></script>
+<script src="/ablage.js?v=10"></script>
 
 <script>
 (function(){
   'use strict';
+
+  var _audioUnlocked = false;
+  var _alarmCtx = null;
+  var _alarmTimer = null;
+
+  function unlockAudioOnce(){
+    if(_audioUnlocked) return;
+    _audioUnlocked = true;
+    try{
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if(!Ctx) return;
+      _alarmCtx = new Ctx();
+      var o = _alarmCtx.createOscillator();
+      var g = _alarmCtx.createGain();
+      g.gain.value = 0.0001;
+      o.connect(g);
+      g.connect(_alarmCtx.destination);
+      o.start();
+      o.stop(_alarmCtx.currentTime + 0.05);
+    }catch(e){}
+  }
+
+  document.addEventListener('pointerdown', unlockAudioOnce, { once:true });
+
+  function startAlarmLoop(){
+    try{
+      if(!_alarmCtx){
+        var Ctx = window.AudioContext || window.webkitAudioContext;
+        if(Ctx) _alarmCtx = new Ctx();
+      }
+      if(_alarmCtx && _alarmCtx.state === 'suspended'){
+        _alarmCtx.resume().catch(function(){});
+      }
+    }catch(e){}
+
+    if(_alarmTimer) return;
+
+    function beep(){
+      try{
+        if(!_alarmCtx) return;
+        var o = _alarmCtx.createOscillator();
+        var g = _alarmCtx.createGain();
+        o.type = 'square';
+        o.frequency.value = 880;
+        g.gain.value = 0.10;
+        o.connect(g);
+        g.connect(_alarmCtx.destination);
+        o.start();
+        o.stop(_alarmCtx.currentTime + 0.18);
+      }catch(e){}
+    }
+
+    beep();
+    _alarmTimer = setInterval(beep, 650);
+
+    try{
+      if(navigator.vibrate) navigator.vibrate([120,80,120]);
+    }catch(e){}
+  }
+
+  function stopAlarmLoop(){
+    if(_alarmTimer){
+      clearInterval(_alarmTimer);
+      _alarmTimer = null;
+    }
+  }
+
 
   var q = [];
   var showing = false;
@@ -889,10 +977,18 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
     var item = q.shift();
 
     var name = item.label || item.id || 'Patient';
-    var fromTxt = catLabel(item.fromCat || item.from || '');
-    var toTxt = catLabel(item.toCat || item.to || '');
+    var fromCat = (item.fromCat || item.from || '').toString().toLowerCase().replace('grün','gruen');
+    var toCat = (item.toCat || item.to || '').toString().toLowerCase().replace('grün','gruen');
+    var fromTxt = catLabel(fromCat);
+    var toTxt = catLabel(toCat);
 
-    tag.textContent = name;
+    var modal = document.getElementById('dynAlertModal');
+    if(modal){
+      modal.classList.remove('sk1','sk2','sk3','sk4','pulse');
+      var toSk = (toCat==='rot')?'sk1':(toCat==='gelb')?'sk2':(toCat==='gruen')?'sk3':(toCat==='schwarz')?'sk4':'';
+      if(toSk) modal.classList.add(toSk);
+    }
+tag.textContent = name;
 
     var extra = '';
     if(item.afterMs != null){
@@ -904,10 +1000,19 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 
     body.innerHTML =
       '<div style="font-size:15px;"><b>' + name + '</b> hat sich verschlechtert.</div>' +
-      '<div style="margin-top:8px; font-size:14px;">Einstufung. <b>' + fromTxt + '</b> zu <b>' + toTxt + '</b></div>' +
+      '<div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">' +
+        '<span class="dynBadge ' + ((fromCat==='rot')?'sk1':(fromCat==='gelb')?'sk2':(fromCat==='gruen')?'sk3':(fromCat==='schwarz')?'sk4':'') + '">' + fromTxt + '</span>' +
+        '<span style="opacity:.85; font-weight:800;">zu</span>' +
+        '<span class="dynBadge ' + ((toCat==='rot')?'sk1':(toCat==='gelb')?'sk2':(toCat==='gruen')?'sk3':(toCat==='schwarz')?'sk4':'') + '">' + toTxt + '</span>' +
+      '</div>' +
       extra;
 
     backdrop.style.display = 'flex';
+    if(modal){
+      void modal.offsetWidth;
+      modal.classList.add('pulse');
+    }
+    startAlarmLoop();
 
     try{
       if(typeof renderAll === 'function') renderAll();
@@ -916,6 +1021,7 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 
   function close(){
     backdrop.style.display = 'none';
+    stopAlarmLoop();
     showing = false;
     setTimeout(showNext, 20);
   }
