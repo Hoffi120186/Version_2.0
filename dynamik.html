@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Ablage Dynamik</title>
+
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/app-flow.css">
+
+  <style>
+    :root{
+      --radius:14px;
+      --shadow:0 10px 26px rgba(0,0,0,.28);
+      --glass:rgba(255,255,255,.12);
+      --border:rgba(255,255,255,.22);
+      --accent:#0B5FFF;
+      --bad:#ef4444;
+      --ok:#22c55e;
+      --muted:rgba(255,255,255,.78);
+      --w:min(94vw,980px);
+    }
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:#0b0f1a url("fotos/Patientenkarte.jpg") center/cover no-repeat fixed;
+      color:#fff;
+      min-height:100vh;
+    }
+    body::before{ content:""; position:fixed; inset:0; background:rgba(0,0,0,.60); z-index:-1; }
+
+    header{
+      position:sticky; top:0; z-index:10;
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+      padding:12px 12px;
+      background:rgba(0,0,0,.55);
+      backdrop-filter:blur(6px);
+      border-bottom:1px solid rgba(255,255,255,.12);
+    }
+    header h1{ margin:0; font-size:20px; }
+    .btn{
+      border:0; border-radius:12px; padding:10px 14px;
+      background:var(--accent); color:#fff; font-weight:800; cursor:pointer;
+      box-shadow:var(--shadow);
+    }
+    .btn.alt{ background:#a54524; }
+    .btn.ghost{ background:rgba(255,255,255,.14); border:1px solid var(--border); box-shadow:var(--shadow); }
+    .wrap{ width:var(--w); margin:14px auto 28px; padding:0 12px; }
+    .card{
+      background:var(--glass);
+      border:1px solid var(--border);
+      border-radius:16px;
+      box-shadow:var(--shadow);
+      padding:14px;
+      margin:12px 0;
+    }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    label{ font-weight:800; }
+    .muted{ color:var(--muted); font-size:13px; }
+    select,input{
+      background:rgba(0,0,0,.35);
+      color:#fff;
+      border:1px solid rgba(255,255,255,.22);
+      border-radius:12px;
+      padding:10px 12px;
+      min-height:42px;
+    }
+    input[type="number"]{ width:120px; }
+    .pill{
+      display:inline-flex; gap:8px; align-items:center;
+      padding:8px 12px;
+      border-radius:999px;
+      background:rgba(0,0,0,.35);
+      border:1px solid rgba(255,255,255,.22);
+      font-weight:800;
+      user-select:none;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px;
+    }
+    @media (max-width:760px){
+      .grid{ grid-template-columns:1fr; }
+    }
+    table{ width:100%; border-collapse:separate; border-spacing:0 10px; }
+    th{ text-align:left; font-size:13px; color:var(--muted); padding:0 8px; }
+    td{ padding:0 8px; }
+    .tr{
+      background:rgba(0,0,0,.28);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:14px;
+    }
+    .tr td{ padding:10px 8px; }
+    .btnSmall{
+      padding:10px 12px;
+      border-radius:12px;
+      background:rgba(255,255,255,.14);
+      border:1px solid rgba(255,255,255,.22);
+      color:#fff;
+      cursor:pointer;
+      font-weight:800;
+    }
+    .btnSmall.danger{ background:rgba(239,68,68,.22); border-color:rgba(239,68,68,.55); }
+    .ok{ color:var(--ok); font-weight:900; }
+    .bad{ color:var(--bad); font-weight:900; }
+    pre{
+      white-space:pre-wrap;
+      background:rgba(0,0,0,.35);
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:14px;
+      padding:12px;
+      margin:0;
+      color:#e5e7eb;
+      font-size:13px;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <button class="btn alt" type="button" onclick="location.href='Instruktor.html'">Zurück</button>
+    <h1>Ablage Dynamik</h1>
+    <button class="btn ghost" type="button" id="btnSave">Speichern</button>
+    <button class="btn ghost" type="button" id="btnReset">Zurücksetzen</button>
+  </header>
+
+  <div class="wrap">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;">
+        <div class="row">
+          <span class="pill"><input id="enabled" type="checkbox" style="width:18px;height:18px;" /> Aktiv</span>
+          <span id="status" class="muted">Aus</span>
+        </div>
+        <button class="btnSmall" type="button" id="btnShowPlan">Plan anzeigen</button>
+      </div>
+
+      <div class="grid" style="margin-top:12px;">
+        <div>
+          <label for="mode">Modus</label><br>
+          <select id="mode">
+            <option value="off">Aus</option>
+            <option value="fixed">Fix geplant</option>
+            <option value="random">Zufall</option>
+          </select>
+          <div class="muted" style="margin-top:6px;">
+            Fix. Du definierst konkrete Ereignisse. Zufall. Es wird pro Übung ein neuer Plan erzeugt.
+          </div>
+        </div>
+
+        <div>
+          <label for="basis">Zeitbasis</label><br>
+          <select id="basis">
+            <option value="patient">Ab Ablage Timer Start</option>
+            <option value="session">Ab Übungsstart</option>
+          </select>
+          <div class="muted" style="margin-top:6px;">
+            Empfehlung. Ab Ablage Timer Start. Dann passt es zur Ablage.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="fixedCard" style="display:none;">
+      <div class="row" style="justify-content:space-between;">
+        <div>
+          <div style="font-weight:900;font-size:18px;">Fix Regeln</div>
+          <div class="muted">Beispiel. Patient 30 nach 3 Minuten SK2 zu SK1</div>
+        </div>
+        <button class="btnSmall" type="button" id="btnAddRule">Regel hinzufügen</button>
+      </div>
+
+      <div style="margin-top:10px; overflow:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:120px;">Patient</th>
+              <th style="width:160px;">Zeit Minuten</th>
+              <th style="width:140px;">Ziel</th>
+              <th style="width:120px;"></th>
+            </tr>
+          </thead>
+          <tbody id="ruleBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" id="randomCard" style="display:none;">
+      <div style="font-weight:900;font-size:18px;">Zufall Einstellungen</div>
+      <div class="muted" style="margin-top:6px;">Die App erzeugt einen Plan und speichert ihn. Dadurch ist die Übung stabil und reproduzierbar.</div>
+
+      <div class="grid" style="margin-top:12px;">
+        <div>
+          <label>Startfenster Minuten</label>
+          <div class="row" style="margin-top:8px;">
+            <input id="minMin" type="number" min="0" step="1" />
+            <span class="muted">bis</span>
+            <input id="maxMin" type="number" min="0" step="1" />
+          </div>
+        </div>
+        <div>
+          <label>Anzahl Ereignisse</label>
+          <div class="row" style="margin-top:8px;">
+            <input id="count" type="number" min="0" max="20" step="1" />
+            <span class="muted">max 20</span>
+          </div>
+        </div>
+
+        <div>
+          <label>Mindestabstand Sekunden</label>
+          <div class="row" style="margin-top:8px;">
+            <input id="minGapSec" type="number" min="0" step="5" />
+          </div>
+        </div>
+
+        <div>
+          <label>Ziel Logik</label>
+          <div class="row" style="margin-top:8px;">
+            <span class="pill"><input id="toLowerOnly" type="checkbox" style="width:18px;height:18px;" /> Nur eine Stufe schlechter</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px;">
+        <div style="font-weight:900;">Welche SK Klassen dürfen ausgewählt werden</div>
+        <div class="row" style="margin-top:10px;">
+          <span class="pill"><input id="allow1" type="checkbox" style="width:18px;height:18px;" /> SK1</span>
+          <span class="pill"><input id="allow2" type="checkbox" style="width:18px;height:18px;" /> SK2</span>
+          <span class="pill"><input id="allow3" type="checkbox" style="width:18px;height:18px;" /> SK3</span>
+          <span class="pill"><input id="allow4" type="checkbox" style="width:18px;height:18px;" /> SK4</span>
+        </div>
+        <div class="muted" style="margin-top:8px;">Empfehlung. SK4 aus lassen.</div>
+      </div>
+
+      <div class="row" style="margin-top:12px;">
+        <button class="btnSmall" type="button" id="btnReseed">Neu würfeln</button>
+        <span class="muted">Erzeugt einen neuen Plan beim nächsten Betreten der Ablage.</span>
+      </div>
+    </div>
+
+    <div class="card" id="planCard" style="display:none;">
+      <div class="row" style="justify-content:space-between;">
+        <div style="font-weight:900;font-size:18px;">Aktueller Plan</div>
+        <button class="btnSmall" type="button" id="btnClosePlan">Schließen</button>
+      </div>
+      <div class="muted" style="margin-top:6px;">Wenn du auf Neu würfeln drückst, wird der Plan beim nächsten Ablage Besuch neu erstellt.</div>
+      <div style="margin-top:10px;">
+        <pre id="planText">Kein Plan vorhanden</pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    'use strict';
+
+    const KEY = 'ablage.dynamik.v1';
+    const KEY_PLAN = 'ablage.dynamik.plan.v1';
+
+    function safeParse(s,f){ try{ return JSON.parse(s); }catch{ return f; } }
+    function load(k,f){ return safeParse(localStorage.getItem(k), f); }
+    function save(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+
+    function defaults(){
+      return {
+        enabled:false,
+        mode:'off',
+        basis:'patient',
+        random:{
+          minMin:3,
+          maxMin:5,
+          count:3,
+          minGapSec:60,
+          allow:{ sk1:true, sk2:true, sk3:true, sk4:false },
+          toLowerOnly:true
+        },
+        fixed:[]
+      };
+    }
+
+    function skLabel(n){
+      n = Number(n)||0;
+      if(n===1) return 'SK1';
+      if(n===2) return 'SK2';
+      if(n===3) return 'SK3';
+      if(n===4) return 'SK4';
+      return 'SK';
+    }
+
+    const el = (id)=>document.getElementById(id);
+    const enabled = el('enabled');
+    const mode = el('mode');
+    const basis = el('basis');
+    const status = el('status');
+
+    const fixedCard = el('fixedCard');
+    const randomCard = el('randomCard');
+    const ruleBody = el('ruleBody');
+
+    const minMin = el('minMin');
+    const maxMin = el('maxMin');
+    const count = el('count');
+    const minGapSec = el('minGapSec');
+    const toLowerOnly = el('toLowerOnly');
+    const allow1 = el('allow1');
+    const allow2 = el('allow2');
+    const allow3 = el('allow3');
+    const allow4 = el('allow4');
+
+    const planCard = el('planCard');
+    const planText = el('planText');
+
+    function setStatus(){
+      if(!enabled.checked || mode.value==='off'){
+        status.textContent = 'Aus';
+        status.className = 'muted';
+        return;
+      }
+      status.textContent = mode.value==='fixed' ? 'Aktiv, Fix' : 'Aktiv, Zufall';
+      status.className = 'ok';
+    }
+
+    function showHide(){
+      fixedCard.style.display = (mode.value==='fixed') ? '' : 'none';
+      randomCard.style.display = (mode.value==='random') ? '' : 'none';
+      setStatus();
+    }
+
+    function renderRules(list){
+      ruleBody.innerHTML = '';
+      (list||[]).forEach((r, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = 'tr';
+        tr.innerHTML = `
+          <td><input type="number" min="1" max="99" step="1" value="${Number(String(r.id||'').replace(/\D/g,''))||''}" data-k="id" data-i="${idx}"></td>
+          <td><input type="number" min="0" step="0.5" value="${(r.afterMin!=null? r.afterMin : 3)}" data-k="afterMin" data-i="${idx}"></td>
+          <td>
+            <select data-k="to" data-i="${idx}">
+              <option value="1"${Number(r.to)===1?' selected':''}>SK1</option>
+              <option value="2"${Number(r.to)===2?' selected':''}>SK2</option>
+              <option value="3"${Number(r.to)===3?' selected':''}>SK3</option>
+              <option value="4"${Number(r.to)===4?' selected':''}>SK4</option>
+            </select>
+          </td>
+          <td><button class="btnSmall danger" type="button" data-del="${idx}">Entfernen</button></td>
+        `;
+        ruleBody.appendChild(tr);
+      });
+    }
+
+    function readRulesFromUI(){
+      const rows = [...ruleBody.querySelectorAll('tr')];
+      const out = [];
+      rows.forEach((tr, idx) => {
+        const idNum = Number(tr.querySelector('input[data-k="id"]').value || 0);
+        const afterMinVal = Number(tr.querySelector('input[data-k="afterMin"]').value || 0);
+        const toVal = Number(tr.querySelector('select[data-k="to"]').value || 0);
+        if(idNum>0 && toVal>0){
+          out.push({ id:'patient'+idNum, afterMin: afterMinVal, to: toVal });
+        }
+      });
+      return out;
+    }
+
+    function fillUI(cfg){
+      enabled.checked = !!cfg.enabled;
+      mode.value = cfg.mode || 'off';
+      basis.value = cfg.basis || 'patient';
+
+      minMin.value = Number(cfg.random?.minMin ?? 3);
+      maxMin.value = Number(cfg.random?.maxMin ?? 5);
+      count.value = Number(cfg.random?.count ?? 3);
+      minGapSec.value = Number(cfg.random?.minGapSec ?? 60);
+      toLowerOnly.checked = !!cfg.random?.toLowerOnly;
+
+      allow1.checked = !!cfg.random?.allow?.sk1;
+      allow2.checked = !!cfg.random?.allow?.sk2;
+      allow3.checked = !!cfg.random?.allow?.sk3;
+      allow4.checked = !!cfg.random?.allow?.sk4;
+
+      renderRules(cfg.fixed || []);
+      showHide();
+    }
+
+    function readUI(){
+      const cfg = defaults();
+      cfg.enabled = !!enabled.checked;
+      cfg.mode = mode.value || 'off';
+      cfg.basis = basis.value || 'patient';
+
+      cfg.random.minMin = Number(minMin.value || 0);
+      cfg.random.maxMin = Number(maxMin.value || 0);
+      cfg.random.count = Number(count.value || 0);
+      cfg.random.minGapSec = Number(minGapSec.value || 0);
+      cfg.random.toLowerOnly = !!toLowerOnly.checked;
+
+      cfg.random.allow.sk1 = !!allow1.checked;
+      cfg.random.allow.sk2 = !!allow2.checked;
+      cfg.random.allow.sk3 = !!allow3.checked;
+      cfg.random.allow.sk4 = !!allow4.checked;
+
+      cfg.fixed = readRulesFromUI();
+      return cfg;
+    }
+
+    function resetPlan(){
+      try{ localStorage.removeItem(KEY_PLAN); }catch{}
+    }
+
+    document.addEventListener('click', (e) => {
+      const del = e.target && e.target.getAttribute && e.target.getAttribute('data-del');
+      if(del != null){
+        const cfg = readUI();
+        cfg.fixed.splice(Number(del),1);
+        renderRules(cfg.fixed);
+      }
+    });
+
+    el('btnAddRule').addEventListener('click', () => {
+      const cfg = readUI();
+      cfg.fixed.push({ id:'patient30', afterMin:3, to:1 });
+      renderRules(cfg.fixed);
+    });
+
+    el('btnSave').addEventListener('click', () => {
+      const cfg = readUI();
+      save(KEY, cfg);
+      if(cfg.mode==='random'){
+        resetPlan();
+      } else if(cfg.mode==='fixed'){
+        resetPlan();
+      }
+      setStatus();
+      alert('Gespeichert');
+    });
+
+    el('btnReset').addEventListener('click', () => {
+      save(KEY, defaults());
+      resetPlan();
+      fillUI(defaults());
+      alert('Zurückgesetzt');
+    });
+
+    enabled.addEventListener('change', showHide);
+    mode.addEventListener('change', showHide);
+
+    el('btnReseed').addEventListener('click', () => {
+      resetPlan();
+      alert('Ok. Beim nächsten Betreten der Ablage wird ein neuer Plan erzeugt.');
+    });
+
+    el('btnShowPlan').addEventListener('click', () => {
+      const plan = load(KEY_PLAN, null);
+      planCard.style.display = '';
+      if(!plan || !plan.events || !plan.events.length){
+        planText.textContent = 'Kein Plan vorhanden. Öffne die Ablage einmal, dann wird bei Zufall ein Plan erstellt. Bei Fix wird der Plan beim Ablage Besuch erzeugt.';
+        return;
+      }
+      const lines = [];
+      lines.push('Modus: ' + (plan.mode || ''));
+      lines.push('Zeitbasis: ' + (plan.basis || ''));
+      lines.push('Events: ' + plan.events.length);
+      lines.push('');
+      plan.events.forEach(ev => {
+        const at = Math.round((Number(ev.atMs||0)/1000));
+        const mm = Math.floor(at/60);
+        const ss = at%60;
+        const t = String(mm).padStart(2,'0') + ':' + String(ss).padStart(2,'0');
+        const idNum = String(ev.id||'').replace(/\D/g,'');
+        lines.push(t + '  Patient ' + idNum + '  zu ' + skLabel(ev.to) + (ev.done ? '  erledigt' : ''));
+      });
+      planText.textContent = lines.join('\n');
+    });
+
+    el('btnClosePlan').addEventListener('click', () => { planCard.style.display = 'none'; });
+
+    const cfg = Object.assign(defaults(), load(KEY, {}));
+    // merge random allow
+    if(cfg.random && cfg.random.allow){
+      cfg.random.allow = Object.assign(defaults().random.allow, cfg.random.allow);
+    }
+    fillUI(cfg);
+  </script>
+</body>
+</html>
