@@ -315,24 +315,6 @@ function patientNumFromId(id){
 
 function pickRandom(arr){
   if(!Array.isArray(arr) || !arr.length) return null;
-
-  // Wenn Objekte mit Gewicht vorhanden sind
-  const hasW = arr.some(x => x && typeof x === 'object' && 'w' in x);
-  if(hasW){
-    let total = 0;
-    for(const it of arr){
-      const w = Math.max(0, Number(it && it.w != null ? it.w : 0));
-      total += w;
-    }
-    if(total > 0){
-      let r = Math.random() * total;
-      for(const it of arr){
-        const w = Math.max(0, Number(it && it.w != null ? it.w : 0));
-        r -= w;
-        if(r <= 0) return it;
-      }
-    }
-  }
   return arr[Math.floor(Math.random()*arr.length)];
 }
 
@@ -343,13 +325,8 @@ function getVXAllowedKeys(patientId){
     if(n == null) return [];
     const map = window.VX_MAP || {};
     const a = map[n];
-    if(!Array.isArray(a)) return [];
-    return a.map(x=>{
-      if(typeof x === 'string') return { id:x, w:1 };
-      if(x && typeof x === 'object' && x.id) return { id:String(x.id), w: Number(x.w||1) };
-      return null;
-    }).filter(Boolean);
-  }catch{
+    return Array.isArray(a) ? a.slice() : [];
+  }catch(e){
     return [];
   }
 }
@@ -623,23 +600,6 @@ const CACHE_KEY = `pat-cache-${VERSION}`;
 function readCache(){ try{ return JSON.parse(sessionStorage.getItem(CACHE_KEY)||'{}'); }catch(e){return{};} }
 function writeCache(map){ try{ sessionStorage.setItem(CACHE_KEY, JSON.stringify(map)); }catch(e){} }
 
-
-// Fallback: patienten.json laden (wenn einzelne patientX.html nicht sauber geparst werden können)
-let __PAT_JSON_CACHE = null;
-async function getPatientFromJson(num){
-  try{
-    if(!__PAT_JSON_CACHE){
-      const r = await fetch(withV('/patienten.json'), { cache:'no-store' });
-      if(!r.ok) return null;
-      const j = await r.json();
-      __PAT_JSON_CACHE = Array.isArray(j) ? j : [];
-    }
-    return (__PAT_JSON_CACHE || []).find(p => Number(p.id) === Number(num)) || null;
-  }catch{
-    return null;
-  }
-}
-
 async function fetchPatientData(entry){
   const cache = readCache();
   if(cache[entry.id]) return cache[entry.id];
@@ -651,21 +611,7 @@ async function fetchPatientData(entry){
     const res = await fetch(withV(entry.url), { cache:'no-store' });
     if(!res.ok){
       info.error = 'HTTP '+res.status;
-      
-    // Fallback, wenn Parsing aus patientX.html unvollständig
-    if((!info.injury || !info.vitals || info.age==null || !info.gender) && idx){
-      const pj = await getPatientFromJson(idx);
-      if(pj){
-        if(!info.injury && pj.verletzung) info.injury = String(pj.verletzung);
-        if(!info.vitals){
-          info.vitals = { af: (pj.af ?? null), puls: (pj.puls ?? null) };
-        }
-        if(info.age == null && pj.age != null) info.age = pj.age;
-        if(!info.gender && pj.gender) info.gender = String(pj.gender);
-      }
-    }
-
-const c=readCache(); c[entry.id]=info; writeCache(c);
+      const c=readCache(); c[entry.id]=info; writeCache(c);
       return info;
     }
     const html = await res.text();
@@ -989,23 +935,9 @@ function setVXIntoActive(patientId, toCat){
   const hit = active.find(x => x && String(x.id) === String(patientId));
   if(!hit) return null;
 
-  let prof = null;
-  let chosenKey = null;
-
-  const pidNum = patientNumFromId(patientId);
-
-  if(window.VX_PICK_PROFILE && pidNum != null){
-    prof = window.VX_PICK_PROFILE(pidNum);
-    chosenKey = prof && prof.id ? prof.id : null;
-  }else{
-    const keys = getVXAllowedKeys(patientId);
-    const chosen = pickRandom(keys);
-    if(chosen){
-      chosenKey = (typeof chosen === 'string') ? chosen : (chosen.id || null);
-      prof = chosenKey ? getVXProfileByKey(chosenKey) : null;
-      if(prof && !prof.id) prof.id = chosenKey;
-    }
-  }
+  const keys = getVXAllowedKeys(patientId);
+  const chosenKey = pickRandom(keys);
+  const prof = chosenKey ? getVXProfileByKey(chosenKey) : null;
 
   const grund = prof && prof.grund ? String(prof.grund) : 'Zustand verschlechtert sich.';
   const werte = prof && prof.werte ? prof.werte : null;
@@ -1281,6 +1213,9 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 (function(){
   'use strict';
 
+  // Wenn ablage.js aktiv ist, übernimmt dieses die Dynamik. Doppel-Trigger vermeiden.
+  if(window.Ablage && typeof window.Ablage.hydrateCards === 'function') return;
+
   var q = [];
   var showing = false;
   var backdrop = document.getElementById('dynAlertBackdrop');
@@ -1405,6 +1340,9 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 (function(){
   'use strict';
 
+  // Wenn ablage.js aktiv ist, übernimmt dieses die Dynamik. Doppel-Trigger vermeiden.
+  if(window.Ablage && typeof window.Ablage.hydrateCards === 'function') return;
+
   function safeParseKey(key, fallback){
     try{
       var raw = localStorage.getItem(key);
@@ -1484,6 +1422,9 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 <script>
 (function(){
   'use strict';
+
+  // Wenn ablage.js aktiv ist, übernimmt dieses die Dynamik. Doppel-Trigger vermeiden.
+  if(window.Ablage && typeof window.Ablage.hydrateCards === 'function') return;
   function startOnEnterOnShow(){
     try{
       if(window.Ablage && typeof window.Ablage.startOnEnter === 'function'){
