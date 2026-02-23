@@ -332,15 +332,34 @@ function getVXAllowedKeys(patientId){
     if(n == null) return [];
     const map = window.VX_MAP || {};
     const a = map[n];
-    return Array.isArray(a) ? a.slice() : [];
+    // VX_MAP kann Strings oder Objekte {id,w} enthalten.
+    // Wir normalisieren hier auf eine Liste von Profil-IDs.
+    if(!Array.isArray(a) || !a.length) return [];
+    return a.map(x => {
+      if(typeof x === 'string') return x;
+      if(x && typeof x === 'object' && x.id) return String(x.id);
+      return null;
+    }).filter(Boolean);
   }catch(e){
     return [];
   }
 }
-function getVXProfileByKey(key){
+
+function pickVXProfile(patientId){
   try{
-    const p = (window.VX_PROFILES || {})[key];
-    return p || null;
+    const n = patientNumFromId(patientId);
+    if(n == null) return null;
+    if(typeof window.VX_PICK_PROFILE === 'function'){
+      // VX_PICK_PROFILE unterstützt Gewichte und liefert grund, werte, neueKategorie.
+      return window.VX_PICK_PROFILE(String(n));
+    }
+    // Fallback: ungewichtet aus IDs ziehen.
+    const keys = getVXAllowedKeys(patientId);
+    const k = pickRandom(keys);
+    if(!k) return null;
+    const p = (window.VX_PROFILES || {})[k];
+    if(!p) return null;
+    return { id:k, titel:p.titel, grund:p.grund, neueKategorie:p.neueKategorie, werte:p.werte };
   }catch(e){
     return null;
   }
@@ -955,16 +974,16 @@ function observeImage(img){
 }
 
 /* Verschlechterung anwenden und Profil auswählen */
-function setVXIntoActive(patientId, toCat){
+function setVXIntoActive(patientId, toCat, profileOverride){
   const active = loadLS('ablage.active.v1', []);
   if(!Array.isArray(active) || !active.length) return null;
 
   const hit = active.find(x => x && String(x.id) === String(patientId));
   if(!hit) return null;
 
-  const keys = getVXAllowedKeys(patientId);
-  const chosenKey = pickRandom(keys);
-  const prof = chosenKey ? getVXProfileByKey(chosenKey) : null;
+  // Profil: bevorzugt aus Event übernehmen, sonst anhand VX_MAP picken.
+  const prof = (profileOverride && profileOverride.grund) ? profileOverride : pickVXProfile(patientId);
+  const chosenKey = prof && prof.id ? String(prof.id) : '';
 
   const grund = prof && prof.grund ? String(prof.grund) : 'Zustand verschlechtert sich.';
   const werte = prof && prof.werte ? prof.werte : null;
@@ -998,7 +1017,9 @@ async function applyDynamikToSichtungMap(firedArr){
     // Keine Verschlechterung ohne hinterlegtes Profil
     if(getVXAllowedKeys(id).length === 0) continue;
 
-    const vx = setVXIntoActive(id, to);
+    // Wenn ablage.js bereits ein Profil geliefert hat, nutzen wir dieses.
+    const profFromEvent = (it && it.profile && it.profile.grund) ? it.profile : null;
+    const vx = setVXIntoActive(id, to, profFromEvent);
 
     const finalTo = vx && vx.toCat ? vx.toCat : to;
     map[id] = finalTo;
