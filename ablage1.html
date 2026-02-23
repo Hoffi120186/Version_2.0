@@ -178,6 +178,7 @@ h2{
   </style>
 
   <link rel="stylesheet" href="/app-flow.css">
+  <script src="/vx_profiles.js"></script>
   <script src="/ablage.js?v=20260222_ios3" defer></script>
 </head>
 
@@ -648,6 +649,24 @@ function renderSkeletons(ids){
 }
 
 function upsertCard(p){
+
+  // Merge aus active, damit Verschlechterung und Vitalwerte sicher im Card Objekt landen
+  const active = loadLS('ablage.active.v1', []);
+  if(Array.isArray(active)){
+    const hit = active.find(x => x && String(x.id) === String(p.id));
+    if(hit){
+      if(hit.verschlechterung && hit.verschlechterung.grund){
+        p.verschlechterung = hit.verschlechterung;
+      }
+      if(hit.af != null || hit.puls != null){
+        const af = hit.af != null ? `AF ${hit.af}/min` : '';
+        const pu = hit.puls != null ? `Puls ${hit.puls}/min` : '';
+        const both = [af, pu].filter(Boolean).join(', ');
+        if(both) p.vitals = both;
+      }
+    }
+  }
+
   const kat = sichtungFor(p.id);
   const flags = __readTogglePayload(p.id) || {};
   const label = kat ? __labelFromCat(kat) : '';
@@ -677,6 +696,22 @@ function upsertCard(p){
       <h2>${p.label} ${badge}</h2>
       <div class="meta">Alter: ${p.age ?? ''} | Geschlecht: ${p.gender ?? ''}</div>
       <div class="injury"><b>Hauptverletzung:</b> ${injText}</div>
+
+      ${p.verschlechterung && p.verschlechterung.grund ? `
+        <div style="
+          margin-top:10px;
+          padding:10px;
+          border-radius:12px;
+          background: rgba(229,57,53,0.14);
+          border:1px solid rgba(229,57,53,0.35);
+          font-weight:800;
+          line-height:1.25;
+        ">
+          Dynamische Verschlechterung<br>
+          <span style="font-weight:700; opacity:.95;">${p.verschlechterung.grund}</span>
+        </div>
+      ` : ''}
+
       ${p.error ? `<div style="color:#ffd2d2;margin-top:6px;font-size:12px;">⚠ ${p.error}</div>` : ''}
     </div>
     <div class="actions">
