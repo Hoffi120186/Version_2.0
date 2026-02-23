@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-
-  <html lang="de">
+<html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
@@ -88,8 +87,22 @@ header h1{margin:0;font-size:20px}
   border:1px solid rgba(255,255,255,.20);
   background: rgba(255,255,255,.08);
 }
-.vx-thumb .vx-title{ font-weight:900; letter-spacing:.2px; overflow-wrap:anywhere; word-break:break-word; }
-.vx-thumb .vx-reason{ font-weight:800; line-height:1.25; font-size:14px; overflow-wrap:anywhere; word-break:break-word; }
+.vx-thumb .vx-title{ 
+  font-weight:900; 
+  letter-spacing:.2px; 
+  font-size:16px;
+  line-height:1.1;
+  overflow-wrap:break-word;
+  word-break:normal;
+}
+.vx-thumb .vx-reason{ font-weight:900; line-height:1.2; 
+  white-space:normal;
+  word-break:break-word;
+  overflow:hidden;
+  display:-webkit-box;
+  -webkit-line-clamp:5;
+  -webkit-box-orient:vertical;
+}
 .vx-thumb .vx-meta{ margin-top:2px; font-size:12px; opacity:.9; }
 
 .vx-thumb.sk1{
@@ -157,44 +170,6 @@ h2{
 }
 .vx-values b{ font-weight:900; }
 
-
-.vx-values.sk1{
-  border-color: rgba(229,57,53,.70);
-  background: rgba(229,57,53,.14);
-}
-.vx-values.sk2{
-  border-color: rgba(243,252,2,.70);
-  background: rgba(243,252,2,.12);
-}
-.vx-values.sk2, .vx-values.sk2 *{ color:#111; }
-.vx-values.sk3{
-  border-color: rgba(34,197,94,.70);
-  background: rgba(34,197,94,.10);
-}
-.vx-values.sk4{
-  border-color: rgba(255,255,255,.55);
-  background: rgba(0,0,0,.45);
-}
-.vx-values .vx-old{ margin-top:6px; font-size:12px; opacity:.92; }
-
-.vx-values.sk1{
-  border-color: rgba(229,57,53,.70);
-  background: rgba(229,57,53,.14);
-}
-.vx-values.sk2{
-  border-color: rgba(243,252,2,.70);
-  background: rgba(243,252,2,.12);
-}
-.vx-values.sk2, .vx-values.sk2 *{ color:#111; }
-.vx-values.sk3{
-  border-color: rgba(34,197,94,.70);
-  background: rgba(34,197,94,.10);
-}
-.vx-values.sk4{
-  border-color: rgba(255,255,255,.55);
-  background: rgba(0,0,0,.45);
-}
-.vx-values .vx-old{ margin-top:6px; font-size:12px; opacity:.92; }
 /* Skeletons */
 .skeleton{position:relative;overflow:hidden;background:rgba(255,255,255,.08)}
 .skeleton::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg, transparent, rgba(255,255,255,.12), transparent);animation:shimmer 1.2s infinite}
@@ -364,7 +339,14 @@ function getVXAllowedKeys(patientId){
     if(n == null) return [];
     const map = window.VX_MAP || {};
     const a = map[n];
-    return Array.isArray(a) ? a.slice() : [];
+    if(!Array.isArray(a)) return [];
+    return a.map(x=>{
+      if(typeof x === 'string') return x;
+      if(x && typeof x === 'object'){
+        return String(x.id || x.key || x.k || '');
+      }
+      return '';
+    }).filter(Boolean);
   }catch(e){
     return [];
   }
@@ -387,6 +369,8 @@ function nextWorse(cat){
   return '';
 }
 function ensurePlanFallback(){
+  if(window.ABLAGE_DYN_ACTIVE) return;
+
   const cfg = loadLS('ablage.dynamik.v1', null);
   if(!cfg || !cfg.enabled) return;
 
@@ -500,9 +484,18 @@ function overlayFromJson(info){
   const num = Number(info.id.replace('patient',''));
   const j = getPatientsData().find(x => Number(x.id) === num);
   if(!j) return;
+
   if(!info.age && j.age) info.age = String(j.age);
   if(!info.gender && j.gender) info.gender = normGender(j.gender) || j.gender;
+
   if(!info.img && j.photo) info.img = abs(j.photo, info.url);
+
+  if(!info.injury && j.verletzung) info.injury = String(j.verletzung);
+
+  if(info.af == null && j.af != null) info.af = Number(j.af);
+  if(info.puls == null && j.puls != null) info.puls = Number(j.puls);
+
+  if(info.rr == null && j.rr != null) info.rr = String(j.rr);
 }
 
 /* Sichtungen */
@@ -531,7 +524,7 @@ function __labelFromCat(cat){
   if (c === 'rot') return 'SK1';
   if (c === 'gelb') return 'SK2';
   if (c === 'gruen') return 'SK3';
-  if (c === 'schwarz') return 'SK4';
+  if (c === 'schwarz') return 'SCHWARZ';
   return '';
 }
 function getSichtungDisplay(id, cat){
@@ -540,7 +533,7 @@ function getSichtungDisplay(id, cat){
   if (c === 'rot') return 'SK1' + ((p && p.t) ? ' , T' : '');
   if (c === 'gelb') return 'SK2';
   if (c === 'gruen') return 'SK3' + ((p && p.b) ? ' , B' : '');
-  if (c === 'schwarz') return 'SK4';
+  if (c === 'schwarz') return 'SCHWARZ';
   return '';
 }
 
@@ -636,48 +629,6 @@ function probeImage(url){
 /* Cache + Fetch */
 const listEl = document.getElementById('list');
 const CACHE_KEY = `pat-cache-${VERSION}`;
-// Patienten.json Fallback, falls patientXX.html nicht parsebar ist
-let __PATIENTEN_JSON__ = null;
-
-async function loadPatientenJson(){
-  if(__PATIENTEN_JSON__) return __PATIENTEN_JSON__;
-  try{
-    const res = await fetch(withV('patienten.json'), { cache:'no-store' });
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const arr = await res.json();
-    if(Array.isArray(arr)) __PATIENTEN_JSON__ = arr;
-    else __PATIENTEN_JSON__ = [];
-  }catch(e){
-    __PATIENTEN_JSON__ = [];
-  }
-  return __PATIENTEN_JSON__;
-}
-
-function lookupPatientenJson(num){
-  if(!__PATIENTEN_JSON__ || !Array.isArray(__PATIENTEN_JSON__)) return null;
-  const n = Number(num);
-  if(!Number.isFinite(n)) return null;
-  return __PATIENTEN_JSON__.find(x => x && Number(x.id) === n) || null;
-}
-
-function vitalsTextFromJson(j){
-  if(!j) return '';
-  const af = (j.af!=null) ? Number(j.af) : null;
-  const puls = (j.puls!=null) ? Number(j.puls) : null;
-  if(Number.isFinite(af) && Number.isFinite(puls)) return `AF ${af}/min, Puls ${puls}/min`;
-  return '';
-}
-
-function parseVitals(vtxt){
-  if(!vtxt) return null;
-  const mAf = String(vtxt).match(/AF\s*(\d+)\s*\/min/i);
-  const mPu = String(vtxt).match(/Puls\s*(\d+)\s*\/min/i);
-  const af = mAf ? Number(mAf[1]) : null;
-  const puls = mPu ? Number(mPu[1]) : null;
-  if(Number.isFinite(af) || Number.isFinite(puls)) return { af:Number.isFinite(af)?af:null, puls:Number.isFinite(puls)?puls:null };
-  return null;
-}
-
 function readCache(){ try{ return JSON.parse(sessionStorage.getItem(CACHE_KEY)||'{}'); }catch(e){return{};} }
 function writeCache(map){ try{ sessionStorage.setItem(CACHE_KEY, JSON.stringify(map)); }catch(e){} }
 
@@ -692,22 +643,7 @@ async function fetchPatientData(entry){
     const res = await fetch(withV(entry.url), { cache:'no-store' });
     if(!res.ok){
       info.error = 'HTTP '+res.status;
-      
-  // Fallback aus patienten.json, wenn Werte fehlen oder Parser scheitert
-  try{
-    const num = Number(entry.id.replace('patient',''));
-    const j = lookupPatientenJson(num);
-    if(j){
-      if(!info.age && j.age!=null) info.age = String(j.age);
-      if(!info.gender && j.gender) info.gender = String(j.gender);
-      if(!info.injury && j.verletzung) info.injury = String(j.verletzung);
-      if(!info.vitals){
-        const vt = vitalsTextFromJson(j);
-        if(vt) info.vitals = vt;
-      }
-    }
-  }catch(e){}
-const c=readCache(); c[entry.id]=info; writeCache(c);
+      const c=readCache(); c[entry.id]=info; writeCache(c);
       return info;
     }
     const html = await res.text();
@@ -766,8 +702,20 @@ const c=readCache(); c[entry.id]=info; writeCache(c);
     info.error = e && e.message ? e.message : String(e);
   }
 
+
+  if(info.vitals && (info.af == null || info.puls == null || info.rr == null)){
+    const txt = String(info.vitals);
+    const afMatch   = txt.match(/AF\s*(\d{1,3})/i);
+    const pulsMatch = txt.match(/Puls\s*(\d{1,3})/i);
+    const rrMatch   = txt.match(/RR\s*([0-9]{1,3}\s*\/\s*[0-9]{1,3})/i);
+    if(info.af == null && afMatch) info.af = parseInt(afMatch[1], 10);
+    if(info.puls == null && pulsMatch) info.puls = parseInt(pulsMatch[1], 10);
+    if(info.rr == null && rrMatch) info.rr = rrMatch[1].replace(/\s+/g,'');
+  }
+
   overlayFromPatMeta(info);
   overlayFromJson(info);
+
 
   const c2 = readCache(); c2[entry.id]=info; writeCache(c2);
   return info;
@@ -838,10 +786,20 @@ function upsertCard(p){
   const active = loadLS('ablage.active.v1', []);
   if(Array.isArray(active)){
     const hit = active.find(x => x && String(x.id) === String(p.id));
-    if(hit && hit.verschlechterung){
-      p.verschlechterung = hit.verschlechterung;
+        if(hit){
+      if(hit.af != null) p.af = hit.af;
+      if(hit.puls != null) p.puls = hit.puls;
+      if(hit.rr != null) p.rr = hit.rr;
+      if(hit.baseAf != null) p.baseAf = hit.baseAf;
+      if(hit.basePuls != null) p.basePuls = hit.basePuls;
+      if(hit.baseRr != null) p.baseRr = hit.baseRr;
+      if(hit.verschlechterung){
+      const v = hit.verschlechterung;
+      const ok = !!(v && (v.key || v.werte) && v.grund && (v.ts || v.zeit));
+      if(ok) p.verschlechterung = v;
     }
-  }
+    }
+}
 
   const kat = sichtungFor(p.id);
   const flags = __readTogglePayload(p.id) || {};
@@ -854,8 +812,9 @@ function upsertCard(p){
                    ${flagChar ? `<span class="flag">${flagChar}</span>` : ''}
                  </span>`;
 
-  const hasVX = !!(p.verschlechterung && p.verschlechterung.grund);
-  const vxTo = normCat(p.verschlechterung && (p.verschlechterung.toCat || p.verschlechterung.neueKategorie || '') || '');
+  const vx = p.verschlechterung || null;
+  const hasVX = !!(vx && (vx.key || vx.werte) && vx.grund && (vx.ts || vx.zeit));
+  const vxTo = normCat(vx && (vx.toCat || vx.neueKategorie || '') || '');
   const vxSkClass =
     vxTo === 'rot' ? 'sk1' :
     vxTo === 'gelb' ? 'sk2' :
@@ -871,7 +830,7 @@ function upsertCard(p){
     ? `
       <div class="vx-thumb ${vxSkClass}" title="Dynamische Verschlechterung">
         <div class="vx-title">Verschlechterung</div>
-        <div class="vx-reason">${p.verschlechterung.grund}</div>
+        <div class="vx-reason">${vx.grund}</div>
         <div class="vx-meta">Bitte neu bewerten</div>
       </div>
     `
@@ -882,29 +841,19 @@ function upsertCard(p){
     `;
 
   const injText = (p.injury || ' ').trim();
+  const baseAf = (p.baseAf != null ? p.baseAf : (p.af != null ? p.af : null));
+  const basePuls = (p.basePuls != null ? p.basePuls : (p.puls != null ? p.puls : null));
+  const baseRr = (p.baseRr != null ? p.baseRr : (p.rr != null ? p.rr : null));
+  const baseVitalsText = (baseAf!=null || basePuls!=null || baseRr!=null)
+    ? ('Vitalwerte: ' + [
+        (baseAf!=null ? ('AF ' + baseAf + '/min') : ''),
+        (basePuls!=null ? ('Puls ' + basePuls + '/min') : ''),
+        (baseRr!=null ? ('RR ' + baseRr) : '')
+      ].filter(Boolean).join(', '))
+    : '';
 
-  const newValuesText = hasVX ? fmtNewValues(p.verschlechterung && (p.verschlechterung.werte || p.verschlechterung.vitals || null)) : '';
 
-  const oldValuesText = (() => {
-    try{
-      if(p && p.verschlechterung && p.verschlechterung.prevWerte){
-        const pw = p.verschlechterung.prevWerte;
-        const a = (pw.af!=null) ? `AF ${pw.af}/min` : '';
-        const b = (pw.puls!=null) ? `Puls ${pw.puls}/min` : '';
-        return [a,b].filter(Boolean).join(', ');
-      }
-      return p && p.vitals ? String(p.vitals) : '';
-    }catch(e){ return ''; }
-  })();
-
-  const vxBoxClass = (() => {
-    const tc = normCat(p && p.verschlechterung && p.verschlechterung.toCat ? p.verschlechterung.toCat : '');
-    if(tc==='rot') return 'sk1';
-    if(tc==='gelb') return 'sk2';
-    if(tc==='gruen' || tc==='grün') return 'sk3';
-    if(tc==='schwarz') return 'sk4';
-    return '';
-  })();
+  const newValuesText = hasVX ? fmtNewValues(vx && (vx.werte || vx.vitals || null)) : '';
 
   const html = `
     ${thumbHtml}
@@ -912,13 +861,15 @@ function upsertCard(p){
       <h2>${p.label} ${badge}</h2>
       <div class="meta">Alter: ${p.age ?? ''} | Geschlecht: ${p.gender ?? ''}</div>
       <div class="injury"><b>Hauptverletzung:</b> ${injText}</div>
+      ${baseVitalsText ? `<div class="vitals">${baseVitalsText}</div>` : ``}
 
       ${hasVX ? `
-        <div class="vx-values ${vxBoxClass}">
-          <div><b>Neue Werte:</b> ${newValuesText || 'siehe Verschlechterung'}</div>
-          ${oldValuesText ? `<div class="vx-old"><b>Alt:</b> ${oldValuesText}</div>` : ``}
+        <div class="vx-values ${vxSkClass}">
+          <b>Neue Werte:</b> ${newValuesText || ''}
         </div>
-      ` : ''}${p.error ? `<div style="color:#ffd2d2;margin-top:6px;font-size:12px;">⚠ ${p.error}</div>` : ''}
+      ` : ''}
+
+      ${p.error ? `<div style="color:#ffd2d2;margin-top:6px;font-size:12px;">⚠ ${p.error}</div>` : ''}
     </div>
     <div class="actions">
       <button class="btn" data-id="${p.id}">Als PDF</button>
@@ -1044,47 +995,41 @@ function observeImage(img){
 }
 
 /* Verschlechterung anwenden und Profil auswählen */
-function setVXIntoActive(patientId, _toCatIgnored, prevWerte){
+function setVXIntoActive(patientId, toCat){
   const active = loadLS('ablage.active.v1', []);
   if(!Array.isArray(active) || !active.length) return null;
 
   const hit = active.find(x => x && String(x.id) === String(patientId));
   if(!hit) return null;
 
-  let profObj = null;
+  const n = patientNumFromId(patientId);
+  let picked = null;
 
-  try{
-    if(typeof window.VX_PICK_PROFILE === 'function'){
-      const n = patientNumFromId(patientId);
-      if(n != null) profObj = window.VX_PICK_PROFILE(n);
-    }
-  }catch(e){ profObj = null; }
-
-  // Fallback, falls v2 Picker nicht vorhanden
-  if(!profObj){
-    const keys = getVXAllowedKeys(patientId);
-    const chosen = pickRandom(keys);
-    if(chosen){
-      const key = (typeof chosen === 'string') ? chosen : (chosen && chosen.id ? chosen.id : '');
-      const prof = key ? getVXProfileByKey(key) : null;
-      if(prof){
-        profObj = { id:key, titel:prof.titel, grund:prof.grund, neueKategorie:prof.neueKategorie, werte:prof.werte };
-      }
-    }
+  if(typeof window.VX_PICK_PROFILE === 'function' && n != null){
+    picked = window.VX_PICK_PROFILE(n);
   }
 
-  const grund = profObj && profObj.grund ? String(profObj.grund) : 'Zustand verschlechtert sich.';
-  const werte = profObj && profObj.werte ? profObj.werte : null;
-  const titel = profObj && profObj.titel ? String(profObj.titel) : '';
-  const toCat = normCat(profObj && profObj.neueKategorie ? profObj.neueKategorie : '');
+  if(!picked || !picked.grund || !picked.neueKategorie){
+    return null;
+  }
+
+  if(hit.baseAf == null && hit.af != null) hit.baseAf = hit.af;
+  if(hit.basePuls == null && hit.puls != null) hit.basePuls = hit.puls;
+  if(hit.baseRr == null && hit.rr != null) hit.baseRr = hit.rr;
+
+  if(picked.werte){
+    if(picked.werte.af != null) hit.af = picked.werte.af;
+    if(picked.werte.puls != null) hit.puls = picked.werte.puls;
+    if(picked.werte.rr != null) hit.rr = picked.werte.rr;
+    if(picked.werte.spo2 != null) hit.spo2 = picked.werte.spo2;
+  }
 
   hit.verschlechterung = {
-    key: (profObj && profObj.id) ? String(profObj.id) : '',
-    titel: titel,
-    grund: grund,
-    toCat: toCat,
-    werte: werte,
-    prevWerte: (prevWerte && (prevWerte.af!=null || prevWerte.puls!=null)) ? prevWerte : null,
+    key: picked.id || '',
+    titel: String(picked.titel || ''),
+    grund: String(picked.grund || ''),
+    toCat: normCat(toCat || picked.neueKategorie || ''),
+    werte: picked.werte || null,
     ts: Date.now()
   };
 
@@ -1104,25 +1049,7 @@ async function applyDynamikToSichtungMap(firedArr){
     const to = normCat((it && (it.toCat || it.to)) || '');
     if(!id || !to) continue;
 
-    const prevW = (() => {
-      try{
-        const p0 = Array.isArray(window.__PAT_DATA__) ? window.__PAT_DATA__.find(x => x && x.id === id) : null;
-        if(p0 && p0.vitals){
-          const pv = parseVitals(p0.vitals);
-          if(pv) return pv;
-        }
-        const num = patientNumFromId(id);
-        const j = lookupPatientenJson(num);
-        if(j){
-          const af = (j.af!=null) ? Number(j.af) : null;
-          const puls = (j.puls!=null) ? Number(j.puls) : null;
-          return { af:Number.isFinite(af)?af:null, puls:Number.isFinite(puls)?puls:null };
-        }
-      }catch(e){}
-      return null;
-    })();
-
-    const vx = setVXIntoActive(id, to, prevW);
+    const vx = setVXIntoActive(id, to);
 
     const finalTo = vx && vx.toCat ? vx.toCat : to;
     map[id] = finalTo;
@@ -1164,8 +1091,7 @@ window.__AblageDynApply = applyDynamikToSichtungMap;
 
 /* Laden */
 async function load(){
-  try{ await loadPatientenJson(); }catch(_e){}
-
+  await ensurePatientsJsonLoaded();
   ensurePlanFallback();
 
   const done = getDoneSet();
@@ -1382,10 +1308,10 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 
   function catLabel(cat){
     var c = normCat(cat);
-    if(c === 'rot') return 'SK1';
-    if(c === 'gelb') return 'SK2';
-    if(c === 'gruen') return 'SK3';
-    if(c === 'schwarz') return 'Schwarz';
+    if(c === 'rot') return 'SK1 (rot)';
+    if(c === 'gelb') return 'SK2 (gelb)';
+    if(c === 'gruen') return 'SK3 (grün)';
+    if(c === 'schwarz') return 'SCHWARZ';
     return String(cat||'');
   }
 
@@ -1493,12 +1419,6 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 (function(){
   'use strict';
 
-  // Wenn ablage.js aktiv ist, keinen Fallback Tick starten
-  if(window.Ablage && typeof window.Ablage.startOnEnter === 'function'){
-    return;
-  }
-
-
   function safeParseKey(key, fallback){
     try{
       var raw = localStorage.getItem(key);
@@ -1526,8 +1446,52 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
     return p;
   }
 
-  
-/* Fallback tick disabled. Dynamik läuft ausschließlich über ablage.js */
+  function tick(){
+    try{
+      var plan = getPlan();
+      if(!plan || !plan.events.length) return;
+
+      var active = getActive();
+      if(!active.length) return;
+
+      var sMap = safeParseKey('sichtungMap', {});
+      var t = Date.now();
+
+      for(var i=0;i<active.length;i++){
+        var a = active[i];
+        if(!a || !a.id) continue;
+        if(typeof a.startAt !== 'number') continue;
+
+        var elapsed = t - a.startAt + (Number(a.offset)||0);
+
+        for(var j=0;j<plan.events.length;j++){
+          var ev = plan.events[j];
+          if(!ev || ev.done) continue;
+          if(String(ev.id) !== String(a.id)) continue;
+
+          if(elapsed >= Number(ev.atMs||0)){
+            ev.done = true;
+            safeSet('ablage.dynamik.plan.v1', plan);
+
+            var fromCat = normCat((sMap && sMap[a.id]) || '');
+            var toCat = normCat(ev.to || ev.toCat || '');
+
+            try{
+              window.dispatchEvent(new CustomEvent('ablage:dynamik:fired', {
+                detail:{
+                  fired:[{ id:a.id, label:a.label||a.id, fromCat:fromCat, toCat:toCat, afterMs:ev.atMs }],
+                  plan:plan
+                }
+              }));
+            }catch(_e){}
+            return;
+          }
+        }
+      }
+    }catch(_){}
+  }
+
+  if(!window.ABLAGE_DYN_ACTIVE){ setInterval(tick, 1000); }
 })();
 </script>
 
