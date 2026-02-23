@@ -87,6 +87,7 @@ function skToCat(sk){
     var plan = getDynPlan();
     var sessionStart = ensureSessionStart();
     var sig = dynSignature(dyn);
+    var sig = dynSignature(dyn);
     // Plan neu, wenn keine Events existieren oder Session gewechselt
     if(plan && plan.createdAt && plan.sessionStart === sessionStart && plan.dynSig === sig && Array.isArray(plan.events) && plan.events.length){
       return plan;
@@ -105,6 +106,7 @@ function skToCat(sk){
       if(!id) continue;
       var cat = (sMap[id]||'').toString().toLowerCase().replace('grün','gruen');
       var sk = catToSk(cat);
+      if(sk===4) continue; // Schwarz bleibt immer Schwarz
       if(sk===1 && !allow.sk1) continue;
       if(sk===2 && !allow.sk2) continue;
       if(sk===3 && !allow.sk3) continue;
@@ -120,9 +122,14 @@ function skToCat(sk){
     var minGapSec = Number(dyn.random && dyn.random.minGapSec || 60);
     minGapSec = Math.max(0, minGapSec);
 
+    var maxSchwarz = Number(dyn.random && dyn.random.maxSchwarz);
+    if(!Number.isFinite(maxSchwarz)) maxSchwarz = 0;
+    maxSchwarz = Math.max(0, Math.min(10, maxSchwarz));
+
     var events = [];
     var used = {};
     var lastAt = -1;
+    var schwarzCount = 0;
 
     for(var k=0;k<candidates.length && events.length<count;k++){
       var cand = candidates[k];
@@ -131,31 +138,19 @@ function skToCat(sk){
       // Ziel SK bestimmen
       var toSk = cand.sk;
       if(dyn.random && dyn.random.toLowerOnly){
-        toSk = Math.max(1, cand.sk-1);
+        toSk = Math.min(4, cand.sk+1);
       }else{
         // sonst zufällig eine andere Klasse
         var picks=[1,2,3,4].filter(function(x){ return x!==cand.sk; });
         toSk = picks.length ? picks[randInt(0,picks.length-1)] : cand.sk;
       }
       if(toSk===cand.sk) continue;
+      if(toSk===4){
+        if(maxSchwarz<=0) continue;
+        if(schwarzCount>=maxSchwarz) continue;
+      }
 
-      // Basis: wir planen ab JETZT, nicht rückwirkend. Wenn Patient schon länger in Ablage ist, sollen Events nicht sofort nachladen.
-      var baseSec = 0;
-      try{
-        var activeNow = getActive();
-        for(var bi=0; bi<activeNow.length; bi++){
-          var ax = activeNow[bi];
-          if(ax && String(ax.id)===String(cand.id) && typeof ax.startAt==='number'){
-            if(String(dyn.basis||'patient')==='global'){
-            baseSec = Math.max(0, Math.floor((now() - sessionStart) / 1000));
-          }else{
-            baseSec = Math.max(0, Math.floor((now() - ax.startAt + Number(ax.offset||0)) / 1000));
-          }
-            break;
-          }
-        }
-      }catch(_b){ baseSec = 0; }
-      var atSec = baseSec + randInt(minMin*60, maxMin*60);
+      var atSec = randInt(minMin*60, maxMin*60);
       // Mindestabstand
       if(lastAt>=0 && atSec < lastAt + minGapSec){
         atSec = lastAt + minGapSec;
@@ -170,6 +165,7 @@ function skToCat(sk){
         to: toSk,
         done: false
       });
+      if(toSk===4) schwarzCount++;
       used[cand.id] = true;
     }
 
