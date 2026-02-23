@@ -1,5 +1,5 @@
 /* =========================================================
-   1Rettungsmittel · ablage.js  (v15.1: Vollversion, ensurePatient exportiert)
+   1Rettungsmittel · ablage.js  (v10: Start nur beim Betreten)
    ========================================================= */
 (function () {
   'use strict';
@@ -28,31 +28,13 @@
   function setHistory(h){ save(LS_HISTORY, asArray(h)); }
   function setDone(d){    save(LS_DONE,    asArray(d)); }
 
-  // ----- Sichtungs Map
-  function getSichtungMap(){
-    try{ return JSON.parse(localStorage.getItem('sichtungMap')||'{}') || {}; }catch(_){ return {}; }
-  }
-  function setSichtungMap(m){
-    try{ localStorage.setItem('sichtungMap', JSON.stringify(m||{})); }catch(_){}
-  }
-
   // ----- Dynamik Settings
-  function getDyn(){
-    return load(LS_DYN, {
-      enabled:false,
-      mode:'off',
-      basis:'patient',
-      random:{
-        minMin:3, maxMin:5, count:3, minGapSec:60,
-        allow:{sk1:true, sk2:true, sk3:true, sk4:false},
-        toLowerOnly:true
-      },
-      fixed:[]
-    });
-  }
-  function getDynPlan(){ return load(LS_DYN_PLAN, { createdAt:0, sessionStart:0, dynSig:'', basis:'patient', mode:'off', events:[] }); }
+  function getDyn(){ return load(LS_DYN, { enabled:false, mode:'off', basis:'patient', random:{ minMin:3, maxMin:5, count:3, minGapSec:60, allow:{sk1:true, sk2:true, sk3:true, sk4:false}, toLowerOnly:true } , fixed:[] }); }
+  function setDyn(v){ save(LS_DYN, v||{}); }
+  function getDynPlan(){ return load(LS_DYN_PLAN, { createdAt:0, basis:'patient', mode:'off', events:[] }); }
   function setDynPlan(v){ save(LS_DYN_PLAN, v||{}); }
 
+  
   function dynSignature(dyn){
     try{
       var clean = {
@@ -66,8 +48,7 @@
     }catch(_){ return ''; }
   }
 
-  // ----- SK / Kategorien
-  function skToCat(sk){
+function skToCat(sk){
     var n = Number(String(sk).replace(/\D/g,'')) || 0;
     if(n===1) return 'rot';
     if(n===2) return 'gelb';
@@ -83,17 +64,13 @@
     if(c==='schwarz') return 4;
     return 0;
   }
-
-  // Verschlechterungs Reihenfolge
-  // SK3 -> SK2 -> SK1 -> SK4, SK4 bleibt SK4
-  function worsenSk(sk){
-    if(sk===3) return 2;
-    if(sk===2) return 1;
-    if(sk===1) return 4;
-    return 4;
+  function getSichtungMap(){
+    try{ return JSON.parse(localStorage.getItem('sichtungMap')||'{}') || {}; }catch(_){ return {}; }
+  }
+  function setSichtungMap(m){
+    try{ localStorage.setItem('sichtungMap', JSON.stringify(m||{})); }catch(_){}
   }
 
-  // ----- Random helpers
   function randInt(min,max){
     min=Math.ceil(min); max=Math.floor(max);
     return Math.floor(Math.random()*(max-min+1))+min;
@@ -106,112 +83,12 @@
     return arr;
   }
 
-  // ----- VX helpers
-  function __vxGetMapArr(id){
-    try{
-      var map = window.VX_MAP || {};
-      var pidNum = String(id).replace(/\D/g,'');
-      return map[pidNum] || map[Number(pidNum)] || null;
-    }catch(_e){ return null; }
-  }
-
-  function __vxPickProfile(id){
-    try{
-      if(typeof window.VX_PICK_PROFILE === 'function'){
-        return window.VX_PICK_PROFILE(id) || null;
-      }
-    }catch(_e){}
-
-    try{
-      if(!window.VX_PROFILES) return null;
-      var arr = __vxGetMapArr(id);
-      if(!arr || !arr.length) return null;
-
-      var pool = [];
-      for(var i=0;i<arr.length;i++){
-        var it = arr[i];
-        if(!it) continue;
-        if(typeof it === 'string'){
-          pool.push({ id: it, w: 1 });
-        }else if(typeof it === 'object'){
-          var key = it.id || it.key || it.k;
-          var w = Number(it.w != null ? it.w : (it.weight != null ? it.weight : 1));
-          if(key) pool.push({ id: String(key), w: (isFinite(w) && w>0) ? w : 1 });
-        }
-      }
-      if(!pool.length) return null;
-
-      var sum = 0;
-      for(var j=0;j<pool.length;j++) sum += pool[j].w;
-      var r = Math.random() * sum;
-      var chosen = pool[pool.length-1].id;
-      for(var k=0;k<pool.length;k++){
-        r -= pool[k].w;
-        if(r <= 0){ chosen = pool[k].id; break; }
-      }
-
-      var p = window.VX_PROFILES[chosen];
-      if(!p) return null;
-      p.__key = chosen;
-      return p;
-    }catch(_e2){
-      return null;
-    }
-  }
-
-  function __ensureBaseVitals(row){
-    if(!row) return;
-    if(row.baseAf == null && row.af != null) row.baseAf = row.af;
-    if(row.basePuls == null && row.puls != null) row.basePuls = row.puls;
-    if(row.baseRr == null && row.rr != null) row.baseRr = row.rr;
-  }
-
-  function __applyProfileToActive(id, profil){
-    if(!profil) return false;
-    var active = getActive();
-    for(var i=0;i<active.length;i++){
-      if(String(active[i].id) === String(id)){
-        if(active[i].verschlechterung) return false;
-
-        __ensureBaseVitals(active[i]);
-
-        if(profil.werte){
-          if(profil.werte.af != null) active[i].af = profil.werte.af;
-          if(profil.werte.puls != null) active[i].puls = profil.werte.puls;
-          if(profil.werte.rr != null) active[i].rr = profil.werte.rr;
-        }
-
-        active[i].verschlechterung = {
-          titel: profil.titel || 'Verschlechterung',
-          grund: profil.grund || '',
-          toCat: profil.neueKategorie || '',
-          werte: profil.werte || null,
-          zeit: now(),
-          key: profil.__key || null
-        };
-
-        setActive(active);
-        return true;
-      }
-    }
-    return false;
-  }
-
-  // ----- Dynamik: Planerstellung
-  function ensureSessionStart(){
-    var t = Number(localStorage.getItem(LS_SESSION) || 0);
-    if(!t){
-      t = now();
-      try{ localStorage.setItem(LS_SESSION, String(t)); }catch(_){}
-    }
-    return t;
-  }
-
   function ensureRandomPlan(dyn){
     var plan = getDynPlan();
     var sessionStart = ensureSessionStart();
     var sig = dynSignature(dyn);
-
+    var sig = dynSignature(dyn);
+    // Plan neu, wenn keine Events existieren oder Session gewechselt
     if(plan && plan.createdAt && plan.sessionStart === sessionStart && plan.dynSig === sig && Array.isArray(plan.events) && plan.events.length){
       return plan;
     }
@@ -224,31 +101,17 @@
     var a = getActive();
     var sMap = getSichtungMap();
     var candidates = [];
-
     for(var i=0;i<a.length;i++){
-      var row = a[i];
-      if(!row) continue;
-
-      var id = String(row.id||'');
+      var id = String(a[i].id||'');
       if(!id) continue;
-
       var cat = (sMap[id]||'').toString().toLowerCase().replace('grün','gruen');
       var sk = catToSk(cat);
-
-      // Schwarz niemals als Kandidat
-      if(sk===4) continue;
-
       if(sk===1 && !allow.sk1) continue;
       if(sk===2 && !allow.sk2) continue;
       if(sk===3 && !allow.sk3) continue;
-
-      // Nur Patienten, die wirklich VX Profile besitzen
-      var arr = __vxGetMapArr(id);
-      if(!arr || !arr.length) continue;
-
-      candidates.push({ id:id, sk:sk });
+      if(sk===4 && !allow.sk4) continue;
+      candidates.push({ id:id, cat:cat, sk:sk });
     }
-
     shuffle(candidates);
 
     var minMin = Number(dyn.random && dyn.random.minMin || 3);
@@ -266,17 +129,19 @@
       var cand = candidates[k];
       if(used[cand.id]) continue;
 
-      // Ziel SK, rein als "Stufe" (das Profil bestimmt am Ende die Kategorie)
+      // Ziel SK bestimmen
       var toSk = cand.sk;
       if(dyn.random && dyn.random.toLowerOnly){
-        toSk = worsenSk(cand.sk);
+        toSk = Math.max(1, cand.sk-1);
       }else{
+        // sonst zufällig eine andere Klasse
         var picks=[1,2,3,4].filter(function(x){ return x!==cand.sk; });
         toSk = picks.length ? picks[randInt(0,picks.length-1)] : cand.sk;
       }
       if(toSk===cand.sk) continue;
 
       var atSec = randInt(minMin*60, maxMin*60);
+      // Mindestabstand
       if(lastAt>=0 && atSec < lastAt + minGapSec){
         atSec = lastAt + minGapSec;
       }
@@ -285,9 +150,9 @@
       events.push({
         id: cand.id,
         atMs: atSec*1000,
-        action: 'vx',
-        fromSk: cand.sk,
-        toSk: toSk,
+        action: 'sk',
+        from: cand.sk,
+        to: toSk,
         done: false
       });
       used[cand.id] = true;
@@ -309,20 +174,18 @@
     var plan = getDynPlan();
     var sessionStart = ensureSessionStart();
     var sig = dynSignature(dyn);
-
     if(plan && plan.createdAt && plan.sessionStart === sessionStart && plan.dynSig === sig && plan.mode === 'fixed' && Array.isArray(plan.events)){
       return plan;
     }
-
     var events = asArray(dyn.fixed).map(function(x){
       var id = x && x.id ? String(x.id) : '';
       if(!id) return null;
-
+      var to = Number(x.to || x.toSk || 0);
       var atMs = Number(x.atMs || 0);
       if(!atMs && x.afterMin != null) atMs = Number(x.afterMin)*60*1000;
       if(!atMs && x.afterSec != null) atMs = Number(x.afterSec)*1000;
-
-      return { id:id, atMs:Math.max(0,atMs), action:'vx', done:false };
+      if(!to) to = Number(x.toSK || 0);
+      return { id:id, atMs:Math.max(0,atMs), action:'sk', delta:(x && x.delta!=null)? Number(x.delta) : null, to:to, done:false };
     }).filter(Boolean);
 
     plan = { createdAt: now(), sessionStart: sessionStart, dynSig: sig, basis: dyn.basis || 'patient', mode:'fixed', events: events };
@@ -330,57 +193,74 @@
     return plan;
   }
 
-  // ----- Dynamik: Event anwenden
   function applyDynEvent(ev){
     if(!ev || ev.done) return false;
-    if(ev.action !== 'vx') return false;
-
-    var id = String(ev.id||'');
-    if(!id) return false;
+    if(ev.action !== 'sk') return false;
+    var id = String(ev.id||''); if(!id) return false;
 
     var sMap = getSichtungMap();
     var curCat = (sMap[id]||'').toString().toLowerCase().replace('grün','gruen');
-
-    // Schwarz bleibt Schwarz, niemals verändern
-    if(curCat === 'schwarz') { ev.done = true; return false; }
-
-    // Nur feuern, wenn der Patient wirklich VX Profile hat
-    var mapArr = __vxGetMapArr(id);
-    if(!mapArr || !mapArr.length){ ev.done = true; return false; }
-
-    var fromSk = catToSk(curCat);
-
-    // Profil bestimmt Zielkategorie und Werte
-    var profil = __vxPickProfile(id);
-    if(profil && profil.neueKategorie){
-      var toCat = String(profil.neueKategorie).toLowerCase().replace('grün','gruen');
-      if(toCat === 'schwarz' || toCat === 'rot' || toCat === 'gelb' || toCat === 'gruen'){
-        var applied = __applyProfileToActive(id, profil);
-        ev.done = true;
-
-        if(!applied) return false;
-
-        sMap[id] = toCat;
-        setSichtungMap(sMap);
-
-        return {
-          id: id,
-          fromSk: fromSk,
-          toSk: catToSk(toCat),
-          fromCat: skToCat(fromSk),
-          toCat: toCat
-        };
-      }
+    var curSk = catToSk(curCat);
+    var toSk = Number(ev.to||0);
+    // Fix Modus: delta (z.B. -1) hat Vorrang, damit man nicht vorher die SK kennen muss
+    if(ev.delta != null){
+      var d = Number(ev.delta);
+      if(!isFinite(d)) d = 0;
+      toSk = curSk + d;
     }
+    toSk = Math.max(1, Math.min(4, toSk));
+    if(!toSk) return false;
 
+    var fromSk = curSk;
+
+    sMap[id] = skToCat(toSk);
+    setSichtungMap(sMap);
     ev.done = true;
-    return false;
+// =============================
+// VX Profil anwenden
+// =============================
+if(window.VX_MAP && window.VX_PROFILES){
+
+  var pidNum = String(id).replace(/\D/g,'');     // "patient4" -> "4"
+var map = window.VX_MAP[pidNum] || window.VX_MAP[Number(pidNum)];
+  if(map && map.length){
+
+    var key = map[Math.floor(Math.random() * map.length)];
+    var profil = window.VX_PROFILES[key];
+
+    if(profil){
+
+      // Vitalwerte im active Array anpassen
+      var active = getActive();
+      for(var i=0;i<active.length;i++){
+        if(String(active[i].id) === String(id)){
+          if(profil.werte){
+            if(profil.werte.af != null) active[i].af = profil.werte.af;
+            if(profil.werte.puls != null) active[i].puls = profil.werte.puls;
+          }
+          active[i].verschlechterung = {
+            titel: profil.titel,
+            grund: profil.grund,
+            zeit: Date.now()
+          };
+        }
+      }
+      setActive(active);
+    }
+  }
+}
+    return {
+      id: id,
+      fromSk: fromSk,
+      toSk: toSk,
+      fromCat: skToCat(fromSk),
+      toCat: skToCat(toSk)
+    };
   }
 
   function dynCheck(active, tNow){
     var dyn = getDyn();
     if(!dyn || !dyn.enabled) return;
-
     var mode = String(dyn.mode||'off');
     if(mode === 'off') return;
 
@@ -391,6 +271,9 @@
 
     if(!plan || !Array.isArray(plan.events) || !plan.events.length) return;
 
+    var changed = false;
+
+    // Map id -> elapsed ms
     var elapsedMap = {};
     for(var i=0;i<active.length;i++){
       var x=active[i]; if(!x) continue;
@@ -407,20 +290,16 @@
     for(var a=0;a<active.length;a++){
       var it = active[a];
       if(it && it.id){
-        labelMap[String(it.id)] = it.label || it.name || it.id;
+        labelMap[String(it.id)] = it.label || it.id;
       }
     }
-
-    var changed = false;
 
     for(var j=0;j<plan.events.length;j++){
       var ev = plan.events[j];
       if(!ev || ev.done) continue;
-
       var id2 = String(ev.id||'');
       var elapsed = elapsedMap[id2];
-      if(elapsed == null) continue;
-
+      if(elapsed == null) continue; // Patient nicht in aktiver Ablage
       if(elapsed >= Number(ev.atMs||0)){
         var info = applyDynEvent(ev);
         if(info){
@@ -446,7 +325,17 @@
     }
   }
 
-  // ----- Zeitformat
+  // Session-Start (einmal pro Einsatz, falls noch nicht vorhanden)
+  function ensureSessionStart(){
+    var t = Number(localStorage.getItem(LS_SESSION) || 0);
+    if(!t){
+      t = now();
+      try{ localStorage.setItem(LS_SESSION, String(t)); }catch(_){}
+    }
+    return t;
+  }
+
+  // Zeitformat
   function fmt(ms){
     if(ms<0) ms=0;
     var s=Math.floor(ms/1000),
@@ -457,7 +346,7 @@
     return hh>0 ? (pad(hh)+':'+pad(mm)+':'+pad(ss)) : (pad(mm)+':'+pad(ss));
   }
 
-  // ----- Migration alter Schemata
+  // Migration alter Schemata
   function migrateActive(list){
     var changed = false;
     for (var i=0;i<list.length;i++){
@@ -472,7 +361,7 @@
     return changed;
   }
 
-  // ---- Start NUR beim Betreten dieser Seite
+  // ---- WICHTIG: Start NUR beim Betreten dieser Seite
   function startTimersOnEntry(){
     ensureSessionStart();
     var a = getActive();
@@ -488,7 +377,7 @@
     if (changed) setActive(a);
   }
 
-  // ----- Patienten-Management
+  // ----- Patienten-Management (legt nur vor, startet NICHT)
   function ensurePatient(id, name, prio){
     if(!id) return;
     if(getDone().includes(id)) return;
@@ -499,7 +388,7 @@
       name: name || ("Patient "+String(id).replace(/\D/g,'')),
       prio: prio || '',
       queuedAt: now(),
-      startAt: null,
+      startAt: null,  // Start passiert ausschließlich in startTimersOnEntry()
       offset: 0
     });
     setActive(a);
@@ -513,11 +402,11 @@
 
     var p = a[idx], endedAt = now();
 
+    // Migration falls nötig
     if (typeof p.startedAt === 'number' && typeof p.startAt !== 'number') {
       p.startAt = p.startedAt; delete p.startedAt;
     }
-
-    var startAt = Number(p.startAt || now());
+    var startAt = Number(p.startAt || now()); // falls nie gestartet wurde, dann 0 Dauer
     var offset  = Number(p.offset || 0);
 
     var entry = {
@@ -539,7 +428,6 @@
   function resetAll(){
     setActive([]); setHistory([]); setDone([]);
     try{ localStorage.removeItem(LS_SESSION); }catch(_){}
-    try{ localStorage.removeItem(LS_DYN_PLAN); }catch(_){}
   }
 
   // ----- Timer-Rendering
@@ -572,10 +460,7 @@
       if(!card.querySelector('.ablage-actions')){
         var wrap=document.createElement('div');
         wrap.className='ablage-actions';
-        wrap.style.display="flex";
-        wrap.style.flexWrap="wrap";
-        wrap.style.gap="6px";
-        wrap.style.marginTop="8px";
+        wrap.style.display="flex"; wrap.style.flexWrap="wrap"; wrap.style.gap="6px"; wrap.style.marginTop="8px";
         wrap.innerHTML =
           '<input type="text" class="ablage-id" placeholder="Patienten-ID" '+
           'style="flex:1 1 120px;padding:.5rem;border-radius:8px;border:1px solid #334155;'+
@@ -589,7 +474,8 @@
             '<option>Verbleib am Einsatzort</option>'+
             '<option>Sonstige</option>'+
           '</select>'+
-          '<button type="button" class="btn btn-zuweisen" style="flex:1 1 120px;">Klinik zuweisen</button>';
+          '<button type="button" class="btn btn-zuweisen" '+
+          'style="flex:1 1 120px;">Klinik zuweisen</button>';
 
         if(typeof opts.placeActions==='function') opts.placeActions(card,wrap);
         else (card.querySelector('.actions')||card).appendChild(wrap);
@@ -598,13 +484,13 @@
           btnEl.addEventListener('click', function (ev) {
             ev.preventDefault(); ev.stopPropagation();
             var idInput = cardEl.querySelector('.ablage-id');
-            var idVal2 = idInput ? idInput.value.trim() : '';
-            if(!idVal2){ alert('Bitte Patienten-ID eingeben!'); return; }
+            var idVal = idInput ? idInput.value.trim() : '';
+            if(!idVal){ alert('Bitte Patienten-ID eingeben!'); return; }
             var zielSel = cardEl.querySelector('.ablage-ziel');
             var ziel = zielSel ? (zielSel.value||'') : '';
             if(!ziel && !window.confirm('Ohne Ziel zuweisen?')) return;
             var cid = cardEl.getAttribute('data-patient-id') || cardEl.getAttribute('data-id');
-            if(cid && stopPatient(cid, ziel, idVal2)){
+            if(cid && stopPatient(cid, ziel, idVal)){
               try{ cardEl.remove(); }catch(_){ cardEl.parentNode && cardEl.parentNode.removeChild(cardEl); }
             }
           }, { passive:false });
@@ -623,17 +509,13 @@
     if(!state || !state.running) return;
 
     var lastDynCheck = 0;
-
     function step(){
       var active = getActive();
       var startMap = {};
-
       for(var i=0;i<active.length;i++){
         var x=active[i];
         if (typeof x.startedAt === 'number' && typeof x.startAt !== 'number') {
-          x.startAt = x.startedAt;
-          delete x.startedAt;
-          setActive(active);
+          x.startAt = x.startedAt; delete x.startedAt; setActive(active);
         }
         var st = (typeof x.startAt === 'number') ? x.startAt : null;
         var off = Number(x.offset || 0);
@@ -650,34 +532,28 @@
         tEl.textContent = fmt(ms);
         c.classList.toggle('waiting', ms===0);
       }
-
+      // Dynamik: nur ca. 1x pro Sekunde prüfen
       if(now() - lastDynCheck >= 1000){
         lastDynCheck = now();
         try{ dynCheck(active, lastDynCheck); }catch(_){ }
       }
-
       state.rafId = requestAnimationFrame(step);
     }
-
     state.rafId = requestAnimationFrame(step);
   }
 
   // ---------- Public API ----------
   window.Ablage = {
-    hydrateCards: hydrateCards,
-    stopPatient: stopPatient,
-    resetAll: resetAll,
+    hydrateCards, stopPatient, resetAll,
     startOnEnter: startTimersOnEntry,
-
-    ensurePatient: ensurePatient,
-
-    _getActive:getActive,
-    _getHistory:getHistory,
-    _getDone:getDone
+    _getActive:getActive, _getHistory:getHistory, _getDone:getDone
   };
 
+  // ----- Auto-Init: Start nur beim Betreten
   function autoInit(){
+    // 1) Alle vorhandenen, noch nicht gestarteten Einträge starten
     startTimersOnEntry();
+    // 2) (Dein Code ruft irgendwo hydrateCards(...) auf)
   }
 
   if (document.readyState === 'complete' || document.readyState === 'interactive') {
@@ -685,6 +561,7 @@
   } else {
     document.addEventListener('DOMContentLoaded', autoInit, { once:true });
   }
+  // iOS bfcache: beim „Zurück“-Navigieren erneut auslösen (neue Session im Sinne der Seite)
   window.addEventListener('pageshow', autoInit);
 
 })();
