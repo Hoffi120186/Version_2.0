@@ -1,6 +1,6 @@
 // =============================
 // Eskalationsprofile und Zufallslogik
-// Version 2
+// Version 4
 // =============================
 
 (function(){
@@ -16,7 +16,8 @@
     "neueKategorie": "rot",
     "werte": {
       "af": 32,
-      "puls": 140
+      "puls": 140,
+      "rr": "80/50"
     }
   },
   "sht_progredient": {
@@ -25,7 +26,8 @@
     "neueKategorie": "rot",
     "werte": {
       "af": 8,
-      "puls": 45
+      "puls": 45,
+      "rr": "90/55"
     }
   },
   "tension_pneu": {
@@ -34,7 +36,8 @@
     "neueKategorie": "rot",
     "werte": {
       "af": 35,
-      "puls": 150
+      "puls": 150,
+      "rr": "90/60"
     }
   },
   "sekundäre_blutung": {
@@ -43,7 +46,8 @@
     "neueKategorie": "rot",
     "werte": {
       "af": 28,
-      "puls": 135
+      "puls": 135,
+      "rr": "80/50"
     }
   },
   "resp_insuffizienz": {
@@ -52,7 +56,8 @@
     "neueKategorie": "rot",
     "werte": {
       "af": 34,
-      "puls": 130
+      "puls": 130,
+      "rr": "95/60"
     }
   },
   "schock": {
@@ -61,7 +66,8 @@
     "neueKategorie": "rot",
     "werte": {
       "af": 30,
-      "puls": 140
+      "puls": 140,
+      "rr": "80/50"
     }
   },
   "postiktal_atemweg": {
@@ -70,7 +76,8 @@
     "neueKategorie": "rot",
     "werte": {
       "af": 14,
-      "puls": 115
+      "puls": 115,
+      "rr": "95/60"
     }
   },
   "aspiration": {
@@ -79,7 +86,8 @@
     "neueKategorie": "rot",
     "werte": {
       "af": 40,
-      "puls": 135
+      "puls": 135,
+      "rr": "95/60"
     }
   },
   "kreislauf_instabil": {
@@ -88,7 +96,8 @@
     "neueKategorie": "gelb",
     "werte": {
       "af": 24,
-      "puls": 115
+      "puls": 115,
+      "rr": "100/65"
     }
   },
   "schmerz_schock": {
@@ -97,7 +106,8 @@
     "neueKategorie": "gelb",
     "werte": {
       "af": 22,
-      "puls": 110
+      "puls": 110,
+      "rr": "110/70"
     }
   },
   "hyperventilation": {
@@ -106,16 +116,18 @@
     "neueKategorie": "gelb",
     "werte": {
       "af": 30,
-      "puls": 120
+      "puls": 120,
+      "rr": "130/80"
     }
   },
   "beginn_ana": {
     "titel": "Beginnende Anaphylaxie",
-    "grund": "Massive Unruhe, beginnende Dyspnoe.",
+    "grund": "Urtikaria, Unruhe, beginnende Dyspnoe.",
     "neueKategorie": "gelb",
     "werte": {
       "af": 26,
-      "puls": 118
+      "puls": 118,
+      "rr": "110/70"
     }
   },
   "unterkuehlung": {
@@ -124,7 +136,8 @@
     "neueKategorie": "gelb",
     "werte": {
       "af": 18,
-      "puls": 105
+      "puls": 105,
+      "rr": "95/60"
     }
   },
   "dehydratation": {
@@ -133,7 +146,8 @@
     "neueKategorie": "gelb",
     "werte": {
       "af": 20,
-      "puls": 112
+      "puls": 112,
+      "rr": "100/65"
     }
   },
   "rot_dekomp1": {
@@ -142,7 +156,8 @@
     "neueKategorie": "rot",
     "werte": {
       "af": 28,
-      "puls": 150
+      "puls": 150,
+      "rr": "95/60"
     }
   },
   "rot_dekomp2": {
@@ -151,7 +166,8 @@
     "neueKategorie": "rot",
     "werte": {
       "af": 10,
-      "puls": 130
+      "puls": 130,
+      "rr": "95/60"
     }
   },
   "reanimation_erfolglos": {
@@ -160,7 +176,8 @@
     "neueKategorie": "schwarz",
     "werte": {
       "af": 0,
-      "puls": 0
+      "puls": 0,
+      "rr": "0/0"
     }
   },
   "massive_blutung_exsang": {
@@ -169,7 +186,8 @@
     "neueKategorie": "schwarz",
     "werte": {
       "af": 0,
-      "puls": 0
+      "puls": 0,
+      "rr": "0/0"
     }
   },
   "hirndruck_kollaps": {
@@ -178,7 +196,8 @@
     "neueKategorie": "schwarz",
     "werte": {
       "af": 0,
-      "puls": 0
+      "puls": 0,
+      "rr": "0/0"
     }
   },
   "hypoxie_stillstand": {
@@ -187,7 +206,8 @@
     "neueKategorie": "schwarz",
     "werte": {
       "af": 0,
-      "puls": 0
+      "puls": 0,
+      "rr": "0/0"
     }
   },
   "tamponade_stillstand": {
@@ -196,7 +216,8 @@
     "neueKategorie": "schwarz",
     "werte": {
       "af": 0,
-      "puls": 0
+      "puls": 0,
+      "rr": "0/0"
     }
   },
   "arrhythmie_stillstand": {
@@ -205,10 +226,12 @@
     "neueKategorie": "schwarz",
     "werte": {
       "af": 0,
-      "puls": 0
+      "puls": 0,
+      "rr": "0/0"
     }
   }
 };
+
 
   // =============================
   // Mapping Patient zu erlaubte Profile
