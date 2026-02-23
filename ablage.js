@@ -106,7 +106,6 @@ function skToCat(sk){
       if(!id) continue;
       var cat = (sMap[id]||'').toString().toLowerCase().replace('grün','gruen');
       var sk = catToSk(cat);
-      if(sk===4) continue; // Schwarz bleibt immer Schwarz
       if(sk===1 && !allow.sk1) continue;
       if(sk===2 && !allow.sk2) continue;
       if(sk===3 && !allow.sk3) continue;
@@ -122,14 +121,9 @@ function skToCat(sk){
     var minGapSec = Number(dyn.random && dyn.random.minGapSec || 60);
     minGapSec = Math.max(0, minGapSec);
 
-    var maxSchwarz = Number(dyn.random && dyn.random.maxSchwarz);
-    if(!Number.isFinite(maxSchwarz)) maxSchwarz = 0;
-    maxSchwarz = Math.max(0, Math.min(10, maxSchwarz));
-
     var events = [];
     var used = {};
     var lastAt = -1;
-    var schwarzCount = 0;
 
     for(var k=0;k<candidates.length && events.length<count;k++){
       var cand = candidates[k];
@@ -138,17 +132,13 @@ function skToCat(sk){
       // Ziel SK bestimmen
       var toSk = cand.sk;
       if(dyn.random && dyn.random.toLowerOnly){
-        toSk = Math.min(4, cand.sk+1);
+        toSk = Math.max(1, cand.sk-1);
       }else{
         // sonst zufällig eine andere Klasse
         var picks=[1,2,3,4].filter(function(x){ return x!==cand.sk; });
         toSk = picks.length ? picks[randInt(0,picks.length-1)] : cand.sk;
       }
       if(toSk===cand.sk) continue;
-      if(toSk===4){
-        if(maxSchwarz<=0) continue;
-        if(schwarzCount>=maxSchwarz) continue;
-      }
 
       var atSec = randInt(minMin*60, maxMin*60);
       // Mindestabstand
@@ -165,7 +155,6 @@ function skToCat(sk){
         to: toSk,
         done: false
       });
-      if(toSk===4) schwarzCount++;
       used[cand.id] = true;
     }
 
