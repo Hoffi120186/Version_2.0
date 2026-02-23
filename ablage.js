@@ -83,12 +83,37 @@ function skToCat(sk){
     return arr;
   }
 
+  
+  function catOrder(){
+    return ['gruen','gelb','rot','schwarz'];
+  }
+  function normCat(cat){
+    return String(cat||'').toLowerCase().replace('grün','gruen');
+  }
+  function catIndex(cat){
+    var c = normCat(cat);
+    var ord = catOrder();
+    var idx = ord.indexOf(c);
+    return idx>=0 ? idx : -1;
+  }
+  function catFromIndex(idx){
+    var ord = catOrder();
+    if(idx<0) return '';
+    if(idx>=ord.length) return ord[ord.length-1];
+    return ord[idx];
+  }
+  function worseCat(cat, steps){
+    var i = catIndex(cat);
+    if(i<0) return normCat(cat);
+    var s = Math.max(0, Number(steps)||0);
+    return catFromIndex(i + s);
+  }
+
   function ensureRandomPlan(dyn){
     var plan = getDynPlan();
     var sessionStart = ensureSessionStart();
     var sig = dynSignature(dyn);
-    var sig = dynSignature(dyn);
-    // Plan neu, wenn keine Events existieren oder Session gewechselt
+
     if(plan && plan.createdAt && plan.sessionStart === sessionStart && plan.dynSig === sig && Array.isArray(plan.events) && plan.events.length){
       return plan;
     }
@@ -97,19 +122,22 @@ function skToCat(sk){
     var count = Number(dyn.random && dyn.random.count || 3);
     count = Math.max(0, Math.min(20, count));
 
-    // Kandidaten aus aktiver Ablage
+    var maxSchwarz = Number(dyn.random && dyn.random.maxSchwarz || 0);
+    maxSchwarz = Math.max(0, Math.min(20, maxSchwarz));
+
     var a = getActive();
     var sMap = getSichtungMap();
     var candidates = [];
     for(var i=0;i<a.length;i++){
       var id = String(a[i].id||'');
       if(!id) continue;
-      var cat = (sMap[id]||'').toString().toLowerCase().replace('grün','gruen');
+      var cat = normCat(sMap[id] || '');
       var sk = catToSk(cat);
       if(sk===1 && !allow.sk1) continue;
       if(sk===2 && !allow.sk2) continue;
       if(sk===3 && !allow.sk3) continue;
       if(sk===4 && !allow.sk4) continue;
+      if(!cat) continue;
       candidates.push({ id:id, cat:cat, sk:sk });
     }
     shuffle(candidates);
@@ -124,51 +152,64 @@ function skToCat(sk){
     var events = [];
     var used = {};
     var lastAt = -1;
+    var schwarzCount = 0;
 
     for(var k=0;k<candidates.length && events.length<count;k++){
       var cand = candidates[k];
       if(used[cand.id]) continue;
 
-      // Ziel SK bestimmen
-      var toSk = cand.sk;
-      if(dyn.random && dyn.random.toLowerOnly){
-        toSk = Math.max(1, cand.sk-1);
-      }else{
-        // sonst zufällig eine andere Klasse
-        var picks=[1,2,3,4].filter(function(x){ return x!==cand.sk; });
-        toSk = picks.length ? picks[randInt(0,picks.length-1)] : cand.sk;
-      }
-      if(toSk===cand.sk) continue;
+      var toCat = cand.cat;
 
-      var atSec = randInt(minMin*60, maxMin*60);
-      // Mindestabstand
-      if(lastAt>=0 && atSec < lastAt + minGapSec){
-        atSec = lastAt + minGapSec;
+      if(dyn.random && dyn.random.toLowerOnly){
+        toCat = worseCat(cand.cat, 1);  // gruen->gelb->rot->schwarz
+      }else{
+        // zufällig eine andere Klasse, aber plausibel
+        var picks = ['gruen','gelb','rot','schwarz'].filter(function(x){ return x !== cand.cat; });
+        toCat = picks.length ? picks[randInt(0, picks.length-1)] : cand.cat;
       }
-      lastAt = atSec;
+
+      if(toCat === cand.cat) continue;
+
+      if(toCat === 'schwarz'){
+        if(maxSchwarz === 0) continue;
+        if(schwarzCount >= maxSchwarz) continue;
+      }
+
+      var afterMin = randInt(minMin, maxMin);
+      var at = sessionStart + (afterMin * 60 * 1000);
+
+      if(lastAt>0){
+        var gap = minGapSec * 1000;
+        if(at < lastAt + gap) at = lastAt + gap;
+      }
 
       events.push({
         id: cand.id,
-        atMs: atSec*1000,
         action: 'sk',
-        from: cand.sk,
-        to: toSk,
+        toCat: toCat,
+        at: at,
         done: false
       });
+
+      if(toCat === 'schwarz') schwarzCount++;
+
       used[cand.id] = true;
+      lastAt = at;
     }
+
+    events.sort(function(a,b){ return (a.at||0) - (b.at||0); });
 
     plan = {
       createdAt: now(),
       sessionStart: sessionStart,
       dynSig: sig,
-      basis: dyn.basis || 'patient',
       mode: 'random',
       events: events
     };
     setDynPlan(plan);
     return plan;
   }
+
 
   function ensureFixedPlan(dyn){
     var plan = getDynPlan();
@@ -193,72 +234,113 @@ function skToCat(sk){
     return plan;
   }
 
+  
   function applyDynEvent(ev){
     if(!ev || ev.done) return false;
     if(ev.action !== 'sk') return false;
-    var id = String(ev.id||''); if(!id) return false;
+
+    var id = String(ev.id||'');
+    if(!id) return false;
 
     var sMap = getSichtungMap();
-    var curCat = (sMap[id]||'').toString().toLowerCase().replace('grün','gruen');
-    var curSk = catToSk(curCat);
-    var toSk = Number(ev.to||0);
-    // Fix Modus: delta (z.B. -1) hat Vorrang, damit man nicht vorher die SK kennen muss
-    if(ev.delta != null){
-      var d = Number(ev.delta);
-      if(!isFinite(d)) d = 0;
-      toSk = curSk + d;
+
+    // aktuelle Kategorie
+    var curCat = String(sMap[id] || '').toLowerCase().replace('grün','gruen');
+    if(!curCat){
+      // fallback über active Eintrag
+      var act = getActive();
+      var hit = act.find(function(x){ return x && String(x.id) === String(id); });
+      curCat = hit && hit.kategorie ? String(hit.kategorie).toLowerCase().replace('grün','gruen') : '';
     }
-    toSk = Math.max(1, Math.min(4, toSk));
-    if(!toSk) return false;
 
-    var fromSk = curSk;
+    // Ziel Kategorie bestimmen
+    var toCat = '';
+    if(ev.toCat){
+      toCat = String(ev.toCat).toLowerCase().replace('grün','gruen');
+    } else if(ev.toSk != null){
+      toCat = skToCat(ev.toSk);
+    } else if(ev.delta != null){
+      var steps = Math.abs(Number(ev.delta)||0);
+      if(steps < 1) steps = 1;
+      if(typeof worseCat === 'function'){
+        toCat = worseCat(curCat, steps);
+      }else{
+        // sehr defensiv: gruen->gelb->rot->schwarz
+        var ord = ['gruen','gelb','rot','schwarz'];
+        var idx = ord.indexOf(curCat);
+        if(idx<0) idx = 0;
+        toCat = ord[Math.min(ord.length-1, idx + steps)];
+      }
+    }
 
-    sMap[id] = skToCat(toSk);
+    if(!toCat) return false;
+
+    // Schwarz bleibt Schwarz, niemals "besser" werden durch Dynamik
+    if(curCat === 'schwarz' && toCat !== 'schwarz'){
+      toCat = 'schwarz';
+    }
+
+    // Sichtungsmap setzen
+    sMap[id] = toCat;
     setSichtungMap(sMap);
-    ev.done = true;
-// =============================
-// VX Profil anwenden
-// =============================
-if(window.VX_MAP && window.VX_PROFILES){
 
-  var pidNum = String(id).replace(/\D/g,'');     // "patient4" -> "4"
-  var map = window.VX_MAP[pidNum] || window.VX_MAP[Number(pidNum)];
-  if(map && map.length){
-
-    var key = map[Math.floor(Math.random() * map.length)];
-    var profil = window.VX_PROFILES[key];
-
-    if(profil){
-
-      // Vitalwerte im active Array anpassen
-      var active = getActive();
-      for(var i=0;i<active.length;i++){
-        if(String(active[i].id) === String(id)){
-           if(active[i].verschlechterung) break;
-
-           if(profil.werte){
-            if(profil.werte.af != null) active[i].af = profil.werte.af;
-            if(profil.werte.puls != null) active[i].puls = profil.werte.puls;
-          }
-          active[i].verschlechterung = {
-            titel: profil.titel,
-            grund: profil.grund,
-            zeit: Date.now()
-          };
+    // VX Profil auswählen (unterstützt vx_profiles_v2.js)
+    var vx = null;
+    try{
+      var pidNum = Number(String(id).replace(/\D/g,''));
+      if(window.VX_PICK_PROFILE){
+        vx = window.VX_PICK_PROFILE(pidNum);
+      }else if(window.VX_MAP && window.VX_PROFILES){
+        var entry = window.VX_MAP[pidNum] || window.VX_MAP[String(pidNum)];
+        if(Array.isArray(entry) && entry.length){
+          var key = entry[Math.floor(Math.random()*entry.length)];
+          if(typeof key === 'object' && key && key.id) key = key.id;
+          vx = window.VX_PROFILES[key] ? Object.assign({ id:key }, window.VX_PROFILES[key]) : null;
         }
       }
-      setActive(active);
+    }catch(_e){ vx = null; }
+
+    // Active Vitalwerte + Verschlechterungsinfos speichern
+    var active = getActive();
+    for(var i=0;i<active.length;i++){
+      if(String(active[i].id) === String(id)){
+        if(vx){
+          if(vx.werte){
+            if(vx.werte.af != null) active[i].af = vx.werte.af;
+            if(vx.werte.puls != null) active[i].puls = vx.werte.puls;
+          }
+          active[i].verschlechterung = {
+            key: vx.id || '',
+            titel: vx.titel || '',
+            grund: vx.grund || 'Zustand verschlechtert sich.',
+            toCat: vx.neueKategorie ? String(vx.neueKategorie).toLowerCase().replace('grün','gruen') : toCat,
+            werte: vx.werte || null,
+            ts: Date.now()
+          };
+        }else{
+          active[i].verschlechterung = {
+            key: '',
+            titel: '',
+            grund: 'Zustand verschlechtert sich.',
+            toCat: toCat,
+            werte: null,
+            ts: Date.now()
+          };
+        }
+        break;
+      }
     }
-  }
-}
+    setActive(active);
+
+    ev.done = true;
+
     return {
       id: id,
-      fromSk: fromSk,
-      toSk: toSk,
-      fromCat: skToCat(fromSk),
-      toCat: skToCat(toSk)
+      fromCat: curCat,
+      toCat: toCat
     };
   }
+
 
   function dynCheck(active, tNow){
     var dyn = getDyn();
