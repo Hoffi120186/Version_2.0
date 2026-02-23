@@ -318,43 +318,6 @@ function pickRandom(arr){
   return arr[Math.floor(Math.random()*arr.length)];
 }
 
-
-function pickVXKey(entries){
-  if(!Array.isArray(entries) || !entries.length) return null;
-
-  // Falls vx_profiles.js eine eigene Auswahlfunktion bereitstellt, nutzen
-  try{
-    if(typeof window.VX_PICK_PROFILE === 'function'){
-      // VX_PICK_PROFILE erwartet Patientennummer, nicht patientId string
-      // Wir machen hier nur den Key Pick, deshalb nutzen wir weiterhin local.
-    }
-  }catch(e){}
-
-  // Unterstützt Strings oder Objekte {id,w}
-  var total = 0;
-  for(var i=0;i<entries.length;i++){
-    var it = entries[i];
-    if(typeof it === 'string') total += 1;
-    else if(it && typeof it === 'object' && it.id) total += Math.max(0, Number(it.w)||0) || 1;
-  }
-  if(total <= 0) return null;
-
-  var r = Math.random() * total;
-  for(var j=0;j<entries.length;j++){
-    var it2 = entries[j];
-    var w = 0;
-    var id = null;
-    if(typeof it2 === 'string'){ id = it2; w = 1; }
-    else if(it2 && typeof it2 === 'object' && it2.id){ id = String(it2.id); w = Math.max(0, Number(it2.w)||0) || 1; }
-    if(!id) continue;
-    r -= w;
-    if(r <= 0) return id;
-  }
-  // Fallback
-  var last = entries[entries.length-1];
-  return (typeof last === 'string') ? last : (last && last.id ? String(last.id) : null);
-}
-
 /* VX Helpers, basiert auf vx_profiles.js */
 function getVXAllowedKeys(patientId){
   try{
@@ -965,38 +928,45 @@ function observeImage(img){
 }
 
 /* Verschlechterung anwenden und Profil auswählen */
-function setVXIntoActive(patientId, toCat){
+function setVXIntoActive(patientId, _toCatIgnored){
   const active = loadLS('ablage.active.v1', []);
   if(!Array.isArray(active) || !active.length) return null;
 
   const hit = active.find(x => x && String(x.id) === String(patientId));
   if(!hit) return null;
 
-  const keys = getVXAllowedKeys(patientId);
-  const chosenKey = pickVXKey(keys);
-  let prof = chosenKey ? getVXProfileByKey(chosenKey) : null;
-  if(!prof){
-    try{
+  let profObj = null;
+
+  try{
+    if(typeof window.VX_PICK_PROFILE === 'function'){
       const n = patientNumFromId(patientId);
-      if(n != null && typeof window.VX_PICK_PROFILE === 'function'){
-        const picked = window.VX_PICK_PROFILE(n);
-        if(picked && picked.profile){
-          prof = picked.profile;
-          if(!prof.neueKategorie && picked.key) prof.key = picked.key;
-        }
+      if(n != null) profObj = window.VX_PICK_PROFILE(n);
+    }
+  }catch(e){ profObj = null; }
+
+  // Fallback, falls v2 Picker nicht vorhanden
+  if(!profObj){
+    const keys = getVXAllowedKeys(patientId);
+    const chosen = pickRandom(keys);
+    if(chosen){
+      const key = (typeof chosen === 'string') ? chosen : (chosen && chosen.id ? chosen.id : '');
+      const prof = key ? getVXProfileByKey(key) : null;
+      if(prof){
+        profObj = { id:key, titel:prof.titel, grund:prof.grund, neueKategorie:prof.neueKategorie, werte:prof.werte };
       }
-    }catch(e){}
+    }
   }
 
-  const grund = prof && prof.grund ? String(prof.grund) : 'Zustand verschlechtert sich.';
-  const werte = prof && prof.werte ? prof.werte : null;
-  const titel = prof && prof.titel ? String(prof.titel) : '';
+  const grund = profObj && profObj.grund ? String(profObj.grund) : 'Zustand verschlechtert sich.';
+  const werte = profObj && profObj.werte ? profObj.werte : null;
+  const titel = profObj && profObj.titel ? String(profObj.titel) : '';
+  const toCat = normCat(profObj && profObj.neueKategorie ? profObj.neueKategorie : '');
 
   hit.verschlechterung = {
-    key: chosenKey || '',
+    key: (profObj && profObj.id) ? String(profObj.id) : '',
     titel: titel,
     grund: grund,
-    toCat: normCat(toCat || (prof && prof.neueKategorie) || ''),
+    toCat: toCat,
     werte: werte,
     ts: Date.now()
   };
@@ -1386,6 +1356,12 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 (function(){
   'use strict';
 
+  // Wenn ablage.js aktiv ist, keinen Fallback Tick starten
+  if(window.Ablage && typeof window.Ablage.startOnEnter === 'function'){
+    return;
+  }
+
+
   function safeParseKey(key, fallback){
     try{
       var raw = localStorage.getItem(key);
@@ -1458,10 +1434,7 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
     }catch(_){}
   }
 
-  // Fallback Tick nur, wenn ablage.js nicht aktiv ist
-  if(!(window.Ablage && typeof window.Ablage.startOnEnter === 'function')){
-    setInterval(tick, 1000);
-  }
+  setInterval(tick, 1000);
 })();
 </script>
 
