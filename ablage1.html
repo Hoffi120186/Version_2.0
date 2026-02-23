@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="de">
+
+  <html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
@@ -87,8 +88,8 @@ header h1{margin:0;font-size:20px}
   border:1px solid rgba(255,255,255,.20);
   background: rgba(255,255,255,.08);
 }
-.vx-thumb .vx-title{ font-weight:900; letter-spacing:.2px; }
-.vx-thumb .vx-reason{ font-weight:900; line-height:1.2; }
+.vx-thumb .vx-title{ font-weight:900; letter-spacing:.2px; overflow-wrap:anywhere; word-break:break-word; }
+.vx-thumb .vx-reason{ font-weight:800; line-height:1.25; font-size:14px; overflow-wrap:anywhere; word-break:break-word; }
 .vx-thumb .vx-meta{ margin-top:2px; font-size:12px; opacity:.9; }
 
 .vx-thumb.sk1{
@@ -156,6 +157,44 @@ h2{
 }
 .vx-values b{ font-weight:900; }
 
+
+.vx-values.sk1{
+  border-color: rgba(229,57,53,.70);
+  background: rgba(229,57,53,.14);
+}
+.vx-values.sk2{
+  border-color: rgba(243,252,2,.70);
+  background: rgba(243,252,2,.12);
+}
+.vx-values.sk2, .vx-values.sk2 *{ color:#111; }
+.vx-values.sk3{
+  border-color: rgba(34,197,94,.70);
+  background: rgba(34,197,94,.10);
+}
+.vx-values.sk4{
+  border-color: rgba(255,255,255,.55);
+  background: rgba(0,0,0,.45);
+}
+.vx-values .vx-old{ margin-top:6px; font-size:12px; opacity:.92; }
+
+.vx-values.sk1{
+  border-color: rgba(229,57,53,.70);
+  background: rgba(229,57,53,.14);
+}
+.vx-values.sk2{
+  border-color: rgba(243,252,2,.70);
+  background: rgba(243,252,2,.12);
+}
+.vx-values.sk2, .vx-values.sk2 *{ color:#111; }
+.vx-values.sk3{
+  border-color: rgba(34,197,94,.70);
+  background: rgba(34,197,94,.10);
+}
+.vx-values.sk4{
+  border-color: rgba(255,255,255,.55);
+  background: rgba(0,0,0,.45);
+}
+.vx-values .vx-old{ margin-top:6px; font-size:12px; opacity:.92; }
 /* Skeletons */
 .skeleton{position:relative;overflow:hidden;background:rgba(255,255,255,.08)}
 .skeleton::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg, transparent, rgba(255,255,255,.12), transparent);animation:shimmer 1.2s infinite}
@@ -597,6 +636,48 @@ function probeImage(url){
 /* Cache + Fetch */
 const listEl = document.getElementById('list');
 const CACHE_KEY = `pat-cache-${VERSION}`;
+// Patienten.json Fallback, falls patientXX.html nicht parsebar ist
+let __PATIENTEN_JSON__ = null;
+
+async function loadPatientenJson(){
+  if(__PATIENTEN_JSON__) return __PATIENTEN_JSON__;
+  try{
+    const res = await fetch(withV('patienten.json'), { cache:'no-store' });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const arr = await res.json();
+    if(Array.isArray(arr)) __PATIENTEN_JSON__ = arr;
+    else __PATIENTEN_JSON__ = [];
+  }catch(e){
+    __PATIENTEN_JSON__ = [];
+  }
+  return __PATIENTEN_JSON__;
+}
+
+function lookupPatientenJson(num){
+  if(!__PATIENTEN_JSON__ || !Array.isArray(__PATIENTEN_JSON__)) return null;
+  const n = Number(num);
+  if(!Number.isFinite(n)) return null;
+  return __PATIENTEN_JSON__.find(x => x && Number(x.id) === n) || null;
+}
+
+function vitalsTextFromJson(j){
+  if(!j) return '';
+  const af = (j.af!=null) ? Number(j.af) : null;
+  const puls = (j.puls!=null) ? Number(j.puls) : null;
+  if(Number.isFinite(af) && Number.isFinite(puls)) return `AF ${af}/min, Puls ${puls}/min`;
+  return '';
+}
+
+function parseVitals(vtxt){
+  if(!vtxt) return null;
+  const mAf = String(vtxt).match(/AF\s*(\d+)\s*\/min/i);
+  const mPu = String(vtxt).match(/Puls\s*(\d+)\s*\/min/i);
+  const af = mAf ? Number(mAf[1]) : null;
+  const puls = mPu ? Number(mPu[1]) : null;
+  if(Number.isFinite(af) || Number.isFinite(puls)) return { af:Number.isFinite(af)?af:null, puls:Number.isFinite(puls)?puls:null };
+  return null;
+}
+
 function readCache(){ try{ return JSON.parse(sessionStorage.getItem(CACHE_KEY)||'{}'); }catch(e){return{};} }
 function writeCache(map){ try{ sessionStorage.setItem(CACHE_KEY, JSON.stringify(map)); }catch(e){} }
 
@@ -611,7 +692,22 @@ async function fetchPatientData(entry){
     const res = await fetch(withV(entry.url), { cache:'no-store' });
     if(!res.ok){
       info.error = 'HTTP '+res.status;
-      const c=readCache(); c[entry.id]=info; writeCache(c);
+      
+  // Fallback aus patienten.json, wenn Werte fehlen oder Parser scheitert
+  try{
+    const num = Number(entry.id.replace('patient',''));
+    const j = lookupPatientenJson(num);
+    if(j){
+      if(!info.age && j.age!=null) info.age = String(j.age);
+      if(!info.gender && j.gender) info.gender = String(j.gender);
+      if(!info.injury && j.verletzung) info.injury = String(j.verletzung);
+      if(!info.vitals){
+        const vt = vitalsTextFromJson(j);
+        if(vt) info.vitals = vt;
+      }
+    }
+  }catch(e){}
+const c=readCache(); c[entry.id]=info; writeCache(c);
       return info;
     }
     const html = await res.text();
@@ -789,6 +885,27 @@ function upsertCard(p){
 
   const newValuesText = hasVX ? fmtNewValues(p.verschlechterung && (p.verschlechterung.werte || p.verschlechterung.vitals || null)) : '';
 
+  const oldValuesText = (() => {
+    try{
+      if(p && p.verschlechterung && p.verschlechterung.prevWerte){
+        const pw = p.verschlechterung.prevWerte;
+        const a = (pw.af!=null) ? `AF ${pw.af}/min` : '';
+        const b = (pw.puls!=null) ? `Puls ${pw.puls}/min` : '';
+        return [a,b].filter(Boolean).join(', ');
+      }
+      return p && p.vitals ? String(p.vitals) : '';
+    }catch(e){ return ''; }
+  })();
+
+  const vxBoxClass = (() => {
+    const tc = normCat(p && p.verschlechterung && p.verschlechterung.toCat ? p.verschlechterung.toCat : '');
+    if(tc==='rot') return 'sk1';
+    if(tc==='gelb') return 'sk2';
+    if(tc==='gruen' || tc==='grün') return 'sk3';
+    if(tc==='schwarz') return 'sk4';
+    return '';
+  })();
+
   const html = `
     ${thumbHtml}
     <div>
@@ -797,12 +914,11 @@ function upsertCard(p){
       <div class="injury"><b>Hauptverletzung:</b> ${injText}</div>
 
       ${hasVX ? `
-        <div class="vx-values">
-          <b>Neue Werte:</b> ${newValuesText || 'siehe Verschlechterung'}
+        <div class="vx-values ${vxBoxClass}">
+          <div><b>Neue Werte:</b> ${newValuesText || 'siehe Verschlechterung'}</div>
+          ${oldValuesText ? `<div class="vx-old"><b>Alt:</b> ${oldValuesText}</div>` : ``}
         </div>
-      ` : ''}
-
-      ${p.error ? `<div style="color:#ffd2d2;margin-top:6px;font-size:12px;">⚠ ${p.error}</div>` : ''}
+      ` : ''}${p.error ? `<div style="color:#ffd2d2;margin-top:6px;font-size:12px;">⚠ ${p.error}</div>` : ''}
     </div>
     <div class="actions">
       <button class="btn" data-id="${p.id}">Als PDF</button>
@@ -928,7 +1044,7 @@ function observeImage(img){
 }
 
 /* Verschlechterung anwenden und Profil auswählen */
-function setVXIntoActive(patientId, _toCatIgnored){
+function setVXIntoActive(patientId, _toCatIgnored, prevWerte){
   const active = loadLS('ablage.active.v1', []);
   if(!Array.isArray(active) || !active.length) return null;
 
@@ -968,6 +1084,7 @@ function setVXIntoActive(patientId, _toCatIgnored){
     grund: grund,
     toCat: toCat,
     werte: werte,
+    prevWerte: (prevWerte && (prevWerte.af!=null || prevWerte.puls!=null)) ? prevWerte : null,
     ts: Date.now()
   };
 
@@ -987,7 +1104,25 @@ async function applyDynamikToSichtungMap(firedArr){
     const to = normCat((it && (it.toCat || it.to)) || '');
     if(!id || !to) continue;
 
-    const vx = setVXIntoActive(id, to);
+    const prevW = (() => {
+      try{
+        const p0 = Array.isArray(window.__PAT_DATA__) ? window.__PAT_DATA__.find(x => x && x.id === id) : null;
+        if(p0 && p0.vitals){
+          const pv = parseVitals(p0.vitals);
+          if(pv) return pv;
+        }
+        const num = patientNumFromId(id);
+        const j = lookupPatientenJson(num);
+        if(j){
+          const af = (j.af!=null) ? Number(j.af) : null;
+          const puls = (j.puls!=null) ? Number(j.puls) : null;
+          return { af:Number.isFinite(af)?af:null, puls:Number.isFinite(puls)?puls:null };
+        }
+      }catch(e){}
+      return null;
+    })();
+
+    const vx = setVXIntoActive(id, to, prevW);
 
     const finalTo = vx && vx.toCat ? vx.toCat : to;
     map[id] = finalTo;
@@ -1029,6 +1164,8 @@ window.__AblageDynApply = applyDynamikToSichtungMap;
 
 /* Laden */
 async function load(){
+  try{ await loadPatientenJson(); }catch(_e){}
+
   ensurePlanFallback();
 
   const done = getDoneSet();
@@ -1245,10 +1382,10 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 
   function catLabel(cat){
     var c = normCat(cat);
-    if(c === 'rot') return 'SK1 (rot)';
-    if(c === 'gelb') return 'SK2 (gelb)';
-    if(c === 'gruen') return 'SK3 (grün)';
-    if(c === 'schwarz') return 'SK4 (schwarz)';
+    if(c === 'rot') return 'SK1';
+    if(c === 'gelb') return 'SK2';
+    if(c === 'gruen') return 'SK3';
+    if(c === 'schwarz') return 'Schwarz';
     return String(cat||'');
   }
 
@@ -1389,52 +1526,8 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
     return p;
   }
 
-  function tick(){
-    try{
-      var plan = getPlan();
-      if(!plan || !plan.events.length) return;
-
-      var active = getActive();
-      if(!active.length) return;
-
-      var sMap = safeParseKey('sichtungMap', {});
-      var t = Date.now();
-
-      for(var i=0;i<active.length;i++){
-        var a = active[i];
-        if(!a || !a.id) continue;
-        if(typeof a.startAt !== 'number') continue;
-
-        var elapsed = t - a.startAt + (Number(a.offset)||0);
-
-        for(var j=0;j<plan.events.length;j++){
-          var ev = plan.events[j];
-          if(!ev || ev.done) continue;
-          if(String(ev.id) !== String(a.id)) continue;
-
-          if(elapsed >= Number(ev.atMs||0)){
-            ev.done = true;
-            safeSet('ablage.dynamik.plan.v1', plan);
-
-            var fromCat = normCat((sMap && sMap[a.id]) || '');
-            var toCat = normCat(ev.to || ev.toCat || '');
-
-            try{
-              window.dispatchEvent(new CustomEvent('ablage:dynamik:fired', {
-                detail:{
-                  fired:[{ id:a.id, label:a.label||a.id, fromCat:fromCat, toCat:toCat, afterMs:ev.atMs }],
-                  plan:plan
-                }
-              }));
-            }catch(_e){}
-            return;
-          }
-        }
-      }
-    }catch(_){}
-  }
-
-  setInterval(tick, 1000);
+  
+/* Fallback tick disabled. Dynamik läuft ausschließlich über ablage.js */
 })();
 </script>
 
