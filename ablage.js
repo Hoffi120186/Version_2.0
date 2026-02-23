@@ -71,6 +71,20 @@ function skToCat(sk){
     try{ localStorage.setItem('sichtungMap', JSON.stringify(m||{})); }catch(_){}
   }
 
+  function patientNumFromId(id){
+    var n = Number(String(id||'').replace(/\D/g,'')) || 0;
+    return n || 0;
+  }
+  function hasVXProfilesFor(id){
+    try{
+      if(!window.VX_MAP) return true;
+      var n = patientNumFromId(id);
+      if(!n) return false;
+      var entry = window.VX_MAP[n];
+      return Array.isArray(entry) && entry.length > 0;
+    }catch(_){ return true; }
+  }
+
   function randInt(min,max){
     min=Math.ceil(min); max=Math.floor(max);
     return Math.floor(Math.random()*(max-min+1))+min;
@@ -86,7 +100,6 @@ function skToCat(sk){
   function ensureRandomPlan(dyn){
     var plan = getDynPlan();
     var sessionStart = ensureSessionStart();
-    var sig = dynSignature(dyn);
     var sig = dynSignature(dyn);
     // Plan neu, wenn keine Events existieren oder Session gewechselt
     if(plan && plan.createdAt && plan.sessionStart === sessionStart && plan.dynSig === sig && Array.isArray(plan.events) && plan.events.length){
@@ -104,6 +117,7 @@ function skToCat(sk){
     for(var i=0;i<a.length;i++){
       var id = String(a[i].id||'');
       if(!id) continue;
+      if(!hasVXProfilesFor(id)) continue;
       var cat = (sMap[id]||'').toString().toLowerCase().replace('grün','gruen');
       var sk = catToSk(cat);
       if(sk===1 && !allow.sk1) continue;
@@ -199,6 +213,12 @@ function skToCat(sk){
 
     var id = String(ev.id||'');
     if(!id) return false;
+
+    // Keine Verschlechterung ohne hinterlegtes Profil
+    if(!hasVXProfilesFor(id)){
+      ev.done = true;
+      return false;
+    }
 
     var sMap = getSichtungMap();
     var fromCat = (sMap[id]||'').toString().toLowerCase().replace('grün','gruen').trim();
