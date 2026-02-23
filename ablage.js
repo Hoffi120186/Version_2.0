@@ -1,5 +1,5 @@
 /* =========================================================
-   1Rettungsmittel · ablage.js  (v15: Dynamik stabil, SK Logik korrekt)
+   1Rettungsmittel · ablage.js  (v15.1: Vollversion, ensurePatient exportiert)
    ========================================================= */
 (function () {
   'use strict';
@@ -668,6 +668,9 @@
     stopPatient: stopPatient,
     resetAll: resetAll,
     startOnEnter: startTimersOnEntry,
+
+    ensurePatient: ensurePatient,
+
     _getActive:getActive,
     _getHistory:getHistory,
     _getDone:getDone
