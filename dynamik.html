@@ -13,290 +13,270 @@
 
   <style>
     :root{
-      --radius:14px;
+      --bg:#0b0f1a;
+      --glass:rgba(255,255,255,.10);
+      --border:rgba(255,255,255,.18);
       --shadow:0 10px 26px rgba(0,0,0,.28);
-      --glass:rgba(255,255,255,.12);
-      --border:rgba(255,255,255,.22);
-      --accent:#0B5FFF;
-      --bad:#ef4444;
+      --radius:16px;
       --ok:#22c55e;
-      --muted:rgba(255,255,255,.78);
-      --w:min(94vw,980px);
+      --bad:#ef4444;
+      --accent:#0B5FFF;
+      --muted:rgba(255,255,255,.75);
     }
-    *{ box-sizing:border-box; }
-    html,body{ height:100%; }
+    *{box-sizing:border-box}
+    html,body{height:100%}
     body{
       margin:0;
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:#0b0f1a url("fotos/Patientenkarte.jpg") center/cover no-repeat fixed;
+      background:#0b0f1a url("fotos/ablageB.jpg") center/cover no-repeat fixed;
       color:#fff;
-      min-height:100vh;
     }
-    body::before{ content:""; position:fixed; inset:0; background:rgba(0,0,0,.60); z-index:-1; }
+    body::before{content:"";position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:-1}
 
+    .wrap{width:min(1100px,94vw); margin:0 auto; padding:14px 0 26px}
     header{
       position:sticky; top:0; z-index:10;
-      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
-      padding:12px 12px;
-      background:rgba(0,0,0,.55);
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+      padding:10px 10px;
+      background:rgba(0,0,0,.60);
       backdrop-filter:blur(6px);
-      border-bottom:1px solid rgba(255,255,255,.12);
     }
-    header h1{ margin:0; font-size:20px; }
+    header h1{margin:0; font-size:18px}
+    .right{margin-left:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+
     .btn{
-      border:0; border-radius:12px; padding:10px 14px;
-      background:var(--accent); color:#fff; font-weight:800; cursor:pointer;
-      box-shadow:var(--shadow);
-    }
-    .btn.alt{ background:#a54524; }
-    .btn.ghost{ background:rgba(255,255,255,.14); border:1px solid var(--border); box-shadow:var(--shadow); }
-    .wrap{ width:var(--w); margin:14px auto 28px; padding:0 12px; }
-    .card{
-      background:var(--glass);
-      border:1px solid var(--border);
-      border-radius:16px;
-      box-shadow:var(--shadow);
-      padding:14px;
-      margin:12px 0;
-    }
-    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    label{ font-weight:800; }
-    .muted{ color:var(--muted); font-size:13px; }
-    select,input{
-      background:rgba(0,0,0,.35);
+      background:var(--accent);
       color:#fff;
-      border:1px solid rgba(255,255,255,.22);
+      border:none;
+      padding:10px 14px;
       border-radius:12px;
-      padding:10px 12px;
-      min-height:42px;
-    }
-    input[type="number"]{ width:120px; }
-    .pill{
-      display:inline-flex; gap:8px; align-items:center;
-      padding:8px 12px;
-      border-radius:999px;
-      background:rgba(0,0,0,.35);
-      border:1px solid rgba(255,255,255,.22);
+      cursor:pointer;
       font-weight:800;
-      user-select:none;
+      box-shadow:0 10px 26px rgba(0,0,0,.22);
     }
-    .grid{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:12px;
-    }
-    @media (max-width:760px){
-      .grid{ grid-template-columns:1fr; }
-    }
-    table{ width:100%; border-collapse:separate; border-spacing:0 10px; }
-    th{ text-align:left; font-size:13px; color:var(--muted); padding:0 8px; }
-    td{ padding:0 8px; }
-    .tr{
-      background:rgba(0,0,0,.28);
-      border:1px solid rgba(255,255,255,.14);
-      border-radius:14px;
-    }
-    .tr td{ padding:10px 8px; }
+    .btn.alt{ background:#e53935; }
     .btnSmall{
+      background:rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.20);
+      color:#fff;
       padding:10px 12px;
       border-radius:12px;
-      background:rgba(255,255,255,.14);
-      border:1px solid rgba(255,255,255,.22);
-      color:#fff;
       cursor:pointer;
       font-weight:800;
     }
-    .btnSmall.danger{ background:rgba(239,68,68,.22); border-color:rgba(239,68,68,.55); }
-    .ok{ color:var(--ok); font-weight:900; }
-    .bad{ color:var(--bad); font-weight:900; }
-    pre{
-      white-space:pre-wrap;
-      background:rgba(0,0,0,.35);
+    .btnSmall:hover{ filter:brightness(1.05); }
+
+    .card{
+      background:var(--glass);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:14px;
+    }
+    .grid{
+      margin-top:14px;
+      display:grid;
+      grid-template-columns:1fr;
+      gap:14px;
+    }
+
+    .row{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:flex-start;
+    }
+    .col{
+      flex:1 1 320px;
+      min-width:280px;
+    }
+    .muted{ color:var(--muted); }
+    .pill{
+      display:inline-flex; align-items:center; gap:10px;
+      padding:10px 12px;
+      border-radius:999px;
       border:1px solid rgba(255,255,255,.18);
-      border-radius:14px;
+      background:rgba(255,255,255,.08);
+      font-weight:900;
+    }
+
+    label{ font-weight:800; }
+    input[type="number"], select{
+      background:rgba(255,255,255,.08);
+      color:#fff;
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:12px;
+      padding:10px;
+      outline:none;
+    }
+    select option{ color:#111; }
+
+    .status{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:8px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.08);
+      font-weight:900;
+    }
+    .status.ok{ border-color:rgba(34,197,94,.45); background:rgba(34,197,94,.14); color:#bbf7d0; }
+    .status.bad{ border-color:rgba(239,68,68,.45); background:rgba(239,68,68,.12); color:#fecaca; }
+
+    .rules{
+      margin-top:12px;
+      border-top:1px solid rgba(255,255,255,.14);
+      padding-top:12px;
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      overflow:hidden;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.20);
+    }
+    th,td{
+      padding:10px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+      text-align:left;
+      font-size:14px;
+    }
+    th{ font-weight:900; opacity:.95; }
+    tr:last-child td{ border-bottom:none; }
+    .tRight{ text-align:right; }
+    .danger{ color:#fecaca; }
+
+    .plan{
+      white-space:pre-wrap;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size:12px;
+      background:rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:12px;
       padding:12px;
-      margin:0;
-      color:#e5e7eb;
-      font-size:13px;
+      max-height:340px;
+      overflow:auto;
+    }
+
+    @media (max-width:640px){
+      header{ padding:12px 10px 10px; }
+      .btn,.btnSmall{ padding:12px 14px; }
+      .col{ min-width:100%; }
     }
   </style>
 </head>
 
 <body>
   <header>
-    <button class="btn alt" type="button" onclick="location.href='Instruktor.html'">Zurück</button>
-    <h1>Ablage Dynamik</h1>
-    <button class="btn ghost" type="button" id="btnSave">Speichern</button>
-    <button class="btn ghost" type="button" id="btnReset">Zurücksetzen</button>
+    <button class="btn alt" onclick="location.href='Instruktor.html'">Zurück</button>
+    <h1>Dynamik. Patientenverschlechterung</h1>
+    <div class="right">
+      <span class="status" id="status">Aus</span>
+      <button class="btn" id="btnSave" type="button">Speichern</button>
+    </div>
   </header>
 
   <div class="wrap">
-    <div class="card">
-      <div class="row" style="justify-content:space-between;">
+    <div class="grid">
+
+      <div class="card">
         <div class="row">
-          <span class="pill"><input id="enabled" type="checkbox" style="width:18px;height:18px;" /> Aktiv</span>
-          <span id="status" class="muted">Aus</span>
-        </div>
-        <button class="btnSmall" type="button" id="btnShowPlan">Plan anzeigen</button>
-      </div>
-
-      <details class="help" style="margin-top:12px;">
-        <summary style="cursor:pointer; font-weight:700;">Hilfe zur Dynamik</summary>
-        <div style="margin-top:10px; line-height:1.35;">
-          <div style="opacity:.9;">
-            Dynamik steuert Verschlechterungen direkt in der Ablage, komplett offline. Wenn Aktiv aus ist, bleibt alles wie bisher.
+          <div class="col">
+            <label class="pill">
+              <input id="enabled" type="checkbox" style="width:18px;height:18px;">
+              Dynamik aktiv
+            </label>
+            <div class="muted" style="margin-top:10px;">
+              Wenn aktiv, werden geplante Verschlechterungen automatisch ausgelöst.
+            </div>
           </div>
 
-          <div style="margin-top:10px; font-weight:800;">Modus Fix</div>
-          <div style="opacity:.9; margin-top:4px;">
-            Du legst konkrete Ereignisse fest, z.B. Patient 30 wird nach 3 Minuten eine SK Klasse schlechter. Das ist ideal für feste Lernziele.
+          <div class="col">
+            <label for="mode">Modus</label>
+            <div style="margin-top:8px;">
+              <select id="mode" style="min-width:240px;">
+                <option value="off">Aus</option>
+                <option value="random">Zufällig</option>
+                <option value="fixed">Fix</option>
+              </select>
+            </div>
+            <div class="muted" style="margin-top:10px;">
+              Zufällig würfelt Ereignisse, Fix nutzt deine Tabelle unten.
+            </div>
           </div>
 
-          <div style="margin-top:10px; font-weight:800;">Modus Zufall</div>
-          <div style="opacity:.9; margin-top:4px;">
-            Du gibst nur Rahmen vor. Startfenster, Anzahl, Mindestabstand, erlaubte SK Klassen. Die App würfelt pro Übung einen Plan und speichert ihn, damit es während der Übung konsistent bleibt.
-          </div>
-
-          <div style="margin-top:10px; font-weight:800;">Zeitbasis</div>
-          <div style="opacity:.9; margin-top:4px;">
-            Basis Patient bedeutet. Zeit zählt ab dem Moment, in dem der Patient in der Ablage ist. Basis Einsatz bedeutet. Zeit zählt ab Übungsstart.
-          </div>
-
-          <div style="margin-top:10px; font-weight:800;">Tipps</div>
-          <ul style="margin:8px 0 0 18px; opacity:.92;">
-            <li>Für realistische Dynamik. Mindestens 60 Sekunden Abstand zwischen Ereignissen setzen.</li>
-            <li>Wenn du Fairness willst. Nur Verschlechterung zu schlechter, nicht wieder besser.</li>
-            <li>Wenn du testen willst. Kleines Startfenster wie 1 bis 2 Minuten wählen.</li>
-          </ul>
-        </div>
-      </details>
-
-      <div class="grid" style="margin-top:12px;">
-        <div>
-          <label for="mode">Modus</label><br>
-          <select id="mode">
-            <option value="off">Aus</option>
-            <option value="fixed">Fix geplant</option>
-            <option value="random">Zufall</option>
-          </select>
-          <div class="muted" style="margin-top:6px;">
-            Fix. Du definierst konkrete Ereignisse. Zufall. Es wird pro Übung ein neuer Plan erzeugt.
-          </div>
-        </div>
-
-        <div>
-          <label for="basis">Zeitbasis</label><br>
-          <select id="basis">
-            <option value="patient">Ab Ablage Timer Start</option>
-            <option value="session">Ab Übungsstart</option>
-          </select>
-          <div class="muted" style="margin-top:6px;">
-            Empfehlung. Ab Ablage Timer Start. Dann passt es zur Ablage.
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" id="fixedCard" style="display:none;">
-      <div class="row" style="justify-content:space-between;">
-        <div>
-          <div style="font-weight:900;font-size:18px;">Fix Regeln</div>
-          <div class="muted">Beispiel. Patient 30 nach 3 Minuten eine SK Klasse schlechter</div>
-        </div>
-        <button class="btnSmall" type="button" id="btnAddRule">Regel hinzufügen</button>
-      </div>
-
-      <div style="margin-top:10px; overflow:auto;">
-        <table>
-          <thead>
-            <tr>
-              <th style="width:120px;">Patient</th>
-              <th style="width:160px;">Zeit Minuten</th>
-              <th style="width:140px;">Verschlechterung</th>
-              <th style="width:120px;"></th>
-            </tr>
-          </thead>
-          <tbody id="ruleBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="card" id="randomCard" style="display:none;">
-      <div style="font-weight:900;font-size:18px;">Zufall Einstellungen</div>
-      <div class="muted" style="margin-top:6px;">Die App erzeugt einen Plan und speichert ihn. Dadurch ist die Übung stabil und reproduzierbar.</div>
-
-      <details class="help" style="margin-top:12px;">
-        <summary style="cursor:pointer; font-weight:700;">Hilfe zur Dynamik</summary>
-        <div style="margin-top:10px; line-height:1.35;">
-          <div style="opacity:.9;">
-            Dynamik steuert Verschlechterungen direkt in der Ablage, komplett offline. Wenn Aktiv aus ist, bleibt alles wie bisher.
-          </div>
-
-          <div style="margin-top:10px; font-weight:800;">Modus Fix</div>
-          <div style="opacity:.9; margin-top:4px;">
-            Du legst konkrete Ereignisse fest, z.B. Patient 30 wird nach 3 Minuten eine SK Klasse schlechter. Das ist ideal für feste Lernziele.
-          </div>
-
-          <div style="margin-top:10px; font-weight:800;">Modus Zufall</div>
-          <div style="opacity:.9; margin-top:4px;">
-            Du gibst nur Rahmen vor. Startfenster, Anzahl, Mindestabstand, erlaubte SK Klassen. Die App würfelt pro Übung einen Plan und speichert ihn, damit es während der Übung konsistent bleibt.
-          </div>
-
-          <div style="margin-top:10px; font-weight:800;">Zeitbasis</div>
-          <div style="opacity:.9; margin-top:4px;">
-            Basis Patient bedeutet. Zeit zählt ab dem Moment, in dem der Patient in der Ablage ist. Basis Einsatz bedeutet. Zeit zählt ab Übungsstart.
-          </div>
-
-          <div style="margin-top:10px; font-weight:800;">Tipps</div>
-          <ul style="margin:8px 0 0 18px; opacity:.92;">
-            <li>Für realistische Dynamik. Mindestens 60 Sekunden Abstand zwischen Ereignissen setzen.</li>
-            <li>Wenn du Fairness willst. Nur Verschlechterung zu schlechter, nicht wieder besser.</li>
-            <li>Wenn du testen willst. Kleines Startfenster wie 1 bis 2 Minuten wählen.</li>
-          </ul>
-        </div>
-      </details>
-
-      <div class="grid" style="margin-top:12px;">
-        <div>
-          <label>Startfenster Minuten</label>
-          <div class="row" style="margin-top:8px;">
-            <input id="minMin" type="number" min="0" step="1" />
-            <span class="muted">bis</span>
-            <input id="maxMin" type="number" min="0" step="1" />
-          </div>
-        </div>
-        <div>
-          <label>Anzahl Ereignisse</label>
-          <div class="row" style="margin-top:8px;">
-            <input id="count" type="number" min="0" max="20" step="1" />
-            <span class="muted">max 20</span>
-          </div>
-        </div>
-
-        <div>
-          <label>Mindestabstand Sekunden</label>
-          <div class="row" style="margin-top:8px;">
-            <input id="minGapSec" type="number" min="0" step="5" />
-          </div>
-        </div>
-
-        <div>
-          <label>Ziel Logik</label>
-          <div class="row" style="margin-top:8px;">
-            <span class="pill"><input id="toLowerOnly" type="checkbox" style="width:18px;height:18px;" /> Nur eine Stufe schlechter</span>
+          <div class="col">
+            <label for="basis">Zeitbasis</label>
+            <div style="margin-top:8px;">
+              <select id="basis" style="min-width:240px;">
+                <option value="patient">pro Patient. ab Eintritt in Ablage</option>
+                <option value="global">global. ab Übungsstart</option>
+              </select>
+            </div>
+            <div class="muted" style="margin-top:10px;">
+              Empfehlung. pro Patient.
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="card" style="margin-top:12px;">
-        <div style="font-weight:900;">Welche SK Klassen dürfen ausgewählt werden</div>
-        <div class="row" style="margin-top:10px;">
+      <div class="card" id="randomCard">
+        <div style="font-weight:900; font-size:16px;">Zufällig</div>
+
+        <div class="row" style="margin-top:12px;">
+          <div class="col">
+            <label>Start nach. Minuten</label>
+            <div style="margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <input id="minMin" type="number" min="0" step="1" value="3" style="width:110px;">
+              <span class="muted">bis</span>
+              <input id="maxMin" type="number" min="0" step="1" value="5" style="width:110px;">
+            </div>
+          </div>
+
+          <div class="col">
+            <label>Anzahl Events</label>
+            <div style="margin-top:8px;">
+              <input id="count" type="number" min="0" step="1" value="3" style="width:110px;">
+            </div>
+            <div class="muted" style="margin-top:10px;">
+              Gesamtanzahl Verschlechterungen.
+            </div>
+          </div>
+
+          <div class="col">
+            <label>Minimaler Abstand. Sekunden</label>
+            <div style="margin-top:8px;">
+              <input id="minGapSec" type="number" min="0" step="1" value="60" style="width:110px;">
+            </div>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:12px; align-items:center;">
+          <label class="pill">
+            <input id="toLowerOnly" type="checkbox" style="width:18px;height:18px;">
+            Nur eine Stufe schlechter
+          </label>
+          <span class="muted">
+            Grün zu Gelb, Gelb zu Rot, Rot zu Schwarz.
+          </span>
+        </div>
+
+        <div class="rules">
+          <div style="font-weight:900;">Welche Klassen dürfen ausgewählt werden</div>
+          <div class="row" style="margin-top:10px;">
           <span class="pill"><input id="allow1" type="checkbox" style="width:18px;height:18px;" /> SK1</span>
           <span class="pill"><input id="allow2" type="checkbox" style="width:18px;height:18px;" /> SK2</span>
           <span class="pill"><input id="allow3" type="checkbox" style="width:18px;height:18px;" /> SK3</span>
-          <span class="pill"><input id="allow4" type="checkbox" style="width:18px;height:18px;" /> SK4</span>
+          <span class="pill"><input id="allow4" type="checkbox" style="width:18px;height:18px;" /> Schwarz</span>
         </div>
-        <div class="muted" style="margin-top:8px;">Empfehlung. SK4 aus lassen.</div>
+        <div class="row" style="margin-top:10px; align-items:center; gap:10px;">
+          <span class="muted" style="min-width:160px;">Max Schwarz Events</span>
+          <input id="maxSchwarz" type="number" min="0" max="10" step="1" value="2" style="width:110px; padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.08); color:#fff;">
+          <span class="muted">Empfehlung 1 oder 2</span>
+        </div>
+        <div class="muted" style="margin-top:8px;">Empfehlung. Schwarz selten nutzen, ideal 1 oder 2.</div>
       </div>
 
       <div class="row" style="margin-top:12px;">
@@ -305,22 +285,51 @@
       </div>
     </div>
 
-    <div class="card" id="planCard" style="display:none;">
-      <div class="row" style="justify-content:space-between;">
-        <div style="font-weight:900;font-size:18px;">Aktueller Plan</div>
-        <button class="btnSmall" type="button" id="btnClosePlan">Schließen</button>
+      <div class="card" id="fixedCard">
+        <div style="font-weight:900; font-size:16px;">Fix</div>
+        <div class="muted" style="margin-top:10px;">
+          Hier kannst du feste Regeln pflegen. Beispiel. Patient 7 nach 4 Minuten um eine Stufe schlechter.
+        </div>
+
+        <div class="rules">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:120px;">Patient</th>
+                <th style="width:170px;">Nach Minuten</th>
+                <th>Delta</th>
+                <th class="tRight" style="width:120px;">Aktion</th>
+              </tr>
+            </thead>
+            <tbody id="rulesBody"></tbody>
+          </table>
+
+          <div class="row" style="margin-top:12px;">
+            <button class="btnSmall" id="btnAddRule" type="button">Regel hinzufügen</button>
+            <span class="muted">Delta. 1 bedeutet eine Stufe schlechter. 2 bedeutet zwei Stufen.</span>
+          </div>
+        </div>
       </div>
-      <div class="muted" style="margin-top:6px;">Wenn du auf Neu würfeln drückst, wird der Plan beim nächsten Ablage Besuch neu erstellt.</div>
-      <div style="margin-top:10px;">
-        <pre id="planText">Kein Plan vorhanden</pre>
+
+      <div class="card" id="planCard">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+          <div style="font-weight:900; font-size:16px;">Aktueller Plan</div>
+          <div class="row" style="gap:10px; align-items:center;">
+            <button class="btnSmall" id="btnRefreshPlan" type="button">Plan anzeigen</button>
+            <button class="btnSmall" id="btnResetPlan" type="button">Plan löschen</button>
+          </div>
+        </div>
+        <div class="plan" id="planText" style="margin-top:12px;">Noch kein Plan.</div>
       </div>
+
     </div>
   </div>
 
   <script>
+  (function(){
     'use strict';
 
-    const KEY = 'ablage.dynamik.v1';
+    const KEY_CFG = 'ablage.dynamik.v1';
     const KEY_PLAN = 'ablage.dynamik.plan.v1';
 
     function safeParse(s,f){ try{ return JSON.parse(s); }catch{ return f; } }
@@ -337,6 +346,7 @@
           maxMin:5,
           count:3,
           minGapSec:60,
+          maxSchwarz:2,
           allow:{ sk1:true, sk2:true, sk3:true, sk4:false },
           toLowerOnly:true
         },
@@ -344,24 +354,15 @@
       };
     }
 
-    function skLabel(n){
-      n = Number(n)||0;
-      if(n===1) return 'SK1';
-      if(n===2) return 'SK2';
-      if(n===3) return 'SK3';
-      if(n===4) return 'SK4';
-      return 'SK';
-    }
+    function el(id){ return document.getElementById(id); }
 
-    const el = (id)=>document.getElementById(id);
+    const status = el('status');
     const enabled = el('enabled');
     const mode = el('mode');
     const basis = el('basis');
-    const status = el('status');
 
-    const fixedCard = el('fixedCard');
     const randomCard = el('randomCard');
-    const ruleBody = el('ruleBody');
+    const fixedCard = el('fixedCard');
 
     const minMin = el('minMin');
     const maxMin = el('maxMin');
@@ -372,6 +373,7 @@
     const allow2 = el('allow2');
     const allow3 = el('allow3');
     const allow4 = el('allow4');
+    const maxSchwarz = el('maxSchwarz');
 
     const planCard = el('planCard');
     const planText = el('planText');
@@ -379,42 +381,70 @@
     function setStatus(){
       if(!enabled.checked || mode.value==='off'){
         status.textContent = 'Aus';
-        status.className = 'muted';
+        status.className = 'status';
         return;
       }
-      status.textContent = mode.value==='fixed' ? 'Aktiv, Fix' : 'Aktiv, Zufall';
-      status.className = 'ok';
+      status.textContent = 'An';
+      status.className = 'status ok';
     }
 
     function showHide(){
-      fixedCard.style.display = (mode.value==='fixed') ? '' : 'none';
-      randomCard.style.display = (mode.value==='random') ? '' : 'none';
-      setStatus();
+      const m = mode.value || 'off';
+      randomCard.style.display = (m==='random') ? '' : 'none';
+      fixedCard.style.display = (m==='fixed') ? '' : 'none';
+      planCard.style.display = (enabled.checked && m!=='off') ? '' : 'none';
     }
 
-    function renderRules(list){
-      ruleBody.innerHTML = '';
-      (list||[]).forEach((r, idx) => {
+    function renderRules(rows){
+      const tb = el('rulesBody');
+      tb.innerHTML = '';
+      const list = Array.isArray(rows) ? rows : [];
+      if(!list.length){
         const tr = document.createElement('tr');
-        tr.className = 'tr';
+        tr.innerHTML = '<td colspan="4" class="muted">Keine Regeln.</td>';
+        tb.appendChild(tr);
+        return;
+      }
+
+      for(const r of list){
+        const idNum = Number(String(r.id||'').replace(/\D/g,'')||0);
+        const afterMin = Number(r.afterMin||0);
+        const delta = Number(r.delta||-1);
+
+        const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td><input type="number" min="1" max="99" step="1" value="${Number(String(r.id||'').replace(/\D/g,''))||''}" data-k="id" data-i="${idx}"></td>
-          <td><input type="number" min="0" step="0.5" value="${(r.afterMin!=null? r.afterMin : 3)}" data-k="afterMin" data-i="${idx}"></td>
-          <td><div class="muted" style="font-weight:800;">Eine SK schlechter</div></td>
-          <td><button class="btnSmall danger" type="button" data-del="${idx}">Entfernen</button></td>
+          <td>
+            <input type="number" min="1" step="1" value="${idNum}" style="width:90px;" data-k="id">
+          </td>
+          <td>
+            <input type="number" min="0" step="1" value="${afterMin}" style="width:120px;" data-k="afterMin">
+          </td>
+          <td>
+            <select data-k="delta" style="min-width:160px;">
+              <option value="-1" ${delta===-1?'selected':''}>1 Stufe schlechter</option>
+              <option value="-2" ${delta===-2?'selected':''}>2 Stufen schlechter</option>
+              <option value="-3" ${delta===-3?'selected':''}>3 Stufen schlechter</option>
+            </select>
+          </td>
+          <td class="tRight">
+            <button class="btnSmall danger" type="button" data-act="del">Löschen</button>
+          </td>
         `;
-        ruleBody.appendChild(tr);
-      });
+        tb.appendChild(tr);
+      }
     }
 
     function readRulesFromUI(){
-      const rows = [...ruleBody.querySelectorAll('tr')];
       const out = [];
-      rows.forEach((tr, idx) => {
-        const idNum = Number(tr.querySelector('input[data-k="id"]').value || 0);
-        const afterMinVal = Number(tr.querySelector('input[data-k="afterMin"]').value || 0);
+      const tb = el('rulesBody');
+      const trs = tb.querySelectorAll('tr');
+      trs.forEach(tr=>{
+        const idNum = Number(tr.querySelector('input[data-k="id"]')?.value || 0);
+        const afterMinVal = Number(tr.querySelector('input[data-k="afterMin"]')?.value || 0);
+        const deltaSel = tr.querySelector('select[data-k="delta"]');
+        const delta = Number(deltaSel ? deltaSel.value : -1);
         if(idNum>0){
-          out.push({ id:'patient'+idNum, afterMin: afterMinVal, delta: -1 });
+          out.push({ id:'patient'+idNum, afterMin: afterMinVal, delta: delta });
         }
       });
       return out;
@@ -429,6 +459,7 @@
       maxMin.value = Number(cfg.random?.maxMin ?? 5);
       count.value = Number(cfg.random?.count ?? 3);
       minGapSec.value = Number(cfg.random?.minGapSec ?? 60);
+      maxSchwarz.value = Number(cfg.random?.maxSchwarz ?? 2);
       toLowerOnly.checked = !!cfg.random?.toLowerOnly;
 
       allow1.checked = !!cfg.random?.allow?.sk1;
@@ -438,6 +469,7 @@
 
       renderRules(cfg.fixed || []);
       showHide();
+      setStatus();
     }
 
     function readUI(){
@@ -450,6 +482,7 @@
       cfg.random.maxMin = Number(maxMin.value || 0);
       cfg.random.count = Number(count.value || 0);
       cfg.random.minGapSec = Number(minGapSec.value || 0);
+      cfg.random.maxSchwarz = Math.max(0, Number(maxSchwarz.value || 0));
       cfg.random.toLowerOnly = !!toLowerOnly.checked;
 
       cfg.random.allow.sk1 = !!allow1.checked;
@@ -465,79 +498,72 @@
       try{ localStorage.removeItem(KEY_PLAN); }catch{}
     }
 
-    document.addEventListener('click', (e) => {
-      const del = e.target && e.target.getAttribute && e.target.getAttribute('data-del');
-      if(del != null){
-        const cfg = readUI();
-        cfg.fixed.splice(Number(del),1);
-        renderRules(cfg.fixed);
-      }
-    });
-
-    el('btnAddRule').addEventListener('click', () => {
-      const cfg = readUI();
-      cfg.fixed.push({ id:'patient30', afterMin:3, to:1 });
-      renderRules(cfg.fixed);
-    });
-
-    el('btnSave').addEventListener('click', () => {
-      const cfg = readUI();
-      save(KEY, cfg);
-      if(cfg.mode==='random'){
-        resetPlan();
-      } else if(cfg.mode==='fixed'){
-        resetPlan();
-      }
-      setStatus();
-      alert('Gespeichert');
-    });
-
-    el('btnReset').addEventListener('click', () => {
-      save(KEY, defaults());
-      resetPlan();
-      fillUI(defaults());
-      alert('Zurückgesetzt');
-    });
-
-    enabled.addEventListener('change', showHide);
-    mode.addEventListener('change', showHide);
-
-    el('btnReseed').addEventListener('click', () => {
-      resetPlan();
-      alert('Ok. Beim nächsten Betreten der Ablage wird ein neuer Plan erzeugt.');
-    });
-
-    el('btnShowPlan').addEventListener('click', () => {
+    function showPlan(){
       const plan = load(KEY_PLAN, null);
-      planCard.style.display = '';
-      if(!plan || !plan.events || !plan.events.length){
-        planText.textContent = 'Kein Plan vorhanden. Öffne die Ablage einmal, dann wird bei Zufall ein Plan erstellt. Bei Fix wird der Plan beim Ablage Besuch erzeugt.';
+      if(!plan){
+        planText.textContent = 'Noch kein Plan.';
         return;
       }
-      const lines = [];
-      lines.push('Modus: ' + (plan.mode || ''));
-      lines.push('Zeitbasis: ' + (plan.basis || ''));
-      lines.push('Events: ' + plan.events.length);
-      lines.push('');
-      plan.events.forEach(ev => {
-        const at = Math.round((Number(ev.atMs||0)/1000));
-        const mm = Math.floor(at/60);
-        const ss = at%60;
-        const t = String(mm).padStart(2,'0') + ':' + String(ss).padStart(2,'0');
-        const idNum = String(ev.id||'').replace(/\D/g,'');
-        lines.push(t + '  Patient ' + idNum + '  zu ' + skLabel(ev.to) + (ev.done ? '  erledigt' : ''));
-      });
-      planText.textContent = lines.join('\n');
+      planText.textContent = JSON.stringify(plan, null, 2);
+    }
+
+    document.addEventListener('click', (e) => {
+      const t = e.target;
+
+      if(t && t.id==='btnSave'){
+        const cfg = readUI();
+        save(KEY_CFG, cfg);
+        resetPlan();
+        setStatus();
+        showHide();
+        showPlan();
+        return;
+      }
+
+      if(t && t.id==='btnReseed'){
+        resetPlan();
+        showPlan();
+        return;
+      }
+
+      if(t && t.id==='btnResetPlan'){
+        resetPlan();
+        showPlan();
+        return;
+      }
+
+      if(t && t.id==='btnRefreshPlan'){
+        showPlan();
+        return;
+      }
+
+      if(t && t.id==='btnAddRule'){
+        const cfg = readUI();
+        cfg.fixed = Array.isArray(cfg.fixed) ? cfg.fixed : [];
+        cfg.fixed.push({ id:'patient1', afterMin: 3, delta: -1 });
+        renderRules(cfg.fixed);
+        return;
+      }
+
+      if(t && t.dataset && t.dataset.act==='del'){
+        const tr = t.closest('tr');
+        if(tr) tr.remove();
+        return;
+      }
     });
 
-    el('btnClosePlan').addEventListener('click', () => { planCard.style.display = 'none'; });
+    document.addEventListener('input', (e)=>{
+      if(e.target && (e.target.id==='enabled' || e.target.id==='mode')){
+        setStatus();
+        showHide();
+      }
+    });
 
-    const cfg = Object.assign(defaults(), load(KEY, {}));
-    // merge random allow
-    if(cfg.random && cfg.random.allow){
-      cfg.random.allow = Object.assign(defaults().random.allow, cfg.random.allow);
-    }
+    const cfg = Object.assign(defaults(), load(KEY_CFG, {}));
     fillUI(cfg);
+    showPlan();
+
+  })();
   </script>
 </body>
 </html>
