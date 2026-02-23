@@ -995,6 +995,9 @@ async function applyDynamikToSichtungMap(firedArr){
     const to = normCat((it && (it.toCat || it.to)) || '');
     if(!id || !to) continue;
 
+    // Keine Verschlechterung ohne hinterlegtes Profil
+    if(getVXAllowedKeys(id).length === 0) continue;
+
     const vx = setVXIntoActive(id, to);
 
     const finalTo = vx && vx.toCat ? vx.toCat : to;
