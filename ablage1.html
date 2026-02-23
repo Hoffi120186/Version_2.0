@@ -78,27 +78,43 @@ header h1{margin:0;font-size:20px}
   width:200px;
   height:140px;
   border-radius:12px;
-  border:1px solid rgba(229,57,53,.55);
-  background: rgba(229,57,53,.16);
-  box-shadow: 0 10px 26px rgba(0,0,0,.28), 0 0 0 2px rgba(229,57,53,.20);
   padding:10px;
   display:flex;
   flex-direction:column;
   justify-content:center;
   gap:6px;
+  box-shadow: 0 10px 26px rgba(0,0,0,.28);
+  border:1px solid rgba(255,255,255,.20);
+  background: rgba(255,255,255,.08);
 }
-.vx-thumb .vx-title{
-  font-weight:900;
-  letter-spacing:.2px;
+.vx-thumb .vx-title{ font-weight:900; letter-spacing:.2px; }
+.vx-thumb .vx-reason{ font-weight:900; line-height:1.2; }
+.vx-thumb .vx-meta{ margin-top:2px; font-size:12px; opacity:.9; }
+
+.vx-thumb.sk1{
+  border-color: rgba(229,57,53,.70);
+  background: rgba(229,57,53,.18);
+  box-shadow: 0 10px 26px rgba(0,0,0,.28), 0 0 0 2px rgba(229,57,53,.25);
 }
-.vx-thumb .vx-reason{
-  font-weight:900;
-  line-height:1.2;
+.vx-thumb.sk2{
+  border-color: rgba(243,252,2,.70);
+  background: rgba(243,252,2,.14);
+  box-shadow: 0 10px 26px rgba(0,0,0,.28), 0 0 0 2px rgba(243,252,2,.18);
 }
-.vx-thumb .vx-meta{
-  margin-top:2px;
-  font-size:12px;
-  opacity:.9;
+.vx-thumb.sk2 .vx-title,
+.vx-thumb.sk2 .vx-reason,
+.vx-thumb.sk2 .vx-meta{
+  color:#111;
+}
+.vx-thumb.sk3{
+  border-color: rgba(46,125,50,.75);
+  background: rgba(46,125,50,.18);
+  box-shadow: 0 10px 26px rgba(0,0,0,.28), 0 0 0 2px rgba(46,125,50,.22);
+}
+.vx-thumb.sk4{
+  border-color: rgba(17,17,17,.85);
+  background: rgba(17,17,17,.55);
+  box-shadow: 0 10px 26px rgba(0,0,0,.32), 0 0 0 2px rgba(17,17,17,.25);
 }
 
 /* Titel + Badges */
@@ -131,6 +147,14 @@ h2{
 
 .meta{font-size:14px;opacity:.9;margin:6px 0}
 .injury{font-size:15px}
+.vx-values{
+  margin-top:10px;
+  padding:10px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.18);
+  background: rgba(0,0,0,.25);
+}
+.vx-values b{ font-weight:900; }
 
 /* Skeletons */
 .skeleton{position:relative;overflow:hidden;background:rgba(255,255,255,.08)}
@@ -284,14 +308,34 @@ function normCat(x){
   return String(x||'').toLowerCase().replace('grün','gruen').trim();
 }
 
-/* VX Map Helper */
-function hasVXProfile(id){
+function patientNumFromId(id){
+  const n = parseInt(String(id||'').replace(/\D/g,''),10);
+  return Number.isFinite(n) ? n : null;
+}
+
+function pickRandom(arr){
+  if(!Array.isArray(arr) || !arr.length) return null;
+  return arr[Math.floor(Math.random()*arr.length)];
+}
+
+/* VX Helpers, basiert auf vx_profiles.js */
+function getVXAllowedKeys(patientId){
   try{
-    const map = window.VX_MAP || window.vxMap || window.VX_PROFILES || null;
-    if(!map) return false;
-    return !!map[String(id)];
+    const n = patientNumFromId(patientId);
+    if(n == null) return [];
+    const map = window.VX_MAP || {};
+    const a = map[n];
+    return Array.isArray(a) ? a.slice() : [];
   }catch(e){
-    return false;
+    return [];
+  }
+}
+function getVXProfileByKey(key){
+  try{
+    const p = (window.VX_PROFILES || {})[key];
+    return p || null;
+  }catch(e){
+    return null;
   }
 }
 
@@ -338,7 +382,7 @@ function ensurePlanFallback(){
     const pool = active
       .map(a => ({ id:String(a && a.id || ''), label:(a && a.label) || '', startAt:a && a.startAt }))
       .filter(x => x.id)
-      .filter(x => hasVXProfile(x.id));
+      .filter(x => getVXAllowedKeys(x.id).length > 0);
 
     function allowedTo(cat){
       const c = normCat(cat);
@@ -683,21 +727,23 @@ function renderSkeletons(ids){
   }
 }
 
+function fmtNewValues(w){
+  if(!w) return '';
+  const parts = [];
+  if(w.af != null) parts.push(`AF ${w.af}/min`);
+  if(w.puls != null) parts.push(`Puls ${w.puls}/min`);
+  if(w.rr != null) parts.push(`RR ${w.rr}`);
+  if(w.spo2 != null) parts.push(`SpO2 ${w.spo2}%`);
+  return parts.join(', ');
+}
+
 function upsertCard(p){
 
   const active = loadLS('ablage.active.v1', []);
   if(Array.isArray(active)){
     const hit = active.find(x => x && String(x.id) === String(p.id));
-    if(hit){
-      if(hit.verschlechterung && hit.verschlechterung.grund){
-        p.verschlechterung = hit.verschlechterung;
-      }
-      if(hit.af != null || hit.puls != null){
-        const af = hit.af != null ? `AF ${hit.af}/min` : '';
-        const pu = hit.puls != null ? `Puls ${hit.puls}/min` : '';
-        const both = [af, pu].filter(Boolean).join(', ');
-        if(both) p.vitals = both;
-      }
+    if(hit && hit.verschlechterung){
+      p.verschlechterung = hit.verschlechterung;
     }
   }
 
@@ -707,18 +753,19 @@ function upsertCard(p){
   const flagChar = (kat==='rot' && flags.t) ? 'T' : (kat==='gruen' && flags.b) ? 'B' : '';
   const katBadgeClass = kat ? `badge-${kat}` : '';
 
-  let injText = p.injury || '';
-  if(p.vitals && !/af\s*\d+|puls\s*\d+/i.test((injText||'').toLowerCase())){
-    injText += ` , ${p.vitals}`;
-  }
-  if(!injText) injText = ' ';
-
   const badge = `<span class="badge ${katBadgeClass}">
                    <span class="sk">${label}</span>
                    ${flagChar ? `<span class="flag">${flagChar}</span>` : ''}
                  </span>`;
 
   const hasVX = !!(p.verschlechterung && p.verschlechterung.grund);
+  const vxTo = normCat(p.verschlechterung && (p.verschlechterung.toCat || p.verschlechterung.neueKategorie || '') || '');
+  const vxSkClass =
+    vxTo === 'rot' ? 'sk1' :
+    vxTo === 'gelb' ? 'sk2' :
+    vxTo === 'gruen' ? 'sk3' :
+    vxTo === 'schwarz' ? 'sk4' :
+    '';
 
   const imgBlock = p.img
     ? `<img data-src="${withV(abs(p.img))}" alt="${p.label}" loading="lazy">`
@@ -726,7 +773,7 @@ function upsertCard(p){
 
   const thumbHtml = hasVX
     ? `
-      <div class="vx-thumb" title="Dynamische Verschlechterung">
+      <div class="vx-thumb ${vxSkClass}" title="Dynamische Verschlechterung">
         <div class="vx-title">Verschlechterung</div>
         <div class="vx-reason">${p.verschlechterung.grund}</div>
         <div class="vx-meta">Bitte neu bewerten</div>
@@ -738,12 +785,23 @@ function upsertCard(p){
       </div>
     `;
 
+  const injText = (p.injury || ' ').trim();
+
+  const newValuesText = hasVX ? fmtNewValues(p.verschlechterung && (p.verschlechterung.werte || p.verschlechterung.vitals || null)) : '';
+
   const html = `
     ${thumbHtml}
     <div>
       <h2>${p.label} ${badge}</h2>
       <div class="meta">Alter: ${p.age ?? ''} | Geschlecht: ${p.gender ?? ''}</div>
       <div class="injury"><b>Hauptverletzung:</b> ${injText}</div>
+
+      ${hasVX ? `
+        <div class="vx-values">
+          <b>Neue Werte:</b> ${newValuesText || 'siehe Verschlechterung'}
+        </div>
+      ` : ''}
+
       ${p.error ? `<div style="color:#ffd2d2;margin-top:6px;font-size:12px;">⚠ ${p.error}</div>` : ''}
     </div>
     <div class="actions">
@@ -806,7 +864,7 @@ document.addEventListener('input', e=>{
   listEl.innerHTML='';
 
   (q ? all.filter(p =>
-    `${p.id} ${p.label} ${p.age||''} ${p.gender||''} ${p.injury||''} ${p.vitals||''}`.toLowerCase().includes(q)
+    `${p.id} ${p.label} ${p.age||''} ${p.gender||''} ${p.injury||''}`.toLowerCase().includes(q)
   ) : all).forEach(upsertCard);
 
   if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
@@ -869,6 +927,35 @@ function observeImage(img){
   else img.src=img.dataset.src;
 }
 
+/* Verschlechterung anwenden und Profil auswählen */
+function setVXIntoActive(patientId, toCat){
+  const active = loadLS('ablage.active.v1', []);
+  if(!Array.isArray(active) || !active.length) return null;
+
+  const hit = active.find(x => x && String(x.id) === String(patientId));
+  if(!hit) return null;
+
+  const keys = getVXAllowedKeys(patientId);
+  const chosenKey = pickRandom(keys);
+  const prof = chosenKey ? getVXProfileByKey(chosenKey) : null;
+
+  const grund = prof && prof.grund ? String(prof.grund) : 'Zustand verschlechtert sich.';
+  const werte = prof && prof.werte ? prof.werte : null;
+  const titel = prof && prof.titel ? String(prof.titel) : '';
+
+  hit.verschlechterung = {
+    key: chosenKey || '',
+    titel: titel,
+    grund: grund,
+    toCat: normCat(toCat || (prof && prof.neueKategorie) || ''),
+    werte: werte,
+    ts: Date.now()
+  };
+
+  saveLS('ablage.active.v1', active);
+  return hit.verschlechterung;
+}
+
 /* Dynamik Apply */
 async function applyDynamikToSichtungMap(firedArr){
   if(!Array.isArray(firedArr) || !firedArr.length) return;
@@ -879,7 +966,15 @@ async function applyDynamikToSichtungMap(firedArr){
   for(const it of firedArr){
     const id = String(it && it.id || '');
     const to = normCat((it && (it.toCat || it.to)) || '');
-    if(id && to) map[id] = to;
+    if(!id || !to) continue;
+
+    const vx = setVXIntoActive(id, to);
+
+    const finalTo = vx && vx.toCat ? vx.toCat : to;
+    map[id] = finalTo;
+
+    it.toCat = finalTo;
+    it.profile = vx || null;
   }
   try{ localStorage.setItem('sichtungMap', JSON.stringify(map)); }catch(e){}
 
@@ -892,7 +987,10 @@ async function applyDynamikToSichtungMap(firedArr){
   for(const it of firedArr){
     const id = String(it && it.id || '');
     const p = all.find(x => x && x.id === id);
-    if(p) upsertCard(p);
+    if(p){
+      if(it.profile) p.verschlechterung = it.profile;
+      upsertCard(p);
+    }
   }
 
   if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
@@ -969,34 +1067,10 @@ async function load(){
 }
 load();
 
-/* Dynamik UI Update */
-window.addEventListener('ablage:dynamik', () => {
-  try{
-    ensurePlanFallback();
-    const all = (window.__PAT_DATA__ || []);
-    if(all.length){
-      listEl.innerHTML = '';
-      all.forEach(upsertCard);
-      updateStats();
-      if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
-        window.Ablage.hydrateCards({
-          containerSelector: '#list',
-          cardSelector: '.card',
-          placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
-          placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
-        });
-        highlightAssignButtons();
-      }
-    } else {
-      load();
-    }
-  }catch(e){}
-});
-
 /* Live Updates */
 window.addEventListener('storage', (e)=>{
   if(!e || !e.key) return;
-  if(e.key==='sichtungMap' || e.key==='ablage.done.v1' || e.key.startsWith('sicht_')){
+  if(e.key==='sichtungMap' || e.key==='ablage.done.v1' || e.key.startsWith('sicht_') || e.key==='ablage.active.v1'){
     updateStats();
 
     const done = getDoneSet();
@@ -1027,6 +1101,10 @@ window.addEventListener('storage', (e)=>{
             highlightAssignButtons();
           }
         });
+      } else {
+        const all = (window.__PAT_DATA__||[]);
+        const p = all.find(x => x && x.id === id);
+        if(p) upsertCard(p);
       }
     }
   }
@@ -1053,14 +1131,18 @@ async function pdfSingle(p){
   doc.text(`Alter: ${p.age ?? ''}`, 20, y); y+=7;
   doc.text(`Geschlecht: ${p.gender ?? ''}`, 20, y); y+=10;
 
-  let inj=p.injury || '';
-  const haveVitals=/af\s*\d+|puls\s*\d+/i.test((inj||'').toLowerCase());
-  if(p.vitals && !haveVitals) inj += ` , ${p.vitals}`;
-
   doc.text('Hauptverletzung:', 20, y); y+=6;
-  const txt=doc.splitTextToSize(inj || ' ', W-40);
+  const txt=doc.splitTextToSize((p.injury || ' ').trim(), W-40);
   doc.text(txt, 20, y);
   y+=txt.length*6+10;
+
+  const newValues = p.verschlechterung ? fmtNewValues(p.verschlechterung.werte) : '';
+  if(newValues){
+    doc.text('Neue Werte:', 20, y); y+=6;
+    const t2 = doc.splitTextToSize(newValues, W-40);
+    doc.text(t2, 20, y);
+    y+=t2.length*6+10;
+  }
 
   const hidePhotos=document.getElementById('cbHidePhotos').checked;
   if(p.img && !hidePhotos){
@@ -1180,6 +1262,22 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
       extra = '<div style="opacity:.85; margin-top:6px; font-size:13px;">Auslöser nach ' + m + ':' + String(s).padStart(2,'0') + ' Minuten in der Ablage.</div>';
     }
 
+    var grund = '';
+    try{
+      grund = item.profile && item.profile.grund ? String(item.profile.grund) : '';
+    }catch(_){ grund=''; }
+
+    var werte = '';
+    try{
+      var w = item.profile && item.profile.werte ? item.profile.werte : null;
+      if(w){
+        var parts = [];
+        if(w.af != null) parts.push('AF ' + w.af + '/min');
+        if(w.puls != null) parts.push('Puls ' + w.puls + '/min');
+        werte = parts.join(', ');
+      }
+    }catch(_2){ werte=''; }
+
     body.innerHTML =
       '<div style="font-size:15px;"><b>' + name + '</b> hat sich verschlechtert.</div>' +
       '<div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">' +
@@ -1187,6 +1285,8 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
         '<span style="opacity:.85; font-weight:800;">zu</span>' +
         '<span class="dynBadge ' + ((toCat==='rot')?'sk1':(toCat==='gelb')?'sk2':(toCat==='gruen')?'sk3':(toCat==='schwarz')?'sk4':'') + '">' + toTxt + '</span>' +
       '</div>' +
+      (grund ? '<div style="margin-top:10px; font-weight:800;">' + grund + '</div>' : '') +
+      (werte ? '<div style="margin-top:6px; opacity:.9;">Neue Werte: ' + werte + '</div>' : '') +
       extra;
 
     backdrop.style.display = 'flex';
