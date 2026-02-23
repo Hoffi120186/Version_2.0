@@ -26,6 +26,7 @@ body{
 }
 body::before{content:"";position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:-1;}
 
+/* Header */
 header{
   position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
   padding:10px;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);
@@ -40,9 +41,11 @@ header h1{margin:0;font-size:20px}
 }
 .search::placeholder{color:rgba(255,255,255,.8)}
 
+/* Viewport & Grid */
 .viewport{flex:1;width:var(--w);margin:0 auto;padding:10px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}
 
+/* Karten */
 .card{
   display:grid;gap:14px;align-items:start;cursor:pointer;
   grid-template-columns:200px 1fr;
@@ -69,6 +72,7 @@ header h1{margin:0;font-size:20px}
 .thumb span{opacity:.7;font-size:13px;padding:6px;text-align:center}
 .actions{grid-area:actions;display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
 
+/* Verschlechterung Kasten statt Foto */
 .vx-thumb{
   grid-area:thumb;
   width:200px;
@@ -83,17 +87,8 @@ header h1{margin:0;font-size:20px}
   border:1px solid rgba(255,255,255,.20);
   background: rgba(255,255,255,.08);
 }
-.vx-thumb .vx-title{
-  font-weight:900;
-  letter-spacing:.2px;
-  font-size:16px;
-  line-height:1.1;
-  overflow-wrap:break-word;
-  word-break:normal;
-}
-.vx-thumb .vx-reason{
-  font-weight:900;
-  line-height:1.2;
+.vx-thumb .vx-title{ font-weight:900; letter-spacing:.2px; }
+.vx-thumb .vx-reason{ font-weight:900; line-height:1.2; 
   white-space:normal;
   word-break:break-word;
   overflow:hidden;
@@ -129,6 +124,7 @@ header h1{margin:0;font-size:20px}
   box-shadow: 0 10px 26px rgba(0,0,0,.32), 0 0 0 2px rgba(17,17,17,.25);
 }
 
+/* Titel + Badges */
 h2{
   margin:0 0 6px 0;font-size:22px;font-weight:900;letter-spacing:.2px;
   display:flex;align-items:center;gap:8px;flex-wrap:wrap;
@@ -167,6 +163,7 @@ h2{
 }
 .vx-values b{ font-weight:900; }
 
+/* Skeletons */
 .skeleton{position:relative;overflow:hidden;background:rgba(255,255,255,.08)}
 .skeleton::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg, transparent, rgba(255,255,255,.12), transparent);animation:shimmer 1.2s infinite}
 @keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
@@ -174,9 +171,11 @@ h2{
 .line-skel{height:14px;border-radius:6px;width:80%;margin-top:8px}
 .injury-skel{height:16px;border-radius:6px;width:90%;margin-top:10px}
 
+/* Lightbox */
 .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:999}
 .lightbox img{max-width:90vw;max-height:90vh;border-radius:12px}
 
+/* Empty */
 .empty{
   width:var(--w);margin:14vh auto 0; padding:16px;
   background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.2); border-radius:14px; text-align:center;
@@ -184,6 +183,7 @@ h2{
 .empty h2{margin:0 0 8px 0}
 .empty p{opacity:.9}
 
+/* Stats */
 .stats{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:8px 12px 0;}
 .stat{
   display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px;
@@ -196,6 +196,7 @@ h2{
 .stat-schwarz{ background:#111; }
 .stat-total{   background:#9aa0a6; color:#111; }
 
+/* Mobile tweaks */
 @media (max-width:980px){
   .grid{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
   .card{grid-template-columns:160px 1fr}
@@ -220,6 +221,7 @@ h2{
   .ablage-actions .btn { flex:1 1 100%; }
 }
 
+/* Klinik zuweisen Button */
 .btn-assign-clinic{
   background: linear-gradient(180deg, #e53935, #b71c1c) !important;
   color:#fff !important;
@@ -274,6 +276,7 @@ h2{
 <script type="module">
 'use strict';
 
+/* Auto Start Guard */
 const AUTOSTART = 'ablage.autostart.ok';
 function allowAutostart(){ try{ localStorage.setItem(AUTOSTART, 'true'); }catch(e){} }
 function denyAutostart(){  try{ localStorage.setItem(AUTOSTART, 'false'); }catch(e){} }
@@ -284,6 +287,7 @@ document.addEventListener('visibilitychange', () => {
 });
 allowAutostart();
 
+/* Helpers */
 const VERSION = 'v-0901-06';
 function abs(href, base){
   try{
@@ -316,23 +320,29 @@ function patientNumFromId(id){
   return Number.isFinite(n) ? n : null;
 }
 
-/* VX Helpers */
+function pickRandom(arr){
+  if(!Array.isArray(arr) || !arr.length) return null;
+  return arr[Math.floor(Math.random()*arr.length)];
+}
+
+/* VX Helpers, basiert auf vx_profiles.js */
 function getVXAllowedKeys(patientId){
   try{
     const n = patientNumFromId(patientId);
     if(n == null) return [];
     const map = window.VX_MAP || {};
     const a = map[n];
-    if(!Array.isArray(a)) return [];
-    return a.map(x=>{
-      if(typeof x === 'string') return x;
-      if(x && typeof x === 'object'){
-        return String(x.id || x.key || x.k || '');
-      }
-      return '';
-    }).filter(Boolean);
+    return Array.isArray(a) ? a.slice() : [];
   }catch(e){
     return [];
+  }
+}
+function getVXProfileByKey(key){
+  try{
+    const p = (window.VX_PROFILES || {})[key];
+    return p || null;
+  }catch(e){
+    return null;
   }
 }
 
@@ -437,38 +447,6 @@ function ensurePlanFallback(){
   saveLS('ablage.dynamik.plan.v1', plan);
 }
 
-/* patientsData loader */
-async function ensurePatientsJsonLoaded(){
-  try{
-    const existing = localStorage.getItem('patientsData');
-    if(existing){
-      const arr = JSON.parse(existing);
-      if(Array.isArray(arr) && arr.length) return;
-    }
-  }catch(e){}
-
-  const candidates = [
-    'patients.json',
-    '/patients.json',
-    'Patienten.json',
-    '/Patienten.json',
-    'patientsData.json',
-    '/patientsData.json'
-  ];
-
-  for(const url of candidates){
-    try{
-      const res = await fetch(withV(url), { cache:'no-store' });
-      if(!res.ok) continue;
-      const j = await res.json();
-      if(Array.isArray(j) && j.length){
-        try{ localStorage.setItem('patientsData', JSON.stringify(j)); }catch(e){}
-        return;
-      }
-    }catch(e){}
-  }
-}
-
 /* Datenquellen */
 function normGender(g){
   if(!g) return null;
@@ -492,18 +470,9 @@ function overlayFromJson(info){
   const num = Number(info.id.replace('patient',''));
   const j = getPatientsData().find(x => Number(x.id) === num);
   if(!j) return;
-
   if(!info.age && j.age) info.age = String(j.age);
   if(!info.gender && j.gender) info.gender = normGender(j.gender) || j.gender;
-
   if(!info.img && j.photo) info.img = abs(j.photo, info.url);
-
-  if(!info.injury && j.verletzung) info.injury = String(j.verletzung);
-
-  if(info.af == null && j.af != null) info.af = Number(j.af);
-  if(info.puls == null && j.puls != null) info.puls = Number(j.puls);
-
-  if(info.rr == null && j.rr != null) info.rr = String(j.rr);
 }
 
 /* Sichtungen */
@@ -532,7 +501,7 @@ function __labelFromCat(cat){
   if (c === 'rot') return 'SK1';
   if (c === 'gelb') return 'SK2';
   if (c === 'gruen') return 'SK3';
-  if (c === 'schwarz') return 'SCHWARZ';
+  if (c === 'schwarz') return 'SK4';
   return '';
 }
 function getSichtungDisplay(id, cat){
@@ -541,7 +510,7 @@ function getSichtungDisplay(id, cat){
   if (c === 'rot') return 'SK1' + ((p && p.t) ? ' , T' : '');
   if (c === 'gelb') return 'SK2';
   if (c === 'gruen') return 'SK3' + ((p && p.b) ? ' , B' : '');
-  if (c === 'schwarz') return 'SCHWARZ';
+  if (c === 'schwarz') return 'SK4';
   return '';
 }
 
@@ -710,16 +679,6 @@ async function fetchPatientData(entry){
     info.error = e && e.message ? e.message : String(e);
   }
 
-  if(info.vitals && (info.af == null || info.puls == null || info.rr == null)){
-    const txt = String(info.vitals);
-    const afMatch   = txt.match(/AF\s*(\d{1,3})/i);
-    const pulsMatch = txt.match(/Puls\s*(\d{1,3})/i);
-    const rrMatch   = txt.match(/RR\s*([0-9]{1,3}\s*\/\s*[0-9]{1,3})/i);
-    if(info.af == null && afMatch) info.af = parseInt(afMatch[1], 10);
-    if(info.puls == null && pulsMatch) info.puls = parseInt(pulsMatch[1], 10);
-    if(info.rr == null && rrMatch) info.rr = rrMatch[1].replace(/\s+/g,'');
-  }
-
   overlayFromPatMeta(info);
   overlayFromJson(info);
 
@@ -739,7 +698,7 @@ function extractMainInjuryFromButtonHTML(rawHtml){
   let t = cleanText(rawHtml);
   const hv = t.match(/Hauptverletzung\s*:?\s*(.+)$/i);
   let base = hv ? hv[1] : t;
-  base = base.replace(/^[\s\-\|•·]+/, '').split(/[\|\-•·]/)[0].trim();
+  base = base.replace(/^[\s\-\|•·–—]+/, '').split(/[\|—–\-•·]/)[0].trim();
   const p = base.indexOf('.');
   if (p>0 && p<80) base = base.slice(0,p).trim();
   return base || '';
@@ -792,22 +751,16 @@ function upsertCard(p){
   const active = loadLS('ablage.active.v1', []);
   if(Array.isArray(active)){
     const hit = active.find(x => x && String(x.id) === String(p.id));
-    if(hit){
+        if(hit){
       if(hit.af != null) p.af = hit.af;
       if(hit.puls != null) p.puls = hit.puls;
       if(hit.rr != null) p.rr = hit.rr;
-
       if(hit.baseAf != null) p.baseAf = hit.baseAf;
       if(hit.basePuls != null) p.basePuls = hit.basePuls;
       if(hit.baseRr != null) p.baseRr = hit.baseRr;
-
-      if(hit.verschlechterung){
-        const v = hit.verschlechterung;
-        const ok = !!(v && (v.key || v.werte) && v.grund && (v.ts || v.zeit));
-        if(ok) p.verschlechterung = v;
-      }
+      if(hit.verschlechterung) p.verschlechterung = hit.verschlechterung;
     }
-  }
+}
 
   const kat = sichtungFor(p.id);
   const flags = __readTogglePayload(p.id) || {};
@@ -820,9 +773,8 @@ function upsertCard(p){
                    ${flagChar ? `<span class="flag">${flagChar}</span>` : ''}
                  </span>`;
 
-  const vx = p.verschlechterung || null;
-  const hasVX = !!(vx && (vx.key || vx.werte) && vx.grund && (vx.ts || vx.zeit));
-  const vxTo = normCat(vx && (vx.toCat || vx.neueKategorie || '') || '');
+  const hasVX = !!(p.verschlechterung && p.verschlechterung.grund);
+  const vxTo = normCat(p.verschlechterung && (p.verschlechterung.toCat || p.verschlechterung.neueKategorie || '') || '');
   const vxSkClass =
     vxTo === 'rot' ? 'sk1' :
     vxTo === 'gelb' ? 'sk2' :
@@ -838,7 +790,7 @@ function upsertCard(p){
     ? `
       <div class="vx-thumb ${vxSkClass}" title="Dynamische Verschlechterung">
         <div class="vx-title">Verschlechterung</div>
-        <div class="vx-reason">${vx.grund}</div>
+        <div class="vx-reason">${p.verschlechterung.grund}</div>
         <div class="vx-meta">Bitte neu bewerten</div>
       </div>
     `
@@ -860,7 +812,8 @@ function upsertCard(p){
       ].filter(Boolean).join(', '))
     : '';
 
-  const newValuesText = hasVX ? fmtNewValues(vx && (vx.werte || vx.vitals || null)) : '';
+
+  const newValuesText = hasVX ? fmtNewValues(p.verschlechterung && (p.verschlechterung.werte || p.verschlechterung.vitals || null)) : '';
 
   const html = `
     ${thumbHtml}
@@ -886,6 +839,7 @@ function upsertCard(p){
   const cls = kat ? ('k-'+kat) : '';
 
   if(card){
+
     const keepTimer = card.querySelector('.ablage-timer');
     const keepActions = card.querySelector('.ablage-actions');
 
@@ -907,6 +861,7 @@ function upsertCard(p){
       const actionsSlot = card.querySelector('.actions') || card;
       actionsSlot.appendChild(keepActions);
     }
+
   }else{
     card=document.createElement('div');
     card.className='card '+cls;
@@ -1007,34 +962,20 @@ function setVXIntoActive(patientId, toCat){
   const hit = active.find(x => x && String(x.id) === String(patientId));
   if(!hit) return null;
 
-  const n = patientNumFromId(patientId);
-  let picked = null;
+  const keys = getVXAllowedKeys(patientId);
+  const chosenKey = pickRandom(keys);
+  const prof = chosenKey ? getVXProfileByKey(chosenKey) : null;
 
-  if(typeof window.VX_PICK_PROFILE === 'function' && n != null){
-    picked = window.VX_PICK_PROFILE(n);
-  }
-
-  if(!picked || !picked.grund || !picked.neueKategorie){
-    return null;
-  }
-
-  if(hit.baseAf == null && hit.af != null) hit.baseAf = hit.af;
-  if(hit.basePuls == null && hit.puls != null) hit.basePuls = hit.puls;
-  if(hit.baseRr == null && hit.rr != null) hit.baseRr = hit.rr;
-
-  if(picked.werte){
-    if(picked.werte.af != null) hit.af = picked.werte.af;
-    if(picked.werte.puls != null) hit.puls = picked.werte.puls;
-    if(picked.werte.rr != null) hit.rr = picked.werte.rr;
-    if(picked.werte.spo2 != null) hit.spo2 = picked.werte.spo2;
-  }
+  const grund = prof && prof.grund ? String(prof.grund) : 'Zustand verschlechtert sich.';
+  const werte = prof && prof.werte ? prof.werte : null;
+  const titel = prof && prof.titel ? String(prof.titel) : '';
 
   hit.verschlechterung = {
-    key: picked.id || '',
-    titel: String(picked.titel || ''),
-    grund: String(picked.grund || ''),
-    toCat: normCat(toCat || picked.neueKategorie || ''),
-    werte: picked.werte || null,
+    key: chosenKey || '',
+    titel: titel,
+    grund: grund,
+    toCat: normCat(toCat || (prof && prof.neueKategorie) || ''),
+    werte: werte,
     ts: Date.now()
   };
 
@@ -1096,7 +1037,6 @@ window.__AblageDynApply = applyDynamikToSichtungMap;
 
 /* Laden */
 async function load(){
-  await ensurePatientsJsonLoaded();
   ensurePlanFallback();
 
   const done = getDoneSet();
@@ -1262,6 +1202,7 @@ function imageToDataURL(src){
 window.addEventListener('beforeunload', () => { denyAutostart(); });
 </script>
 
+<!-- Dynamik Warnmeldung -->
 <div id="dynAlertBackdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:9999; align-items:center; justify-content:center; padding:18px;">
   <div id="dynAlertModal" class="dynModal" style="max-width:520px; width:100%; background:rgba(20,25,35,.95); border:1px solid rgba(255,255,255,.18); border-radius:16px; box-shadow:0 18px 60px rgba(0,0,0,.55); padding:16px 16px 14px;">
     <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
@@ -1315,7 +1256,7 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
     if(c === 'rot') return 'SK1 (rot)';
     if(c === 'gelb') return 'SK2 (gelb)';
     if(c === 'gruen') return 'SK3 (grün)';
-    if(c === 'schwarz') return 'SCHWARZ';
+    if(c === 'schwarz') return 'SK4 (schwarz)';
     return String(cat||'');
   }
 
@@ -1360,8 +1301,6 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
         var parts = [];
         if(w.af != null) parts.push('AF ' + w.af + '/min');
         if(w.puls != null) parts.push('Puls ' + w.puls + '/min');
-        if(w.rr != null) parts.push('RR ' + w.rr);
-        if(w.spo2 != null) parts.push('SpO2 ' + w.spo2 + '%');
         werte = parts.join(', ');
       }
     }catch(_2){ werte=''; }
