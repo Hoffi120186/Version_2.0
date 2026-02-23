@@ -216,7 +216,41 @@ function skToCat(sk){
     sMap[id] = skToCat(toSk);
     setSichtungMap(sMap);
     ev.done = true;
+// =============================
+// VX Profil anwenden
+// =============================
+if(window.VX_MAP && window.VX_PROFILES){
 
+  var pidNum = String(id).replace(/\D/g,'');     // "patient4" -> "4"
+  var map = window.VX_MAP[pidNum] || window.VX_MAP[Number(pidNum)];
+  if(map && map.length){
+
+    var key = map[Math.floor(Math.random() * map.length)];
+    var profil = window.VX_PROFILES[key];
+
+    if(profil){
+
+      // Vitalwerte im active Array anpassen
+      var active = getActive();
+      for(var i=0;i<active.length;i++){
+        if(String(active[i].id) === String(id)){
+           if(active[i].verschlechterung) break;
+
+           if(profil.werte){
+            if(profil.werte.af != null) active[i].af = profil.werte.af;
+            if(profil.werte.puls != null) active[i].puls = profil.werte.puls;
+          }
+          active[i].verschlechterung = {
+            titel: profil.titel,
+            grund: profil.grund,
+            zeit: Date.now()
+          };
+        }
+      }
+      setActive(active);
+    }
+  }
+}
     return {
       id: id,
       fromSk: fromSk,
