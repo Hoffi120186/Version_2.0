@@ -1,5 +1,5 @@
 /* =========================================================
-   1Rettungsmittel · ablage.js  (v10: Start nur beim Betreten)
+   1Rettungsmittel · ablage.js  (v10.1: iOS Fallback Tick für Dynamik)
    ========================================================= */
 (function () {
   'use strict';
@@ -645,6 +645,27 @@
     state.rafId = requestAnimationFrame(step);
   }
 
+  // iOS Fallback Tick für Dynamik
+  // Wenn requestAnimationFrame in iOS PWA gedrosselt wird, feuern Events sonst nicht
+  function ensureDynInterval(){
+    try{
+      if(window.__ablageDynIntervalId) return;
+
+      window.__ablageDynIntervalId = setInterval(function(){
+        try{
+          var dyn = getDyn();
+          if(!dyn || !dyn.enabled) return;
+
+          var mode = String(dyn.mode||'off');
+          if(mode === 'off') return;
+
+          var active = getActive();
+          dynCheck(active, now());
+        }catch(_e){}
+      }, 1000);
+    }catch(_){}
+  }
+
   window.Ablage = {
     hydrateCards, stopPatient, resetAll,
     startOnEnter: startTimersOnEntry,
@@ -653,6 +674,7 @@
 
   function autoInit(){
     startTimersOnEntry();
+    ensureDynInterval();
   }
 
   if (document.readyState === 'complete' || document.readyState === 'interactive') {
