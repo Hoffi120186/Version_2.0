@@ -9,9 +9,11 @@
   <link rel="manifest" href="/manifest.json" />
 
   <style>
+
     :root{
-      --w:min(94vw,980px);
+      --w:min(96vw,980px);
       --shadow:0 10px 26px rgba(0,0,0,.28);
+      --shadow2:0 18px 60px rgba(0,0,0,.55);
       --glass:rgba(255,255,255,.10);
       --glass2:rgba(255,255,255,.16);
       --border:rgba(255,255,255,.18);
@@ -20,6 +22,7 @@
       --ok:#2e7d32;
       --warn:#f3fc02;
       --bg:#0b0f1a;
+      --tap:52px;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -31,6 +34,7 @@
       display:flex;
       flex-direction:column;
       min-height:100vh;
+      padding-bottom:86px; /* space for bottom bar */
     }
     body::before{
       content:"";
@@ -53,7 +57,7 @@
       flex-wrap:wrap;
       padding:12px 12px;
       background:rgba(0,0,0,.55);
-      backdrop-filter:blur(6px);
+      backdrop-filter:blur(8px);
       border-bottom:1px solid var(--border);
     }
     header h1{margin:0;font-size:18px;font-weight:900;letter-spacing:.2px}
@@ -64,16 +68,42 @@
       color:#fff;
       border:none;
       padding:12px 14px;
-      border-radius:12px;
+      border-radius:14px;
       cursor:pointer;
       font-weight:900;
       box-shadow:var(--shadow);
       border:1px solid rgba(255,255,255,.20);
+      min-height:var(--tap);
     }
     .btn.secondary{background:rgba(255,255,255,.12)}
     .btn.danger{background:var(--danger)}
     .btn:active{transform:scale(.99)}
     .btn:disabled{opacity:.55; cursor:not-allowed}
+
+    /* Bottom action bar */
+    .bottomBar{
+      position:fixed;
+      left:0; right:0; bottom:0;
+      z-index:50;
+      padding:10px 12px max(10px, env(safe-area-inset-bottom));
+      background:rgba(0,0,0,.72);
+      backdrop-filter:blur(10px);
+      border-top:1px solid rgba(255,255,255,.14);
+    }
+    .bottomBar .inner{
+      width:var(--w);
+      margin:0 auto;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .bottomBar .btn{ box-shadow:var(--shadow2); }
+    .bottomBar .btn.primaryBig{
+      flex:1 1 260px;
+      background:linear-gradient(180deg, rgba(11,95,255,1), rgba(11,95,255,.75));
+      border-color:rgba(255,255,255,.22);
+    }
 
     .wrap{
       width:var(--w);
@@ -87,7 +117,7 @@
     .card{
       background:var(--glass);
       border:1px solid var(--border);
-      border-radius:16px;
+      border-radius:18px;
       box-shadow:var(--shadow);
       padding:14px;
     }
@@ -101,19 +131,21 @@
       display:inline-flex;
       gap:8px;
       align-items:center;
-      padding:8px 10px;
+      padding:9px 12px;
       border-radius:999px;
       background:rgba(255,255,255,.10);
       border:1px solid rgba(255,255,255,.16);
       font-weight:900;
       font-size:13px;
       user-select:none;
+      min-height:40px;
     }
 
+    /* Mode as segmented */
     .modeGrid{
       display:grid;
-      grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
-      gap:12px;
+      grid-template-columns:repeat(3, 1fr);
+      gap:10px;
       margin-top:8px;
     }
     .mode{
@@ -122,17 +154,19 @@
       border:1px solid rgba(255,255,255,.16);
       background:rgba(255,255,255,.08);
       cursor:pointer;
-      min-height:108px;
+      min-height:96px;
       display:flex;
       flex-direction:column;
       gap:6px;
+      transition:transform .06s ease, background .12s ease, border-color .12s ease;
     }
+    .mode:active{ transform:scale(.99); }
     .mode strong{font-size:14px}
     .mode small{opacity:.85; line-height:1.25}
     .mode.active{
-      border-color:rgba(11,95,255,.65);
+      border-color:rgba(11,95,255,.75);
       box-shadow:0 0 0 2px rgba(11,95,255,.18), var(--shadow);
-      background:rgba(11,95,255,.10);
+      background:rgba(11,95,255,.12);
     }
     .modeTop{display:flex;gap:10px;align-items:center}
     .radio{
@@ -145,7 +179,7 @@
       width:10px;height:10px;border-radius:999px;
       background:transparent;
     }
-    .mode.active .radio{border-color:rgba(11,95,255,.9)}
+    .mode.active .radio{border-color:rgba(11,95,255,.95)}
     .mode.active .radio::after{background:rgba(11,95,255,.95)}
 
     .stepper{
@@ -153,13 +187,13 @@
       gap:10px;
       align-items:center;
       padding:10px;
-      border-radius:14px;
+      border-radius:16px;
       background:rgba(255,255,255,.08);
       border:1px solid rgba(255,255,255,.16);
-      min-height:54px;
+      min-height:var(--tap);
     }
     .stepper button{
-      width:44px;height:44px;border-radius:12px;
+      width:48px;height:48px;border-radius:14px;
       border:1px solid rgba(255,255,255,.18);
       background:rgba(255,255,255,.10);
       color:#fff;
@@ -185,16 +219,9 @@
 
     .rangeBox{
       padding:12px;
-      border-radius:16px;
+      border-radius:18px;
       border:1px solid rgba(255,255,255,.16);
       background:rgba(255,255,255,.08);
-    }
-    .rangeRow{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content:space-between;
     }
     input[type="range"]{
       width:100%;
@@ -211,7 +238,7 @@
     .kv{
       display:flex; gap:8px; align-items:center;
       font-variant-numeric:tabular-nums;
-      padding:6px 10px;
+      padding:7px 11px;
       border-radius:999px;
       background:rgba(0,0,0,.22);
       border:1px solid rgba(255,255,255,.14);
@@ -228,7 +255,7 @@
       gap:10px;
       flex-wrap:wrap;
       align-items:center;
-      margin-top:8px;
+      margin-top:10px;
     }
     .dot{
       width:12px;height:12px;border-radius:999px;
@@ -245,7 +272,7 @@
       width:100%;
       border-collapse:collapse;
       overflow:hidden;
-      border-radius:12px;
+      border-radius:14px;
       border:1px solid rgba(255,255,255,.14);
       background:rgba(0,0,0,.18);
     }
@@ -264,13 +291,14 @@
     .table tr:last-child td{border-bottom:none}
     select{
       width:100%;
-      padding:10px 10px;
-      border-radius:12px;
+      padding:11px 10px;
+      border-radius:14px;
       background:rgba(255,255,255,.10);
       border:1px solid rgba(255,255,255,.18);
       color:#fff;
       font-weight:900;
       outline:none;
+      min-height:var(--tap);
     }
     option{color:#111}
 
@@ -280,11 +308,34 @@
       line-height:1.25;
     }
 
-    @media (max-width:640px){
-      header{padding:12px 10px}
-      .btn{width:auto}
-      .stepper button{width:46px;height:46px}
+    /* Presets as big buttons */
+    .presetRow{
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+      gap:10px;
+      margin-top:10px;
     }
+    .presetBtn{
+      background:rgba(255,255,255,.12);
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:16px;
+      padding:12px;
+      cursor:pointer;
+      min-height:64px;
+      text-align:left;
+      font-weight:900;
+      box-shadow:var(--shadow);
+    }
+    .presetBtn:active{transform:scale(.99)}
+    .presetBtn small{display:block; opacity:.85; font-weight:700; margin-top:2px; line-height:1.2}
+
+    @media (max-width:760px){
+      .modeGrid{ grid-template-columns:1fr; }
+      .bottomBar .inner{ gap:8px; }
+      .bottomBar .btn{ flex:1 1 40%; }
+      .bottomBar .btn.primaryBig{ flex:1 1 100%; }
+    }
+
   </style>
 </head>
 
@@ -422,10 +473,10 @@
       </div>
     </div>
 
-    <div class="row" style="margin-top:10px;">
-      <button class="btn secondary" id="btnPresetSoft" type="button">Preset. Moderat</button>
-      <button class="btn secondary" id="btnPresetReal" type="button">Preset. Realistisch</button>
-      <button class="btn secondary" id="btnPresetHard" type="button">Preset. Eskalation</button>
+    <div class="presetRow">
+      <button class="presetBtn" id="btnPresetSoft" type="button">Preset. Moderat<small>Wenig Verschlechterungen</small></button>
+      <button class="presetBtn" id="btnPresetReal" type="button">Preset. Realistisch<small>Guter Standard</small></button>
+      <button class="presetBtn" id="btnPresetHard" type="button">Preset. Eskalation<small>Mehr Druck im Szenario</small></button>
     </div>
 
     <div class="mini" style="margin-top:10px;">
@@ -1179,10 +1230,27 @@
     updatePlanState();
   }
 
+
+  // BottomBar Bridge
+  try{
+    const bbR = el('bbReload'); if(bbR) bbR.addEventListener('click', ()=>{ const b = el('btnReload'); if(b) b.click(); });
+    const bbC = el('bbClear');  if(bbC) bbC.addEventListener('click', ()=>{ const b = el('btnClearPlan'); if(b) b.click(); });
+    const bbG = el('bbGenerate');if(bbG) bbG.addEventListener('click', ()=>{ const b = el('btnSaveGenerate'); if(b) b.click(); });
+  }catch(_){}
+
   boot();
 
 })();
 </script>
+
+
+<div class="bottomBar" role="region" aria-label="Dynamik Aktionen">
+  <div class="inner">
+    <button class="btn secondary" id="bbReload" type="button">Ablage laden</button>
+    <button class="btn danger" id="bbClear" type="button">Plan löschen</button>
+    <button class="btn primaryBig" id="bbGenerate" type="button">Plan erzeugen</button>
+  </div>
+</div>
 
 </body>
 </html>
