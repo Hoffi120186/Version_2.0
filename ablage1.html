@@ -332,7 +332,13 @@ function getVXAllowedKeys(patientId){
     if(n == null) return [];
     const map = window.VX_MAP || {};
     const a = map[n];
-    return Array.isArray(a) ? a.slice() : [];
+    if(!Array.isArray(a)) return [];
+    // VX_MAP erlaubt Strings oder Objekte {id,w}. Wir geben hier nur die Profil IDs zurück.
+    return a.map(x=>{
+      if(typeof x === 'string') return x;
+      if(x && typeof x === 'object' && x.id) return String(x.id);
+      return null;
+    }).filter(Boolean);
   }catch(e){
     return [];
   }
@@ -957,23 +963,38 @@ function observeImage(img){
 }
 
 /* Verschlechterung anwenden und Profil auswählen */
-function setVXIntoActive(patientId, toCat){
+function pickVXProfile(patientId){
+  // bevorzugt die gewichtete Auswahl aus vx_profiles.js
+  try{
+    if(typeof window.VX_PICK_PROFILE === 'function'){
+      const n = String(patientId||'').replace(/\D/g,'');
+      const p = window.VX_PICK_PROFILE(n);
+      if(p) return p;
+    }
+  }catch(e){}
+
+  // Fallback: gleichmäßig aus erlaubten Keys ziehen
+  const keys = getVXAllowedKeys(patientId);
+  const chosenKey = pickRandom(keys);
+  return chosenKey ? getVXProfileByKey(chosenKey) : null;
+}
+
+function setVXIntoActive(patientId, toCat, profileFromEvent){
   const active = loadLS('ablage.active.v1', []);
   if(!Array.isArray(active) || !active.length) return null;
 
   const hit = active.find(x => x && String(x.id) === String(patientId));
   if(!hit) return null;
 
-  const keys = getVXAllowedKeys(patientId);
-  const chosenKey = pickRandom(keys);
-  const prof = chosenKey ? getVXProfileByKey(chosenKey) : null;
+  const prof = profileFromEvent || pickVXProfile(patientId);
 
   const grund = prof && prof.grund ? String(prof.grund) : 'Zustand verschlechtert sich.';
   const werte = prof && prof.werte ? prof.werte : null;
   const titel = prof && prof.titel ? String(prof.titel) : '';
+  const key   = prof && prof.id ? String(prof.id) : '';
 
   hit.verschlechterung = {
-    key: chosenKey || '',
+    key: key,
     titel: titel,
     grund: grund,
     toCat: normCat(toCat || (prof && prof.neueKategorie) || ''),
@@ -984,6 +1005,7 @@ function setVXIntoActive(patientId, toCat){
   saveLS('ablage.active.v1', active);
   return hit.verschlechterung;
 }
+
 
 /* Dynamik Apply */
 async function applyDynamikToSichtungMap(firedArr){
@@ -1000,7 +1022,8 @@ async function applyDynamikToSichtungMap(firedArr){
     // Keine Verschlechterung ohne hinterlegtes Profil
     if(getVXAllowedKeys(id).length === 0) continue;
 
-    const vx = setVXIntoActive(id, to);
+    const profEvent = (it && it.profile && (it.profile.grund || it.profile.titel || it.profile.werte)) ? it.profile : null;
+    const vx = setVXIntoActive(id, to, profEvent);
 
     const finalTo = vx && vx.toCat ? vx.toCat : to;
     map[id] = finalTo;
