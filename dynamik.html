@@ -14,34 +14,33 @@
   <style>
     :root{
       --bg:#0b0f1a;
-      --glass:rgba(255,255,255,.10);
-      --border:rgba(255,255,255,.18);
-      --shadow:0 10px 26px rgba(0,0,0,.28);
+      --glass:rgba(255,255,255,.14);
+      --border:rgba(255,255,255,.22);
+      --shadow:0 14px 34px rgba(0,0,0,.34);
       --radius:16px;
       --accent:#0B5FFF;
-      --muted:rgba(255,255,255,.75);
+      --muted:rgba(255,255,255,.80);
       --ok:#22c55e;
       --warn:#f59e0b;
       --bad:#ef4444;
-      --black:#111827;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
       margin:0;
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;
       background:#0b0f1a url("fotos/ablageB.jpg") center/cover no-repeat fixed;
       color:#fff;
     }
-    body::before{content:"";position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:-1}
+    body::before{content:"";position:fixed;inset:0;background:rgba(0,0,0,.60);z-index:-1}
 
     .wrap{width:min(1100px,94vw); margin:0 auto; padding:14px 0 26px}
     header{
       position:sticky; top:0; z-index:10;
       display:flex; align-items:center; gap:10px; flex-wrap:wrap;
       padding:10px 10px;
-      background:rgba(0,0,0,.60);
-      backdrop-filter:blur(6px);
+      background:rgba(0,0,0,.62);
+      backdrop-filter:blur(8px);
     }
     header h1{margin:0; font-size:18px}
     .right{margin-left:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap}
@@ -53,7 +52,7 @@
       padding:10px 14px;
       border-radius:12px;
       cursor:pointer;
-      font-weight:800;
+      font-weight:900;
       box-shadow:0 10px 26px rgba(0,0,0,.22);
       touch-action:manipulation;
     }
@@ -71,6 +70,7 @@
       border-radius:var(--radius);
       box-shadow:var(--shadow);
       padding:14px;
+      backdrop-filter:blur(10px);
     }
     .grid{
       margin-top:14px;
@@ -81,7 +81,7 @@
 
     .row{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start}
     .col{flex:1 1 320px; min-width:280px}
-    .muted{ color:var(--muted); }
+    .muted{ color:var(--muted); font-weight:650; }
 
     .status{
       display:inline-flex;
@@ -90,34 +90,37 @@
       padding:8px 12px;
       border-radius:999px;
       border:1px solid rgba(255,255,255,.18);
-      background:rgba(255,255,255,.08);
-      font-weight:900;
+      background:rgba(255,255,255,.10);
+      font-weight:950;
+      backdrop-filter:blur(8px);
     }
-    .status.ok{ border-color:rgba(34,197,94,.45); background:rgba(34,197,94,.14); color:#bbf7d0; }
-    .status.bad{ border-color:rgba(239,68,68,.45); background:rgba(239,68,68,.12); color:#fecaca; }
+    .status.ok{ border-color:rgba(34,197,94,.50); background:rgba(34,197,94,.16); color:#bbf7d0; }
 
-    label{ font-weight:900; }
+    label{ font-weight:950; }
     input[type="number"], select{
-      background:rgba(255,255,255,.08);
+      background:rgba(255,255,255,.10);
       color:#fff;
-      border:1px solid rgba(255,255,255,.18);
+      border:1px solid rgba(255,255,255,.22);
       border-radius:12px;
       padding:10px;
       outline:none;
+      backdrop-filter:blur(8px);
     }
     select option{ color:#111; }
 
-    .divider{margin-top:12px;border-top:1px solid rgba(255,255,255,.14);padding-top:12px}
+    .divider{margin-top:12px;border-top:1px solid rgba(255,255,255,.16);padding-top:12px}
 
     .switch{
       display:flex; align-items:center; justify-content:space-between; gap:12px;
       padding:12px 12px;
       border-radius:14px;
-      border:1px solid rgba(255,255,255,.18);
-      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.22);
+      background:rgba(255,255,255,.10);
+      backdrop-filter:blur(10px);
     }
-    .switch strong{font-size:15px}
-    .switch .sub{font-size:13px; color:var(--muted); margin-top:4px; font-weight:600}
+    .switch strong{font-size:15px; font-weight:950}
+    .switch .sub{font-size:13px; color:var(--muted); margin-top:4px; font-weight:650}
+
     .toggle{
       position:relative;
       width:62px;
@@ -128,8 +131,8 @@
     .toggle .track{
       position:absolute; inset:0;
       border-radius:999px;
-      background:rgba(255,255,255,.18);
-      border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.20);
+      border:1px solid rgba(255,255,255,.22);
       transition:200ms;
     }
     .toggle .thumb{
@@ -142,8 +145,8 @@
       box-shadow:0 10px 20px rgba(0,0,0,.25);
     }
     .toggle input:checked + .track{
-      background:rgba(11,95,255,.45);
-      border-color:rgba(11,95,255,.55);
+      background:rgba(11,95,255,.55);
+      border-color:rgba(11,95,255,.60);
     }
     .toggle input:checked + .track .thumb{
       transform:translateX(28px);
@@ -153,9 +156,10 @@
       display:inline-flex;
       gap:0;
       border-radius:14px;
-      border:1px solid rgba(255,255,255,.18);
-      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.22);
+      background:rgba(255,255,255,.10);
       overflow:hidden;
+      backdrop-filter:blur(10px);
     }
     .seg button{
       appearance:none;
@@ -163,37 +167,43 @@
       background:transparent;
       color:#fff;
       padding:10px 12px;
-      font-weight:900;
+      font-weight:950;
       cursor:pointer;
       min-width:130px;
       touch-action:manipulation;
     }
-    .seg button + button{ border-left:1px solid rgba(255,255,255,.14); }
+    .seg button + button{ border-left:1px solid rgba(255,255,255,.16); }
     .seg button.active{
-      background:rgba(11,95,255,.55);
+      background:rgba(11,95,255,.60);
     }
+    .startSeg button{ min-width:unset; width:25%; }
 
     .choiceRow{
       display:flex; gap:10px; flex-wrap:wrap; align-items:center;
       padding:10px 10px;
       border-radius:14px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.20);
+      background:rgba(255,255,255,.08);
+      backdrop-filter:blur(10px);
     }
+
     .chip{
       display:inline-flex; align-items:center; gap:10px;
       padding:10px 12px;
       border-radius:999px;
       border:1px solid rgba(255,255,255,.18);
       background:rgba(255,255,255,.08);
-      font-weight:900;
+      font-weight:950;
       user-select:none;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);
+      backdrop-filter:blur(10px);
     }
     .chip input{width:18px;height:18px}
-    .chip.sk3{ border-color:rgba(34,197,94,.45); background:rgba(34,197,94,.12); }
-    .chip.sk2{ border-color:rgba(245,158,11,.45); background:rgba(245,158,11,.12); }
-    .chip.sk1{ border-color:rgba(239,68,68,.45); background:rgba(239,68,68,.12); }
-    .chip.tot{ border-color:rgba(17,24,39,.55); background:rgba(17,24,39,.35); }
+
+    .chip.sk3{ border-color:rgba(34,197,94,.78); background:rgba(34,197,94,.24); }
+    .chip.sk2{ border-color:rgba(245,158,11,.82); background:rgba(245,158,11,.24); }
+    .chip.sk1{ border-color:rgba(239,68,68,.82); background:rgba(239,68,68,.24); }
+    .chip.tot{ border-color:rgba(255,255,255,.30); background:rgba(17,24,39,.52); }
 
     .inline{
       display:flex; gap:10px; flex-wrap:wrap; align-items:center;
@@ -203,11 +213,12 @@
       display:flex; align-items:center; justify-content:space-between; gap:12px;
       padding:10px 10px;
       border-radius:14px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.20);
+      background:rgba(255,255,255,.08);
+      backdrop-filter:blur(10px);
     }
     .opt .left{display:flex; flex-direction:column; gap:4px}
-    .opt .left strong{font-size:14px}
+    .opt .left strong{font-size:14px; font-weight:950}
     .opt .left span{font-size:12px; color:var(--muted); font-weight:650}
 
     .footerActions{
@@ -220,6 +231,7 @@
       .btn{ padding:12px 14px; }
       .col{ min-width:100%; }
       .seg button{ min-width:105px; }
+      .startSeg button{ width:50%; }
     }
   </style>
 </head>
@@ -253,11 +265,11 @@
           <label style="display:block; margin-bottom:10px;">Modus</label>
           <div class="inline">
             <div class="seg" role="tablist" aria-label="Modus Auswahl">
-              <button type="button" id="modeOff" class="active">Aus</button>
-              <button type="button" id="modeRandom">Zufällig</button>
-              <button type="button" id="modeFixed">Fix</button>
+              <button type="button" id="modeOff" class="active" data-mode="off">Aus</button>
+              <button type="button" id="modeRandom" data-mode="random">Zufällig</button>
+              <button type="button" id="modeFixed" data-mode="fixed">Fix</button>
             </div>
-            <span class="muted" style="font-weight:700;">Zufällig würfelt Ereignisse, Fix nutzt deine Tabelle unten.</span>
+            <span class="muted">Zufällig würfelt Ereignisse, Fix nutzt deine Tabelle unten.</span>
           </div>
         </div>
       </div>
@@ -268,16 +280,22 @@
         <div class="divider">
           <div style="font-weight:950; margin-bottom:10px;">Start der Patientenverschlechterung</div>
 
-          <div class="choiceRow" role="group" aria-label="Start Fenster">
-            <div class="seg" style="width:100%;">
+          <div class="choiceRow" role="group" aria-label="Start Fenster" style="flex-direction:column; align-items:stretch;">
+            <div class="seg startSeg" style="width:100%;">
               <button type="button" class="active" data-win="1">1 bis 3 Minuten</button>
               <button type="button" data-win="2">3 bis 6 Minuten</button>
               <button type="button" data-win="3">6 bis 9 Minuten</button>
               <button type="button" data-win="4">9 bis 12 Minuten</button>
             </div>
+            <div class="seg startSeg" style="width:100%; margin-top:10px;">
+              <button type="button" data-win="5">12 bis 15 Minuten</button>
+              <button type="button" data-win="6">15 bis 18 Minuten</button>
+              <button type="button" data-win="7">18 bis 21 Minuten</button>
+              <button type="button" data-win="8">21 bis 25 Minuten</button>
+            </div>
           </div>
 
-          <div class="muted" style="margin-top:10px; font-weight:650;">
+          <div class="muted" style="margin-top:10px;">
             Wird bei Zufall genutzt, Beginn liegt innerhalb des Fensters.
           </div>
 
@@ -289,12 +307,12 @@
 
         <div class="row" style="margin-top:12px;">
           <div class="col">
-            <label>Anzahl Events</label>
+            <label>Wieviele Patienten sich verschlechtern sollen</label>
             <div style="margin-top:8px;">
-              <input id="count" type="number" min="0" step="1" value="3" style="width:120px;">
+              <input id="count" type="number" min="0" step="1" value="3" style="width:140px;">
             </div>
-            <div class="muted" style="margin-top:10px; font-weight:650;">
-              Gesamtanzahl Verschlechterungen.
+            <div class="muted" style="margin-top:10px;">
+              Anzahl der Patienten, die im Verlauf schlechter werden.
             </div>
           </div>
 
@@ -325,12 +343,12 @@
           </div>
 
           <div class="row" style="margin-top:10px; align-items:center; gap:10px;">
-            <span class="muted" style="min-width:280px; font-weight:800;">Maximale SK1 Verschlechterung zu Tot</span>
+            <span class="muted" style="min-width:320px; font-weight:900;">Maximale SK1 Verschlechterung zu Tot</span>
             <input id="maxSchwarz" type="number" min="0" max="10" step="1" value="2" style="width:120px;">
-            <span class="muted" style="font-weight:650;">Empfehlung 1 oder 2</span>
+            <span class="muted">Empfehlung 1 oder 2</span>
           </div>
 
-          <div class="muted" style="margin-top:8px; font-weight:650;">
+          <div class="muted" style="margin-top:8px;">
             Nur eine Stufe schlechter ist aktiv, Grün zu Gelb, Gelb zu Rot, Rot zu Tot.
           </div>
 
@@ -342,18 +360,18 @@
 
       <div class="card" id="fixedCard">
         <div style="font-weight:950; font-size:16px;">Fix</div>
-        <div class="muted" style="margin-top:10px; font-weight:650;">
+        <div class="muted" style="margin-top:10px;">
           Hier kannst du feste Regeln pflegen. Beispiel, Patient 7 nach 4 Minuten um eine Stufe schlechter.
         </div>
 
         <div class="divider">
-          <table style="width:100%; border-collapse:collapse; overflow:hidden; border-radius:12px; border:1px solid rgba(255,255,255,.14); background:rgba(0,0,0,.20);">
+          <table style="width:100%; border-collapse:collapse; overflow:hidden; border-radius:12px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); backdrop-filter:blur(10px);">
             <thead>
               <tr>
-                <th style="padding:10px; border-bottom:1px solid rgba(255,255,255,.10); text-align:left; width:120px;">Patient</th>
-                <th style="padding:10px; border-bottom:1px solid rgba(255,255,255,.10); text-align:left; width:170px;">Nach Minuten</th>
-                <th style="padding:10px; border-bottom:1px solid rgba(255,255,255,.10); text-align:left;">Delta</th>
-                <th style="padding:10px; border-bottom:1px solid rgba(255,255,255,.10); text-align:right; width:120px;">Aktion</th>
+                <th style="padding:10px; border-bottom:1px solid rgba(255,255,255,.12); text-align:left; width:120px;">Patient</th>
+                <th style="padding:10px; border-bottom:1px solid rgba(255,255,255,.12); text-align:left; width:170px;">Nach Minuten</th>
+                <th style="padding:10px; border-bottom:1px solid rgba(255,255,255,.12); text-align:left;">Delta</th>
+                <th style="padding:10px; border-bottom:1px solid rgba(255,255,255,.12); text-align:right; width:120px;">Aktion</th>
               </tr>
             </thead>
             <tbody id="rulesBody"></tbody>
@@ -361,14 +379,14 @@
 
           <div class="row" style="margin-top:12px;">
             <button class="btn ghost" id="btnAddRule" type="button">Regel hinzufügen</button>
-            <span class="muted" style="font-weight:650;">Delta, 1 bedeutet eine Stufe schlechter, 2 bedeutet zwei Stufen.</span>
+            <span class="muted">Delta, 1 bedeutet eine Stufe schlechter, 2 bedeutet zwei Stufen.</span>
           </div>
         </div>
       </div>
 
       <div class="card">
         <div style="font-weight:950; font-size:16px;">Weiter</div>
-        <div class="muted" style="margin-top:8px; font-weight:650;">
+        <div class="muted" style="margin-top:8px;">
           Optional, direkt zur Auswahl der Patienten oder zum Start der Sichtung.
         </div>
         <div class="footerActions">
@@ -479,20 +497,20 @@
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td style="padding:10px; border-bottom:1px solid rgba(255,255,255,.10);">
+          <td style="padding:10px; border-bottom:1px solid rgba(255,255,255,.12);">
             <input type="number" min="1" step="1" value="${idNum}" style="width:90px;" data-k="id">
           </td>
-          <td style="padding:10px; border-bottom:1px solid rgba(255,255,255,.10);">
+          <td style="padding:10px; border-bottom:1px solid rgba(255,255,255,.12);">
             <input type="number" min="0" step="1" value="${afterMin}" style="width:120px;" data-k="afterMin">
           </td>
-          <td style="padding:10px; border-bottom:1px solid rgba(255,255,255,.10);">
+          <td style="padding:10px; border-bottom:1px solid rgba(255,255,255,.12);">
             <select data-k="delta" style="min-width:160px;">
               <option value="-1" ${delta===-1?'selected':''}>1 Stufe schlechter</option>
               <option value="-2" ${delta===-2?'selected':''}>2 Stufen schlechter</option>
               <option value="-3" ${delta===-3?'selected':''}>3 Stufen schlechter</option>
             </select>
           </td>
-          <td style="padding:10px; border-bottom:1px solid rgba(255,255,255,.10); text-align:right;">
+          <td style="padding:10px; border-bottom:1px solid rgba(255,255,255,.12); text-align:right;">
             <button class="btn ghost" type="button" data-act="del">Löschen</button>
           </td>
         `;
@@ -521,17 +539,22 @@
         1:{a:1,b:3},
         2:{a:3,b:6},
         3:{a:6,b:9},
-        4:{a:9,b:12}
+        4:{a:9,b:12},
+        5:{a:12,b:15},
+        6:{a:15,b:18},
+        7:{a:18,b:21},
+        8:{a:21,b:25}
       };
       const v = map[preset] || map[2];
       minMin.value = v.a;
       maxMin.value = v.b;
 
-      const seg = randomCard.querySelector('.seg');
-      if(!seg) return;
-      const btns = seg.querySelectorAll('button[data-win]');
-      btns.forEach(b=>{
-        b.classList.toggle('active', String(b.dataset.win)===String(preset));
+      const segs = randomCard.querySelectorAll('.startSeg');
+      segs.forEach(seg=>{
+        const btns = seg.querySelectorAll('button[data-win]');
+        btns.forEach(b=>{
+          b.classList.toggle('active', String(b.dataset.win)===String(preset));
+        });
       });
     }
 
@@ -542,6 +565,10 @@
       if(a===3 && b===6) return 2;
       if(a===6 && b===9) return 3;
       if(a===9 && b===12) return 4;
+      if(a===12 && b===15) return 5;
+      if(a===15 && b===18) return 6;
+      if(a===18 && b===21) return 7;
+      if(a===21 && b===25) return 8;
       return 2;
     }
 
@@ -607,18 +634,19 @@
     }
 
     document.addEventListener('click', (e) => {
-      const t = e.target;
+      const btn = e.target.closest('button');
 
-      if(t === modeOff) return setMode('off');
-      if(t === modeRandom) return setMode('random');
-      if(t === modeFixed) return setMode('fixed');
-
-      if(t && t.dataset && t.dataset.win){
-        setStartWindowPreset(Number(t.dataset.win));
+      if(btn && btn.dataset && btn.dataset.mode){
+        setMode(btn.dataset.mode);
         return;
       }
 
-      if(t && t.id==='btnSave'){
+      if(btn && btn.dataset && btn.dataset.win){
+        setStartWindowPreset(Number(btn.dataset.win));
+        return;
+      }
+
+      if(btn && btn.id==='btnSave'){
         const cfg = readUI();
         save(KEY_CFG, cfg);
         resetPlan();
@@ -627,7 +655,7 @@
         return;
       }
 
-      if(t && t.id==='btnAddRule'){
+      if(btn && btn.id==='btnAddRule'){
         const cfg = readUI();
         cfg.fixed = Array.isArray(cfg.fixed) ? cfg.fixed : [];
         cfg.fixed.push({ id:'patient1', afterMin: 3, delta: -1 });
@@ -635,18 +663,18 @@
         return;
       }
 
-      if(t && t.dataset && t.dataset.act==='del'){
-        const tr = t.closest('tr');
+      if(btn && btn.dataset && btn.dataset.act==='del'){
+        const tr = btn.closest('tr');
         if(tr) tr.remove();
         return;
       }
 
-      if(t && t.id==='btnPatienten'){
+      if(btn && btn.id==='btnPatienten'){
         location.href = 'patientenauswahl.html';
         return;
       }
 
-      if(t && t.id==='btnSichtung'){
+      if(btn && btn.id==='btnSichtung'){
         location.href = 'index.html';
         return;
       }
