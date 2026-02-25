@@ -344,7 +344,19 @@ function saveLS(key, value){
   try{ localStorage.setItem(key, JSON.stringify(value)); }catch(e){}
 }
 function normCat(x){
-  return String(x||'').toLowerCase().replace('grün','gruen').trim();
+  var s = (x==null ? '' : String(x)).toLowerCase().replace('grün','gruen').trim();
+
+  if(s === '1') return 'rot';
+  if(s === '2') return 'gelb';
+  if(s === '3') return 'gruen';
+  if(s === '4') return 'schwarz';
+
+  if(s === 'sk1') return 'rot';
+  if(s === 'sk2') return 'gelb';
+  if(s === 'sk3') return 'gruen';
+  if(s === 'sk4') return 'schwarz';
+
+  return s;
 }
 
 function patientNumFromId(id){
@@ -1327,7 +1339,7 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
     var item = q.shift();
     var name = item.label || item.id || 'Patient';
     var fromCat = normCat(item.fromCat || item.from || '');
-    var toCat = normCat(item.toCat || item.to || '');
+    var toCat = normCat(item.toCat || item.to || (item.profile && (item.profile.toCat || item.profile.neueKategorie)) || '');
     var fromTxt = catLabel(fromCat);
     var toTxt = catLabel(toCat);
 
@@ -1421,7 +1433,7 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 
 <script>
 (function(){
-  'use strict';
+  'use strict'; return;
 
   function safeParseKey(key, fallback){
     try{
