@@ -2,1247 +2,782 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Dynamik Einstellungen</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Ablage Dynamik</title>
 
-  <meta name="theme-color" content="#0b1220" />
-  <link rel="manifest" href="/manifest.json" />
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/app-flow.css">
 
   <style>
 
-    :root{
-      --w:min(96vw,980px);
-      --shadow:0 10px 26px rgba(0,0,0,.28);
-      --shadow2:0 18px 60px rgba(0,0,0,.55);
-      --glass:rgba(255,255,255,.10);
-      --glass2:rgba(255,255,255,.16);
-      --border:rgba(255,255,255,.18);
-      --accent:#0B5FFF;
-      --danger:#e53935;
-      --ok:#2e7d32;
-      --warn:#f3fc02;
-      --bg:#0b0f1a;
-      --tap:52px;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:var(--bg);
-      color:#fff;
-      display:flex;
-      flex-direction:column;
-      min-height:100vh;
-      padding-bottom:86px; /* space for bottom bar */
-    }
-    body::before{
-      content:"";
-      position:fixed;
-      inset:0;
-      background:radial-gradient(1200px 800px at 15% 10%, rgba(11,95,255,.18), transparent 60%),
-                 radial-gradient(900px 600px at 85% 30%, rgba(229,57,53,.14), transparent 60%),
-                 radial-gradient(900px 600px at 40% 90%, rgba(46,125,50,.14), transparent 60%),
-                 rgba(0,0,0,.35);
-      z-index:-1;
-    }
+:root{
+  --w:min(96vw,980px);
+  --shadow:0 10px 26px rgba(0,0,0,.28);
+  --shadow2:0 18px 60px rgba(0,0,0,.55);
+  --glass:rgba(255,255,255,.10);
+  --glass2:rgba(255,255,255,.16);
+  --border:rgba(255,255,255,.18);
+  --accent:#0B5FFF;
+  --danger:#e53935;
+  --ok:#2e7d32;
+  --warn:#f3fc02;
+  --bg:#0b0f1a;
+  --tap:52px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:var(--bg);
+  color:#fff;
+  display:flex;
+  flex-direction:column;
+  min-height:100vh;
+  padding-bottom:92px;
+}
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  background:
+    radial-gradient(1200px 800px at 15% 10%, rgba(11,95,255,.18), transparent 60%),
+    radial-gradient(900px 600px at 85% 30%, rgba(229,57,53,.14), transparent 60%),
+    radial-gradient(900px 600px at 40% 90%, rgba(46,125,50,.14), transparent 60%),
+    rgba(0,0,0,.35);
+  z-index:-1;
+}
 
-    header{
-      position:sticky;
-      top:0;
-      z-index:10;
-      display:flex;
-      gap:10px;
-      align-items:center;
-      flex-wrap:wrap;
-      padding:12px 12px;
-      background:rgba(0,0,0,.55);
-      backdrop-filter:blur(8px);
-      border-bottom:1px solid var(--border);
-    }
-    header h1{margin:0;font-size:18px;font-weight:900;letter-spacing:.2px}
-    .header-right{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+header{
+  position:sticky;
+  top:0;
+  z-index:10;
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+  padding:12px 12px;
+  background:rgba(0,0,0,.55);
+  backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--border);
+}
+header h1{margin:0;font-size:18px;font-weight:900;letter-spacing:.2px}
+.header-right{display:none !important}
 
-    .btn{
-      background:var(--accent);
-      color:#fff;
-      border:none;
-      padding:12px 14px;
-      border-radius:14px;
-      cursor:pointer;
-      font-weight:900;
-      box-shadow:var(--shadow);
-      border:1px solid rgba(255,255,255,.20);
-      min-height:var(--tap);
-    }
-    .btn.secondary{background:rgba(255,255,255,.12)}
-    .btn.danger{background:var(--danger)}
-    .btn:active{transform:scale(.99)}
-    .btn:disabled{opacity:.55; cursor:not-allowed}
+.btn{
+  background:var(--accent);
+  color:#fff;
+  border:none;
+  padding:12px 14px;
+  border-radius:14px;
+  cursor:pointer;
+  font-weight:900;
+  box-shadow:var(--shadow);
+  border:1px solid rgba(255,255,255,.20);
+  min-height:var(--tap);
+}
+.btn.secondary{background:rgba(255,255,255,.12)}
+.btn.danger{background:var(--danger)}
+.btn:active{transform:scale(.99)}
+.btn:disabled{opacity:.55; cursor:not-allowed}
 
-    /* Bottom action bar */
-    .bottomBar{
-      position:fixed;
-      left:0; right:0; bottom:0;
-      z-index:50;
-      padding:10px 12px max(10px, env(safe-area-inset-bottom));
-      background:rgba(0,0,0,.72);
-      backdrop-filter:blur(10px);
-      border-top:1px solid rgba(255,255,255,.14);
-    }
-    .bottomBar .inner{
-      width:var(--w);
-      margin:0 auto;
-      display:flex;
-      gap:10px;
-      align-items:center;
-      flex-wrap:wrap;
-    }
-    .bottomBar .btn{ box-shadow:var(--shadow2); }
-    .bottomBar .btn.primaryBig{
-      flex:1 1 260px;
-      background:linear-gradient(180deg, rgba(11,95,255,1), rgba(11,95,255,.75));
-      border-color:rgba(255,255,255,.22);
-    }
+/* Bottom action bar */
+.bottomBar{
+  position:fixed;
+  left:0; right:0; bottom:0;
+  z-index:50;
+  padding:10px 12px max(10px, env(safe-area-inset-bottom));
+  background:rgba(0,0,0,.72);
+  backdrop-filter:blur(10px);
+  border-top:1px solid rgba(255,255,255,.14);
+}
+.bottomBar .inner{
+  width:var(--w);
+  margin:0 auto;
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.bottomBar .btn{ box-shadow:var(--shadow2); }
+.bottomBar .btn.primaryBig{
+  flex:1 1 300px;
+  background:linear-gradient(180deg, rgba(11,95,255,1), rgba(11,95,255,.75));
+  border-color:rgba(255,255,255,.22);
+}
+.bottomBar .btn.secondary{flex:1 1 180px}
+.bottomBar .btn.danger{flex:1 1 180px}
 
-    .wrap{
-      width:var(--w);
-      margin:0 auto;
-      padding:14px 12px 22px;
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-    }
+.wrap{
+  width:var(--w);
+  margin:0 auto;
+  padding:14px 12px 22px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
 
-    .card{
-      background:var(--glass);
-      border:1px solid var(--border);
-      border-radius:18px;
-      box-shadow:var(--shadow);
-      padding:14px;
-    }
-    .card h2{margin:0 0 10px 0;font-size:16px;font-weight:900}
-    .muted{opacity:.85}
-    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-    .col{display:flex;flex-direction:column;gap:6px;min-width:220px;flex:1}
-    label{font-size:13px;opacity:.9;font-weight:800}
+.card{
+  background:var(--glass);
+  border:1px solid var(--border);
+  border-radius:18px;
+  box-shadow:var(--shadow);
+  padding:14px;
+}
+.card h2{margin:0 0 10px 0;font-size:16px;font-weight:900}
+.muted{opacity:.85}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.col{display:flex;flex-direction:column;gap:6px;min-width:220px;flex:1}
+label{font-size:13px;opacity:.9;font-weight:800}
 
-    .pill{
-      display:inline-flex;
-      gap:8px;
-      align-items:center;
-      padding:9px 12px;
-      border-radius:999px;
-      background:rgba(255,255,255,.10);
-      border:1px solid rgba(255,255,255,.16);
-      font-weight:900;
-      font-size:13px;
-      user-select:none;
-      min-height:40px;
-    }
+.quickSteps{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+  gap:10px;
+  margin-top:10px;
+}
+.stepCard{
+  padding:12px;
+  border-radius:16px;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.16);
+}
+.stepCard .n{
+  display:inline-flex;
+  width:28px;height:28px;
+  border-radius:999px;
+  align-items:center;justify-content:center;
+  font-weight:900;
+  background:rgba(11,95,255,.20);
+  border:1px solid rgba(11,95,255,.35);
+  margin-right:8px;
+}
+.stepCard b{font-weight:900}
+.stepCard small{display:block;opacity:.85;line-height:1.25;margin-top:4px}
 
-    /* Mode as segmented */
-    .modeGrid{
-      display:grid;
-      grid-template-columns:repeat(3, 1fr);
-      gap:10px;
-      margin-top:8px;
-    }
-    .mode{
-      border-radius:16px;
-      padding:12px;
-      border:1px solid rgba(255,255,255,.16);
-      background:rgba(255,255,255,.08);
-      cursor:pointer;
-      min-height:96px;
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-      transition:transform .06s ease, background .12s ease, border-color .12s ease;
-    }
-    .mode:active{ transform:scale(.99); }
-    .mode strong{font-size:14px}
-    .mode small{opacity:.85; line-height:1.25}
-    .mode.active{
-      border-color:rgba(11,95,255,.75);
-      box-shadow:0 0 0 2px rgba(11,95,255,.18), var(--shadow);
-      background:rgba(11,95,255,.12);
-    }
-    .modeTop{display:flex;gap:10px;align-items:center}
-    .radio{
-      width:18px;height:18px;border-radius:999px;
-      border:2px solid rgba(255,255,255,.55);
-      display:inline-flex;align-items:center;justify-content:center;
-    }
-    .radio::after{
-      content:"";
-      width:10px;height:10px;border-radius:999px;
-      background:transparent;
-    }
-    .mode.active .radio{border-color:rgba(11,95,255,.95)}
-    .mode.active .radio::after{background:rgba(11,95,255,.95)}
+.modeGrid{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:10px;
+  margin-top:8px;
+}
+.mode{
+  border-radius:16px;
+  padding:12px;
+  border:1px solid rgba(255,255,255,.16);
+  background:rgba(255,255,255,.08);
+  cursor:pointer;
+  min-height:96px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  transition:transform .06s ease, background .12s ease, border-color .12s ease;
+}
+.mode:active{ transform:scale(.99); }
+.mode strong{font-size:14px}
+.mode small{opacity:.85; line-height:1.25}
+.mode.active{
+  border-color:rgba(11,95,255,.75);
+  box-shadow:0 0 0 2px rgba(11,95,255,.18), var(--shadow);
+  background:rgba(11,95,255,.12);
+}
+.modeTop{display:flex;gap:10px;align-items:center}
+.radio{
+  width:18px;height:18px;border-radius:999px;
+  border:2px solid rgba(255,255,255,.55);
+  display:inline-flex;align-items:center;justify-content:center;
+}
+.radio::after{
+  content:"";
+  width:10px;height:10px;border-radius:999px;
+  background:transparent;
+}
+.mode.active .radio{border-color:rgba(11,95,255,.95)}
+.mode.active .radio::after{background:rgba(11,95,255,.95)}
 
-    .stepper{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      padding:10px;
-      border-radius:16px;
-      background:rgba(255,255,255,.08);
-      border:1px solid rgba(255,255,255,.16);
-      min-height:var(--tap);
-    }
-    .stepper button{
-      width:48px;height:48px;border-radius:14px;
-      border:1px solid rgba(255,255,255,.18);
-      background:rgba(255,255,255,.10);
-      color:#fff;
-      font-size:22px;
-      font-weight:900;
-      cursor:pointer;
-    }
-    .stepper button:active{transform:scale(.99)}
-    .stepper .val{
-      font-weight:900;
-      font-size:18px;
-      min-width:56px;
-      text-align:center;
-      font-variant-numeric:tabular-nums;
-    }
-    .stepper .hint{
-      font-size:12px;
-      opacity:.85;
-      margin-left:auto;
-      text-align:right;
-      line-height:1.15;
-    }
+.stepper{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  padding:10px;
+  border-radius:16px;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.16);
+  min-height:var(--tap);
+}
+.stepper button{
+  width:48px;height:48px;border-radius:14px;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.10);
+  color:#fff;
+  font-size:22px;
+  font-weight:900;
+  cursor:pointer;
+}
+.stepper button:active{transform:scale(.99)}
+.stepper .val{
+  font-weight:900;
+  font-size:18px;
+  min-width:56px;
+  text-align:center;
+  font-variant-numeric:tabular-nums;
+}
+.stepper .hint{
+  font-size:12px;
+  opacity:.85;
+  margin-left:auto;
+  text-align:right;
+  line-height:1.15;
+}
 
-    .rangeBox{
-      padding:12px;
-      border-radius:18px;
-      border:1px solid rgba(255,255,255,.16);
-      background:rgba(255,255,255,.08);
-    }
-    input[type="range"]{
-      width:100%;
-      accent-color:var(--accent);
-    }
-    .rangeLabel{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      flex-wrap:wrap;
-      justify-content:space-between;
-      font-weight:900;
-    }
-    .kv{
-      display:flex; gap:8px; align-items:center;
-      font-variant-numeric:tabular-nums;
-      padding:7px 11px;
-      border-radius:999px;
-      background:rgba(0,0,0,.22);
-      border:1px solid rgba(255,255,255,.14);
-    }
+.rangeBox{
+  padding:12px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.16);
+  background:rgba(255,255,255,.08);
+}
+input[type="range"]{width:100%; accent-color:var(--accent);}
+.rangeLabel{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  font-weight:900;
+}
+.kv{
+  display:flex; gap:8px; align-items:center;
+  font-variant-numeric:tabular-nums;
+  padding:7px 11px;
+  border-radius:999px;
+  background:rgba(0,0,0,.22);
+  border:1px solid rgba(255,255,255,.14);
+}
 
-    .grid2{
-      display:grid;
-      grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
-      gap:12px;
-    }
+.grid2{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
+  gap:12px;
+}
 
-    .ampel{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-      margin-top:10px;
-    }
-    .dot{
-      width:12px;height:12px;border-radius:999px;
-      background:#9aa0a6;
-      box-shadow:0 0 0 2px rgba(255,255,255,.08);
-    }
-    .dot.ok{background:var(--ok)}
-    .dot.warn{background:var(--warn)}
-    .dot.bad{background:var(--danger)}
-    .ampel .msg{font-weight:900}
-    .ampel .msg small{display:block;opacity:.85;font-weight:700;line-height:1.2}
+.ampel{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+  margin-top:10px;
+}
+.dot{
+  width:12px;height:12px;border-radius:999px;
+  background:#9aa0a6;
+  box-shadow:0 0 0 2px rgba(255,255,255,.08);
+}
+.dot.ok{background:var(--ok)}
+.dot.warn{background:var(--warn)}
+.dot.bad{background:var(--danger)}
+.ampel .msg{font-weight:900}
+.ampel .msg small{display:block;opacity:.85;font-weight:700;line-height:1.2}
 
-    .table{
-      width:100%;
-      border-collapse:collapse;
-      overflow:hidden;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(0,0,0,.18);
-    }
-    .table th,.table td{
-      padding:10px;
-      border-bottom:1px solid rgba(255,255,255,.10);
-      font-size:13px;
-      vertical-align:middle;
-    }
-    .table th{
-      text-align:left;
-      font-size:12px;
-      opacity:.9;
-      letter-spacing:.2px;
-    }
-    .table tr:last-child td{border-bottom:none}
-    select{
-      width:100%;
-      padding:11px 10px;
-      border-radius:14px;
-      background:rgba(255,255,255,.10);
-      border:1px solid rgba(255,255,255,.18);
-      color:#fff;
-      font-weight:900;
-      outline:none;
-      min-height:var(--tap);
-    }
-    option{color:#111}
+.summaryBar{
+  margin-top:10px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.summaryBar .pill{
+  display:inline-flex;
+  gap:8px;
+  align-items:center;
+  padding:9px 12px;
+  border-radius:999px;
+  background:rgba(0,0,0,.22);
+  border:1px solid rgba(255,255,255,.14);
+  font-weight:900;
+  font-size:13px;
+}
 
-    .mini{
-      font-size:12px;
-      opacity:.85;
-      line-height:1.25;
-    }
+.table{
+  width:100%;
+  border-collapse:collapse;
+  overflow:hidden;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(0,0,0,.18);
+}
+.table th,.table td{
+  padding:10px;
+  border-bottom:1px solid rgba(255,255,255,.10);
+  font-size:13px;
+  vertical-align:middle;
+}
+.table th{text-align:left;font-size:12px;opacity:.9;letter-spacing:.2px}
+.table tr:last-child td{border-bottom:none}
+select{
+  width:100%;
+  padding:11px 10px;
+  border-radius:14px;
+  background:rgba(255,255,255,.10);
+  border:1px solid rgba(255,255,255,.18);
+  color:#fff;
+  font-weight:900;
+  outline:none;
+  min-height:var(--tap);
+}
+option{color:#111}
+.mini{font-size:12px;opacity:.85;line-height:1.25}
 
-    /* Presets as big buttons */
-    .presetRow{
-      display:grid;
-      grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
-      gap:10px;
-      margin-top:10px;
-    }
-    .presetBtn{
-      background:rgba(255,255,255,.12);
-      border:1px solid rgba(255,255,255,.18);
-      border-radius:16px;
-      padding:12px;
-      cursor:pointer;
-      min-height:64px;
-      text-align:left;
-      font-weight:900;
-      box-shadow:var(--shadow);
-    }
-    .presetBtn:active{transform:scale(.99)}
-    .presetBtn small{display:block; opacity:.85; font-weight:700; margin-top:2px; line-height:1.2}
+/* Presets */
+.presetRow{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+  gap:10px;
+  margin-top:10px;
+}
+.presetBtn{
+  background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:16px;
+  padding:12px;
+  cursor:pointer;
+  min-height:64px;
+  text-align:left;
+  font-weight:900;
+  box-shadow:var(--shadow);
+}
+.presetBtn:active{transform:scale(.99)}
+.presetBtn small{display:block; opacity:.85; font-weight:700; margin-top:2px; line-height:1.2}
 
-    @media (max-width:760px){
-      .modeGrid{ grid-template-columns:1fr; }
-      .bottomBar .inner{ gap:8px; }
-      .bottomBar .btn{ flex:1 1 40%; }
-      .bottomBar .btn.primaryBig{ flex:1 1 100%; }
-    }
+/* Collapsible debug */
+details.card summary{
+  cursor:pointer;
+  list-style:none;
+  font-weight:900;
+  font-size:16px;
+}
+details.card summary::-webkit-details-marker{display:none}
+details.card[open] summary{margin-bottom:10px}
 
-  </style>
+@media (max-width:760px){
+  .modeGrid{ grid-template-columns:1fr; }
+  .bottomBar .inner{ gap:8px; }
+  .bottomBar .btn{ flex:1 1 40%; }
+  .bottomBar .btn.primaryBig{ flex:1 1 100%; }
+}
+
+</style>
 </head>
 
 <body>
-<header>
-  <button class="btn secondary" onclick="location.href='index.html'">Startseite</button>
-  <h1>Dynamik</h1>
-  <div class="header-right">
-    <button class="btn secondary" id="btnReload">Aktuelle Ablage laden</button>
-    <button class="btn danger" id="btnClearPlan">Plan löschen</button>
-    <button class="btn" id="btnSaveGenerate">Speichern und Plan erzeugen</button>
-  </div>
-</header>
+  <header>
+    <button class="btn alt" onclick="location.href='Instruktor.html'">Zurück</button>
+    <h1>Dynamik. Patientenverschlechterung</h1>
+    <div class="right">
+      <span class="status" id="status">Aus</span>
+      <button class="btn" id="btnSave" type="button">Speichern</button>
+    </div>
+  </header>
 
-<div class="wrap">
+  <div class="wrap">
 
   <div class="card">
-    <h2>Modus</h2>
-    <div class="modeGrid" id="modeGrid">
-      <div class="mode" data-mode="fixed">
-        <div class="modeTop"><span class="radio"></span><strong>Fix</strong></div>
-        <small>Du legst konkrete Events fest. Patient, Ziel, Minute.</small>
-      </div>
-      <div class="mode" data-mode="random">
-        <div class="modeTop"><span class="radio"></span><strong>Zufall</strong></div>
-        <small>Einfach. Anzahl und Zeitfenster. Auswahl frei.</small>
-      </div>
-      <div class="mode" data-mode="distribution">
-        <div class="modeTop"><span class="radio"></span><strong>Verteilung</strong></div>
-        <small>Realistisch. Du bestimmst Übergänge, Timing bleibt zufällig.</small>
-      </div>
-    </div>
-
-    <div class="ampel" style="margin-top:12px;">
-      <span class="dot" id="dotPlan"></span>
-      <div class="msg" id="planState">Kein Plan erzeugt.
-        <small>Wenn ein Plan existiert, arbeitet die Ablage diesen ab.</small>
-      </div>
-    </div>
-
-    <div class="row" style="margin-top:10px;">
-      <span class="pill">Offene Patienten. <span id="openTotal">0</span></span>
-      <span class="pill">SK3. <span id="openG">0</span></span>
-      <span class="pill">SK2. <span id="openY">0</span></span>
-      <span class="pill">SK1. <span id="openR">0</span></span>
-      <span class="pill">TOT. <span id="openK">0</span></span>
-    </div>
-    <div class="mini" style="margin-top:8px;">
-      Offene Patienten sind alle Sichtungen, die noch nicht als zugewiesen markiert sind.
+    <h2>Schnellstart</h2>
+    <div class="mini">In 10 Sekunden fertig. Preset wählen, optional anpassen, Plan erzeugen.</div>
+    <div class="quickSteps">
+      <div class="stepCard"><span class="n">1</span><b>Preset wählen</b><small>Moderat, Realistisch oder Eskalation.</small></div>
+      <div class="stepCard"><span class="n">2</span><b>Zeitfenster</b><small>Start und Ende Minute einstellen.</small></div>
+      <div class="stepCard"><span class="n">3</span><b>Plan erzeugen</b><small>Unten auf Plan erzeugen drücken. Fertig.</small></div>
     </div>
   </div>
 
-  <div class="card" id="sectionTime">
-    <h2>Zeitfenster</h2>
+    <div class="grid">
 
-    <div class="rangeBox">
-      <div class="rangeLabel">
-        <div class="kv">Start. <span id="lblStartMin">2</span> min</div>
-        <div class="kv">Ende. <span id="lblEndMin">10</span> min</div>
-      </div>
+      <div class="card">
+        <div class="row">
+          <div class="col">
+            <label class="pill">
+              <input id="enabled" type="checkbox" style="width:18px;height:18px;">
+              Dynamik aktiv
+            </label>
+            <div class="muted" style="margin-top:10px;">
+              Wenn aktiv, werden geplante Verschlechterungen automatisch ausgelöst.
+            </div>
+          </div>
 
-      <div style="margin-top:10px;">
-        <label>Start Minute</label>
-        <input type="range" id="rngStart" min="0" max="60" step="1" value="2" />
-      </div>
+          <div class="col">
+            <label for="mode">Modus</label>
+            <div style="margin-top:8px;">
+              <select id="mode" style="min-width:240px;">
+                <option value="off">Aus</option>
+                <option value="random">Zufällig</option>
+                <option value="fixed">Fix</option>
+              </select>
+            </div>
+            <div class="muted" style="margin-top:10px;">
+              Zufällig würfelt Ereignisse, Fix nutzt deine Tabelle unten.
+            </div>
+          </div>
 
-      <div style="margin-top:10px;">
-        <label>Ende Minute</label>
-        <input type="range" id="rngEnd" min="1" max="90" step="1" value="10" />
-      </div>
-
-      <div class="mini" style="margin-top:8px;">
-        Innerhalb des Fensters werden Zeiten zufällig verteilt.
-      </div>
-    </div>
-  </div>
-
-  <div class="card" id="sectionDistribution" style="display:none;">
-    <h2>Verteilung</h2>
-
-    <div class="grid2">
-      <div>
-        <label>SK3 zu SK2</label>
-        <div class="stepper" data-stepper="g2y">
-          <button type="button" data-act="minus">−</button>
-          <div class="val" id="val_g2y">3</div>
-          <button type="button" data-act="plus">+</button>
-          <div class="hint">
-            Ziel. <span id="need_g2y">0</span> SK3
+          <div class="col">
+            <label for="basis">Zeitbasis</label>
+            <div style="margin-top:8px;">
+              <select id="basis" style="min-width:240px;">
+                <option value="patient">pro Patient. ab Eintritt in Ablage</option>
+                <option value="global">global. ab Übungsstart</option>
+              </select>
+            </div>
+            <div class="muted" style="margin-top:10px;">
+              Empfehlung. pro Patient.
+            </div>
           </div>
         </div>
       </div>
 
-      <div>
-        <label>SK2 zu SK1</label>
-        <div class="stepper" data-stepper="y2r">
-          <button type="button" data-act="minus">−</button>
-          <div class="val" id="val_y2r">2</div>
-          <button type="button" data-act="plus">+</button>
-          <div class="hint">
-            Ziel. <span id="need_y2r">0</span> SK2
+      <div class="card" id="randomCard">
+        <div style="font-weight:900; font-size:16px;">Zufällig</div>
+
+        <div class="row" style="margin-top:12px;">
+          <div class="col">
+            <label>Start nach. Minuten</label>
+            <div style="margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <input id="minMin" type="number" min="0" step="1" value="3" style="width:110px;">
+              <span class="muted">bis</span>
+              <input id="maxMin" type="number" min="0" step="1" value="5" style="width:110px;">
+            </div>
+          </div>
+
+          <div class="col">
+            <label>Anzahl Events</label>
+            <div style="margin-top:8px;">
+              <input id="count" type="number" min="0" step="1" value="3" style="width:110px;">
+            </div>
+            <div class="muted" style="margin-top:10px;">
+              Gesamtanzahl Verschlechterungen.
+            </div>
+          </div>
+
+          <div class="col">
+            <label>Minimaler Abstand. Sekunden</label>
+            <div style="margin-top:8px;">
+              <input id="minGapSec" type="number" min="0" step="1" value="60" style="width:110px;">
+            </div>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:12px; align-items:center;">
+          <label class="pill">
+            <input id="toLowerOnly" type="checkbox" style="width:18px;height:18px;">
+            Nur eine Stufe schlechter
+          </label>
+          <span class="muted">
+            Grün zu Gelb, Gelb zu Rot, Rot zu Schwarz.
+          </span>
+        </div>
+
+        <div class="rules">
+          <div style="font-weight:900;">Welche Klassen dürfen ausgewählt werden</div>
+          <div class="row" style="margin-top:10px;">
+          <span class="pill"><input id="allow1" type="checkbox" style="width:18px;height:18px;" /> SK1</span>
+          <span class="pill"><input id="allow2" type="checkbox" style="width:18px;height:18px;" /> SK2</span>
+          <span class="pill"><input id="allow3" type="checkbox" style="width:18px;height:18px;" /> SK3</span>
+          <span class="pill"><input id="allow4" type="checkbox" style="width:18px;height:18px;" /> Schwarz</span>
+        </div>
+        <div class="row" style="margin-top:10px; align-items:center; gap:10px;">
+          <span class="muted" style="min-width:160px;">Max Schwarz Events</span>
+          <input id="maxSchwarz" type="number" min="0" max="10" step="1" value="2" style="width:110px; padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.08); color:#fff;">
+          <span class="muted">Empfehlung 1 oder 2</span>
+        </div>
+        <div class="muted" style="margin-top:8px;">Empfehlung. Schwarz selten nutzen, ideal 1 oder 2.</div>
+      </div>
+
+      <div class="row" style="margin-top:12px;">
+        <button class="btnSmall" type="button" id="btnReseed">Neu würfeln</button>
+        <span class="muted">Erzeugt einen neuen Plan beim nächsten Betreten der Ablage.</span>
+      </div>
+    </div>
+
+      <div class="card" id="fixedCard">
+        <div style="font-weight:900; font-size:16px;">Fix</div>
+        <div class="muted" style="margin-top:10px;">
+          Hier kannst du feste Regeln pflegen. Beispiel. Patient 7 nach 4 Minuten um eine Stufe schlechter.
+        </div>
+
+        <div class="rules">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:120px;">Patient</th>
+                <th style="width:170px;">Nach Minuten</th>
+                <th>Delta</th>
+                <th class="tRight" style="width:120px;">Aktion</th>
+              </tr>
+            </thead>
+            <tbody id="rulesBody"></tbody>
+          </table>
+
+          <div class="row" style="margin-top:12px;">
+            <button class="btnSmall" id="btnAddRule" type="button">Regel hinzufügen</button>
+            <span class="muted">Delta. 1 bedeutet eine Stufe schlechter. 2 bedeutet zwei Stufen.</span>
           </div>
         </div>
       </div>
 
-      <div>
-        <label>SK1 zu TOT</label>
-        <div class="stepper" data-stepper="r2k">
-          <button type="button" data-act="minus">−</button>
-          <div class="val" id="val_r2k">1</div>
-          <button type="button" data-act="plus">+</button>
-          <div class="hint">
-            Ziel. <span id="need_r2k">0</span> SK1
+      <div class="card" id="planCard">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+          <div style="font-weight:900; font-size:16px;">Aktueller Plan</div>
+          <div class="row" style="gap:10px; align-items:center;">
+            <button class="btnSmall" id="btnRefreshPlan" type="button">Plan anzeigen</button>
+            <button class="btnSmall" id="btnResetPlan" type="button">Plan löschen</button>
           </div>
         </div>
+        <div class="plan" id="planText" style="margin-top:12px;">Noch kein Plan.</div>
       </div>
 
-      <div>
-        <label>Regel. TOT frühestens ab Minute</label>
-        <div class="stepper" data-stepper="totMin">
-          <button type="button" data-act="minus">−</button>
-          <div class="val" id="val_totMin">6</div>
-          <button type="button" data-act="plus">+</button>
-          <div class="hint">
-            Empfohlen. 6 bis 12
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="ampel">
-      <span class="dot" id="dotDist"></span>
-      <div class="msg" id="distMsg">Bereit.
-        <small id="distSmall">Plan wird automatisch an die reale Ablage angepasst.</small>
-      </div>
-    </div>
-
-    <div class="presetRow">
-      <button class="presetBtn" id="btnPresetSoft" type="button">Preset. Moderat<small>Wenig Verschlechterungen</small></button>
-      <button class="presetBtn" id="btnPresetReal" type="button">Preset. Realistisch<small>Guter Standard</small></button>
-      <button class="presetBtn" id="btnPresetHard" type="button">Preset. Eskalation<small>Mehr Druck im Szenario</small></button>
-    </div>
-
-    <div class="mini" style="margin-top:10px;">
-      TOT ist intern schwarz. Sichtbar steht TOT.
     </div>
   </div>
 
-  <div class="card" id="sectionRandom" style="display:none;">
-    <h2>Zufall</h2>
+  <script>
+  (function(){
+    'use strict';
 
-    <div class="grid2">
-      <div>
-        <label>Wie viele Verschlechterungen</label>
-        <div class="stepper" data-stepper="rndCount">
-          <button type="button" data-act="minus">−</button>
-          <div class="val" id="val_rndCount">6</div>
-          <button type="button" data-act="plus">+</button>
-          <div class="hint">Gesamt Events</div>
-        </div>
-      </div>
+    const KEY_CFG = 'ablage.dynamik.v1';
+    const KEY_PLAN = 'ablage.dynamik.plan.v1';
 
-      <div>
-        <label>Nur eine Stufe schlechter</label>
-        <div class="stepper" data-stepper="rndLower">
-          <button type="button" data-act="toggle">An</button>
-          <div class="val" id="val_rndLower">An</div>
-          <button type="button" data-act="toggle">Aus</button>
-          <div class="hint">SK3 zu SK2 zu SK1 zu TOT</div>
-        </div>
-      </div>
-    </div>
+    function safeParse(s,f){ try{ return JSON.parse(s); }catch{ return f; } }
+    function load(k,f){ return safeParse(localStorage.getItem(k), f); }
+    function save(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
 
-    <div class="mini" style="margin-top:10px;">
-      Zufall bleibt bewusst simpel. Für realistische Verteilung nutze den Modus Verteilung.
-    </div>
-  </div>
-
-  <div class="card" id="sectionFixed" style="display:none;">
-    <h2>Fix</h2>
-
-    <div class="mini" style="margin-bottom:10px;">
-      Du kannst Events direkt festlegen. Ziel TOT bedeutet intern schwarz.
-    </div>
-
-    <table class="table" id="fixedTable">
-      <thead>
-        <tr>
-          <th style="width:42%;">Patient</th>
-          <th style="width:26%;">Ziel</th>
-          <th style="width:22%;">Minute</th>
-          <th style="width:10%;">Aktion</th>
-        </tr>
-      </thead>
-      <tbody id="fixedBody"></tbody>
-    </table>
-
-    <div class="row" style="margin-top:10px;">
-      <button class="btn secondary" id="btnAddFixed" type="button">Event hinzufügen</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>Debug</h2>
-    <div class="mini" id="debugOut" style="white-space:pre-wrap;"></div>
-  </div>
-
-</div>
-
-<script>
-(function(){
-  'use strict';
-
-  const LS_CFG  = 'ablage.dynamik.v1';
-  const LS_PLAN = 'ablage.dynamik.plan.v1';
-  const LS_SMAP = 'sichtungMap';
-  const LS_DONE = 'ablage.done.v1';
-
-  const el = (id)=>document.getElementById(id);
-
-
-  function setText(id, txt){
-    const n = el(id);
-    if(n) n.textContent = String(txt ?? '');
-  }
-  function setHTML(id, html){
-    const n = el(id);
-    if(n) n.innerHTML = String(html ?? '');
-  }
-  function setClass(id, cls){
-    const n = el(id);
-    if(n) n.className = cls;
-  }
-
-  const state = {
-    mode: 'distribution',
-    startMin: 2,
-    endMin: 10,
-
-    dist: {
-      g2y: 3,
-      y2r: 2,
-      r2k: 1,
-      totMin: 6
-    },
-
-    rnd: {
-      count: 6,
-      lowerOnly: true
-    },
-
-    fixed: []
-  };
-
-  function loadJSON(key, fallback){
-    try{
-      const raw = localStorage.getItem(key);
-      if(!raw) return fallback;
-      return JSON.parse(raw);
-    }catch(_){
-      return fallback;
-    }
-  }
-  function saveJSON(key, val){
-    try{ localStorage.setItem(key, JSON.stringify(val)); }catch(_){}
-  }
-
-  function normCat(x){
-    const s = (x==null ? '' : String(x)).toLowerCase().replace('grün','gruen').trim();
-    if(s === 'sk1' || s === '1') return 'rot';
-    if(s === 'sk2' || s === '2') return 'gelb';
-    if(s === 'sk3' || s === '3') return 'gruen';
-    if(s === 'sk4' || s === '4') return 'schwarz';
-    if(s === 'tot') return 'schwarz';
-    return s;
-  }
-
-  function labelCat(cat){
-    const c = normCat(cat);
-    if(c === 'rot') return 'SK1';
-    if(c === 'gelb') return 'SK2';
-    if(c === 'gruen') return 'SK3';
-    if(c === 'schwarz') return 'TOT';
-    return String(cat||'');
-  }
-
-  function patientNum(id){
-    const n = parseInt(String(id||'').replace(/\D/g,''), 10);
-    return Number.isFinite(n) ? n : null;
-  }
-
-  function getOpenPatients(){
-    const sMap = loadJSON(LS_SMAP, {});
-    const done = loadJSON(LS_DONE, []);
-    const doneSet = new Set(Array.isArray(done) ? done : []);
-
-    const ids = Object.keys(sMap || {}).filter(k => /^patient\d+$/i.test(k));
-    const open = [];
-
-    for(const id of ids){
-      if(doneSet.has(id)) continue;
-      const cat = normCat(sMap[id]);
-      if(!cat) continue;
-      open.push({ id, cat, n: patientNum(id) || 999999 });
+    function defaults(){
+      return {
+        enabled:false,
+        mode:'off',
+        basis:'patient',
+        random:{
+          minMin:3,
+          maxMin:5,
+          count:3,
+          minGapSec:60,
+          maxSchwarz:2,
+          allow:{ sk1:true, sk2:true, sk3:true, sk4:false },
+          toLowerOnly:true
+        },
+        fixed:[]
+      };
     }
 
-    open.sort((a,b)=>a.n-b.n);
-    return open;
-  }
+    function el(id){ return document.getElementById(id); }
 
-  function countCats(open){
-    const c = { gruen:0, gelb:0, rot:0, schwarz:0, total:open.length };
-    for(const p of open){
-      if(p.cat === 'gruen') c.gruen++;
-      else if(p.cat === 'gelb') c.gelb++;
-      else if(p.cat === 'rot') c.rot++;
-      else if(p.cat === 'schwarz') c.schwarz++;
-    }
-    return c;
-  }
+    const status = el('status');
+    const enabled = el('enabled');
+    const mode = el('mode');
+    const basis = el('basis');
 
-  function shuffle(arr){
-    const a = arr.slice();
-    for(let i=a.length-1;i>0;i--){
-      const j = Math.floor(Math.random()*(i+1));
-      const t = a[i]; a[i]=a[j]; a[j]=t;
-    }
-    return a;
-  }
+    const randomCard = el('randomCard');
+    const fixedCard = el('fixedCard');
 
-  function randInt(min, max){
-    const mn = Math.min(min, max);
-    const mx = Math.max(min, max);
-    return Math.floor(mn + Math.random() * (mx - mn + 1));
-  }
+    const minMin = el('minMin');
+    const maxMin = el('maxMin');
+    const count = el('count');
+    const minGapSec = el('minGapSec');
+    const toLowerOnly = el('toLowerOnly');
+    const allow1 = el('allow1');
+    const allow2 = el('allow2');
+    const allow3 = el('allow3');
+    const allow4 = el('allow4');
+    const maxSchwarz = el('maxSchwarz');
 
-  function clamp(n, a, b){
-    return Math.max(a, Math.min(b, n));
-  }
+    const planCard = el('planCard');
+    const planText = el('planText');
 
-  function readFromStorage(){
-    const cfg = loadJSON(LS_CFG, null);
-    if(cfg && typeof cfg === 'object'){
-      if(cfg.mode) state.mode = String(cfg.mode);
-      if(cfg.window){
-        if(Number.isFinite(cfg.window.minMin)) state.startMin = cfg.window.minMin;
-        if(Number.isFinite(cfg.window.maxMin)) state.endMin = cfg.window.maxMin;
+    function setStatus(){
+      if(!enabled.checked || mode.value==='off'){
+        status.textContent = 'Aus';
+        status.className = 'status';
+        return;
       }
-      if(cfg.distribution){
-        const d = cfg.distribution;
-        if(Number.isFinite(d.g2y)) state.dist.g2y = d.g2y;
-        if(Number.isFinite(d.y2r)) state.dist.y2r = d.y2r;
-        if(Number.isFinite(d.r2k)) state.dist.r2k = d.r2k;
-        if(Number.isFinite(d.totMin)) state.dist.totMin = d.totMin;
-      }
-      if(cfg.random){
-        const r = cfg.random;
-        if(Number.isFinite(r.count)) state.rnd.count = r.count;
-        if(typeof r.lowerOnly === 'boolean') state.rnd.lowerOnly = r.lowerOnly;
-      }
-      if(Array.isArray(cfg.fixed)) state.fixed = cfg.fixed;
-    }
-  }
-
-  function writeCfg(){
-    const cfg = {
-      enabled: true,
-      mode: state.mode,
-      window: { minMin: state.startMin, maxMin: state.endMin },
-      distribution: { g2y: state.dist.g2y, y2r: state.dist.y2r, r2k: state.dist.r2k, totMin: state.dist.totMin },
-      random: { count: state.rnd.count, lowerOnly: state.rnd.lowerOnly },
-      fixed: state.fixed
-    };
-    saveJSON(LS_CFG, cfg);
-  }
-
-  function updateModeUI(){
-    document.querySelectorAll('.mode').forEach(m=>{
-      const is = m.getAttribute('data-mode') === state.mode;
-      m.classList.toggle('active', is);
-    });
-
-    const sd=el('sectionDistribution'); if(sd) sd.style.display = (state.mode === 'distribution') ? '' : 'none';
-    const sr=el('sectionRandom'); if(sr) sr.style.display = (state.mode === 'random') ? '' : 'none';
-    const sf=el('sectionFixed'); if(sf) sf.style.display = (state.mode === 'fixed') ? '' : 'none';
-  }
-
-  function updateTimeUI(){
-    const rs=el('rngStart'); if(rs) rs.value = String(state.startMin);
-    const re2=el('rngEnd'); if(re2) re2.value = String(state.endMin);
-    setText('lblStartMin', state.startMin);
-    setText('lblEndMin', state.endMin);
-  }
-
-  function updateDistUI(){
-    setText('val_g2y', state.dist.g2y);
-    setText('val_y2r', state.dist.y2r);
-    setText('val_r2k', state.dist.r2k);
-    setText('val_totMin', state.dist.totMin);
-
-    setText('need_g2y', state.dist.g2y);
-    setText('need_y2r', state.dist.y2r);
-    setText('need_r2k', state.dist.r2k);
-
-    validateDistribution();
-  }
-
-  function updateRandomUI(){
-    setText('val_rndCount', state.rnd.count);
-    setText('val_rndLower', state.rnd.lowerOnly ? 'An' : 'Aus');
-  }
-
-  function updateOpenUI(){
-    const open = getOpenPatients();
-    const c = countCats(open);
-
-    setText('openTotal', c.total);
-    setText('openG', c.gruen);
-    setText('openY', c.gelb);
-    setText('openR', c.rot);
-    setText('openK', c.schwarz);
-
-    validateDistribution();
-    updatePlanState();
-  }
-
-  function updatePlanState(){
-    const plan = loadJSON(LS_PLAN, null);
-    
-    
-
-    if(plan && plan.events && Array.isArray(plan.events) && plan.events.length){
-      setClass('dotPlan','dot ok');
-      const n = plan.events.filter(e=>e && !e.done).length;
-      setHTML('planState','Plan aktiv. ' + n + ' Events offen.<small>Wenn du die Dynamik neu starten willst, lösche den Plan und erzeuge einen neuen.</small>');
-      return;
-    }
-    setClass('dotPlan','dot warn');
-    setHTML('planState','Kein Plan erzeugt.<small>Wenn du Speichern und Plan erzeugen drückst, wird ein Plan erstellt.</small>');
-  }
-
-  function validateDistribution(){
-    if(state.mode !== 'distribution'){
-      setClass('dotDist','dot');
-      setText('distMsg','Bereit.');
-      setText('distSmall','Plan wird automatisch an die reale Ablage angepasst.');
-      return;
+      status.textContent = 'An';
+      status.className = 'status ok';
     }
 
-    const open = getOpenPatients();
-    const cats = countCats(open);
-
-    const wantG = state.dist.g2y;
-    const wantY = state.dist.y2r;
-    const wantR = state.dist.r2k;
-
-    const okG = Math.min(wantG, cats.gruen);
-    const okY = Math.min(wantY, cats.gelb);
-    const okR = Math.min(wantR, cats.rot);
-
-    const changed = (okG !== wantG) || (okY !== wantY) || (okR !== wantR);
-
-    if(cats.total === 0){
-      setClass('dotDist','dot bad');
-      setText('distMsg','Keine offenen Patienten.');
-      setText('distSmall','Du brauchst Sichtungen in der Ablage.');
-      return;
+    function showHide(){
+      const m = mode.value || 'off';
+      randomCard.style.display = (m==='random') ? '' : 'none';
+      fixedCard.style.display = (m==='fixed') ? '' : 'none';
+      planCard.style.display = (enabled.checked && m!=='off') ? '' : 'none';
     }
 
-    if(changed){
-      setClass('dotDist','dot warn');
-      setText('distMsg','Wird automatisch angepasst.');
-      setText('distSmall','Verfügbar. SK3 ' + cats.gruen + ', SK2 ' + cats.gelb + ', SK1 ' + cats.rot + '.');
-      return;
-    }
-
-    setClass('dotDist','dot ok');
-    setText('distMsg','Bereit.');
-    setText('distSmall','Verfügbar. SK3 ' + cats.gruen + ', SK2 ' + cats.gelb + ', SK1 ' + cats.rot + '.');
-  }
-
-  function setStepper(key, delta){
-    if(key === 'g2y'){
-      state.dist.g2y = clamp(state.dist.g2y + delta, 0, 60);
-    }else if(key === 'y2r'){
-      state.dist.y2r = clamp(state.dist.y2r + delta, 0, 60);
-    }else if(key === 'r2k'){
-      state.dist.r2k = clamp(state.dist.r2k + delta, 0, 60);
-    }else if(key === 'totMin'){
-      state.dist.totMin = clamp(state.dist.totMin + delta, 0, 90);
-    }else if(key === 'rndCount'){
-      state.rnd.count = clamp(state.rnd.count + delta, 0, 60);
-    }
-  }
-
-  function buildPlanDistribution(){
-    const open = getOpenPatients();
-    const cats = {
-      gruen: open.filter(p=>p.cat==='gruen'),
-      gelb: open.filter(p=>p.cat==='gelb'),
-      rot: open.filter(p=>p.cat==='rot')
-    };
-
-    const startMs = Math.max(0, state.startMin) * 60000;
-    const endMs   = Math.max(state.endMin, state.startMin + 1) * 60000;
-
-    const totMinMs = Math.max(state.dist.totMin, state.startMin) * 60000;
-
-    const want = {
-      g2y: Math.max(0, state.dist.g2y),
-      y2r: Math.max(0, state.dist.y2r),
-      r2k: Math.max(0, state.dist.r2k)
-    };
-
-    const got = {
-      g2y: Math.min(want.g2y, cats.gruen.length),
-      y2r: Math.min(want.y2r, cats.gelb.length),
-      r2k: Math.min(want.r2k, cats.rot.length)
-    };
-
-    const used = new Set();
-    const events = [];
-
-    const gPick = shuffle(cats.gruen).filter(p=>!used.has(p.id)).slice(0, got.g2y);
-    gPick.forEach(p=>{
-      used.add(p.id);
-      events.push({ id:p.id, to:'gelb', atMs: randInt(startMs, endMs), done:false });
-    });
-
-    const yPick = shuffle(cats.gelb).filter(p=>!used.has(p.id)).slice(0, got.y2r);
-    yPick.forEach(p=>{
-      used.add(p.id);
-      events.push({ id:p.id, to:'rot', atMs: randInt(startMs, endMs), done:false });
-    });
-
-    const rPick = shuffle(cats.rot).filter(p=>!used.has(p.id)).slice(0, got.r2k);
-    rPick.forEach(p=>{
-      used.add(p.id);
-      const minForTot = Math.max(startMs, totMinMs);
-      events.push({ id:p.id, to:'schwarz', atMs: randInt(minForTot, endMs), done:false });
-    });
-
-    events.sort((a,b)=>a.atMs-b.atMs);
-
-    const plan = {
-      mode: 'distribution',
-      basis: 'patient',
-      createdAt: Date.now(),
-      events
-    };
-
-    const report = {
-      want, got,
-      startMin: state.startMin,
-      endMin: state.endMin,
-      totMin: state.dist.totMin,
-      total: events.length
-    };
-
-    return { plan, report };
-  }
-
-  function buildPlanRandom(){
-    const open = getOpenPatients();
-    const startMs = Math.max(0, state.startMin) * 60000;
-    const endMs   = Math.max(state.endMin, state.startMin + 1) * 60000;
-
-    const used = new Set();
-    const events = [];
-    const pool = shuffle(open).filter(p=>p.cat !== 'schwarz');
-
-    const count = Math.min(Math.max(0, state.rnd.count), pool.length);
-
-    for(let i=0;i<count;i++){
-      const p = pool[i];
-      if(!p || used.has(p.id)) continue;
-      used.add(p.id);
-
-      let to = '';
-      if(state.rnd.lowerOnly){
-        if(p.cat === 'gruen') to = 'gelb';
-        else if(p.cat === 'gelb') to = 'rot';
-        else if(p.cat === 'rot') to = 'schwarz';
-        else to = '';
-      }else{
-        const opts = ['gruen','gelb','rot','schwarz'].filter(x=>x!==p.cat);
-        to = opts[Math.floor(Math.random()*opts.length)] || '';
-      }
-      if(!to) continue;
-
-      events.push({ id:p.id, to:to, atMs: randInt(startMs, endMs), done:false });
-    }
-
-    events.sort((a,b)=>a.atMs-b.atMs);
-
-    const plan = {
-      mode: 'random',
-      basis: 'patient',
-      createdAt: Date.now(),
-      events
-    };
-
-    const report = { total: events.length, startMin: state.startMin, endMin: state.endMin, lowerOnly: state.rnd.lowerOnly };
-
-    return { plan, report };
-  }
-
-  function buildPlanFixed(){
-    const startMs = 0;
-    const events = [];
-
-    for(const f of state.fixed){
-      if(!f) continue;
-      const id = String(f.id||'');
-      const to = normCat(f.to||'');
-      const atMin = Number(f.atMin||0);
-      if(!/^patient\d+$/i.test(id)) continue;
-      if(!to) continue;
-      if(!Number.isFinite(atMin)) continue;
-
-      const atMs = Math.max(startMs, Math.round(atMin * 60000));
-      events.push({ id, to, atMs, done:false });
-    }
-
-    events.sort((a,b)=>a.atMs-b.atMs);
-
-    const plan = {
-      mode: 'fixed',
-      basis: 'patient',
-      createdAt: Date.now(),
-      events
-    };
-
-    const report = { total: events.length };
-
-    return { plan, report };
-  }
-
-  function generateAndSavePlan(){
-    let out = null;
-
-    if(state.mode === 'distribution') out = buildPlanDistribution();
-    else if(state.mode === 'random') out = buildPlanRandom();
-    else out = buildPlanFixed();
-
-    saveJSON(LS_PLAN, out.plan);
-
-    const lines = [];
-    lines.push('Modus. ' + state.mode);
-    if(state.mode !== 'fixed'){
-      lines.push('Zeitfenster. ' + state.startMin + ' bis ' + state.endMin + ' Minuten');
-    }
-    lines.push('Events. ' + out.report.total);
-
-    if(state.mode === 'distribution'){
-      lines.push('Anforderung. SK3 zu SK2 ' + out.report.want.g2y + ', SK2 zu SK1 ' + out.report.want.y2r + ', SK1 zu TOT ' + out.report.want.r2k);
-      lines.push('Ergebnis. SK3 zu SK2 ' + out.report.got.g2y + ', SK2 zu SK1 ' + out.report.got.y2r + ', SK1 zu TOT ' + out.report.got.r2k);
-      lines.push('TOT frühestens ab Minute. ' + out.report.totMin);
-    }
-
-    setText('debugOut', lines.join('\n'));
-
-    updatePlanState();
-  }
-
-  function clearPlan(){
-    try{ localStorage.removeItem(LS_PLAN); }catch(_){}
-    updatePlanState();
-    setText('debugOut', 'Plan gelöscht.');
-  }
-
-  function setPreset(name){
-    if(name === 'soft'){
-      state.dist.g2y = 2;
-      state.dist.y2r = 1;
-      state.dist.r2k = 0;
-      state.dist.totMin = 8;
-      state.startMin = 2;
-      state.endMin = 10;
-    }else if(name === 'real'){
-      state.dist.g2y = 3;
-      state.dist.y2r = 2;
-      state.dist.r2k = 1;
-      state.dist.totMin = 6;
-      state.startMin = 2;
-      state.endMin = 10;
-    }else if(name === 'hard'){
-      state.dist.g2y = 4;
-      state.dist.y2r = 3;
-      state.dist.r2k = 2;
-      state.dist.totMin = 5;
-      state.startMin = 1;
-      state.endMin = 12;
-    }
-    syncUI();
-  }
-
-  function fixedAddRow(defaults){
-    const open = getOpenPatients();
-    const pick = open[0] ? open[0].id : 'patient1';
-    state.fixed.push({
-      id: (defaults && defaults.id) || pick,
-      to: (defaults && defaults.to) || 'gelb',
-      atMin: (defaults && defaults.atMin != null) ? defaults.atMin : 5
-    });
-    renderFixedTable();
-  }
-
-  function fixedRemoveRow(idx){
-    state.fixed.splice(idx, 1);
-    renderFixedTable();
-  }
-
-  function renderFixedTable(){
-    const body = el('fixedBody');
-    const open = getOpenPatients();
-
-    const options = open.map(p=>{
-      const num = patientNum(p.id);
-      return '<option value="' + p.id + '">' + 'Patient ' + (num!=null ? num : p.id) + ' , ' + labelCat(p.cat) + '</option>';
-    }).join('');
-
-    body.innerHTML = '';
-
-    if(!state.fixed.length){
-      fixedAddRow({ atMin: 5, to: 'gelb' });
-      fixedAddRow({ atMin: 8, to: 'rot' });
-    }
-
-    state.fixed.forEach((r, idx)=>{
-      const tr = document.createElement('tr');
-
-      const td1 = document.createElement('td');
-      td1.innerHTML = '<select data-fixed="id" data-idx="' + idx + '">' + options + '</select>';
-      tr.appendChild(td1);
-
-      const td2 = document.createElement('td');
-      td2.innerHTML =
-        '<select data-fixed="to" data-idx="' + idx + '">' +
-          '<option value="gruen">SK3</option>' +
-          '<option value="gelb">SK2</option>' +
-          '<option value="rot">SK1</option>' +
-          '<option value="schwarz">TOT</option>' +
-        '</select>';
-      tr.appendChild(td2);
-
-      const td3 = document.createElement('td');
-      td3.innerHTML =
-        '<div class="stepper" style="min-height:48px; padding:8px;" data-fixedstep="' + idx + '">' +
-          '<button type="button" data-act="minus">−</button>' +
-          '<div class="val" style="min-width:40px;" id="fixedMin_' + idx + '">' + String(r.atMin||0) + '</div>' +
-          '<button type="button" data-act="plus">+</button>' +
-          '<div class="hint">min</div>' +
-        '</div>';
-      tr.appendChild(td3);
-
-      const td4 = document.createElement('td');
-      td4.innerHTML = '<button type="button" class="btn secondary" data-fixedrm="' + idx + '">X</button>';
-      tr.appendChild(td4);
-
-      body.appendChild(tr);
-
-      const selId = td1.querySelector('select');
-      selId.value = r.id;
-
-      const selTo = td2.querySelector('select');
-      selTo.value = normCat(r.to || 'gelb');
-    });
-
-    validateDistribution();
-  }
-
-  function syncUI(){
-    updateModeUI();
-    updateTimeUI();
-    updateDistUI();
-    updateRandomUI();
-    renderFixedTable();
-    updateOpenUI();
-  }
-
-  document.addEventListener('click', (e)=>{
-    const m = e.target.closest('.mode');
-    if(m){
-      state.mode = m.getAttribute('data-mode');
-      syncUI();
-      return;
-    }
-
-    const st = e.target.closest('.stepper');
-    if(st && st.dataset.stepper){
-      const key = st.dataset.stepper;
-      const act = e.target && e.target.getAttribute('data-act');
-
-      if(key === 'rndLower'){
-        if(act === 'toggle'){
-          state.rnd.lowerOnly = !state.rnd.lowerOnly;
-          syncUI();
-        }
+    function renderRules(rows){
+      const tb = el('rulesBody');
+      tb.innerHTML = '';
+      const list = Array.isArray(rows) ? rows : [];
+      if(!list.length){
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="4" class="muted">Keine Regeln.</td>';
+        tb.appendChild(tr);
         return;
       }
 
-      if(act === 'plus') setStepper(key, +1);
-      if(act === 'minus') setStepper(key, -1);
+      for(const r of list){
+        const idNum = Number(String(r.id||'').replace(/\D/g,'')||0);
+        const afterMin = Number(r.afterMin||0);
+        const delta = Number(r.delta||-1);
 
-      syncUI();
-      return;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <input type="number" min="1" step="1" value="${idNum}" style="width:90px;" data-k="id">
+          </td>
+          <td>
+            <input type="number" min="0" step="1" value="${afterMin}" style="width:120px;" data-k="afterMin">
+          </td>
+          <td>
+            <select data-k="delta" style="min-width:160px;">
+              <option value="-1" ${delta===-1?'selected':''}>1 Stufe schlechter</option>
+              <option value="-2" ${delta===-2?'selected':''}>2 Stufen schlechter</option>
+              <option value="-3" ${delta===-3?'selected':''}>3 Stufen schlechter</option>
+            </select>
+          </td>
+          <td class="tRight">
+            <button class="btnSmall danger" type="button" data-act="del">Löschen</button>
+          </td>
+        `;
+        tb.appendChild(tr);
+      }
     }
 
-    const rm = e.target.getAttribute('data-fixedrm');
-    if(rm != null){
-      fixedRemoveRow(Number(rm));
-      return;
+    function readRulesFromUI(){
+      const out = [];
+      const tb = el('rulesBody');
+      const trs = tb.querySelectorAll('tr');
+      trs.forEach(tr=>{
+        const idNum = Number(tr.querySelector('input[data-k="id"]')?.value || 0);
+        const afterMinVal = Number(tr.querySelector('input[data-k="afterMin"]')?.value || 0);
+        const deltaSel = tr.querySelector('select[data-k="delta"]');
+        const delta = Number(deltaSel ? deltaSel.value : -1);
+        if(idNum>0){
+          out.push({ id:'patient'+idNum, afterMin: afterMinVal, delta: delta });
+        }
+      });
+      return out;
     }
 
-    const add = e.target.id === 'btnAddFixed';
-    if(add){
-      fixedAddRow({ atMin: 6, to: 'gelb' });
-      return;
+    function fillUI(cfg){
+      enabled.checked = !!cfg.enabled;
+      mode.value = cfg.mode || 'off';
+      basis.value = cfg.basis || 'patient';
+
+      minMin.value = Number(cfg.random?.minMin ?? 3);
+      maxMin.value = Number(cfg.random?.maxMin ?? 5);
+      count.value = Number(cfg.random?.count ?? 3);
+      minGapSec.value = Number(cfg.random?.minGapSec ?? 60);
+      maxSchwarz.value = Number(cfg.random?.maxSchwarz ?? 2);
+      toLowerOnly.checked = !!cfg.random?.toLowerOnly;
+
+      allow1.checked = !!cfg.random?.allow?.sk1;
+      allow2.checked = !!cfg.random?.allow?.sk2;
+      allow3.checked = !!cfg.random?.allow?.sk3;
+      allow4.checked = !!cfg.random?.allow?.sk4;
+
+      renderRules(cfg.fixed || []);
+      showHide();
+      setStatus();
     }
 
-    if(e.target.id === 'btnPresetSoft') setPreset('soft');
-    if(e.target.id === 'btnPresetReal') setPreset('real');
-    if(e.target.id === 'btnPresetHard') setPreset('hard');
+    function readUI(){
+      const cfg = defaults();
+      cfg.enabled = !!enabled.checked;
+      cfg.mode = mode.value || 'off';
+      cfg.basis = basis.value || 'patient';
 
-    if(e.target.id === 'btnReload') updateOpenUI();
+      cfg.random.minMin = Number(minMin.value || 0);
+      cfg.random.maxMin = Number(maxMin.value || 0);
+      cfg.random.count = Number(count.value || 0);
+      cfg.random.minGapSec = Number(minGapSec.value || 0);
+      cfg.random.maxSchwarz = Math.max(0, Number(maxSchwarz.value || 0));
+      cfg.random.toLowerOnly = !!toLowerOnly.checked;
 
-    if(e.target.id === 'btnClearPlan') clearPlan();
+      cfg.random.allow.sk1 = !!allow1.checked;
+      cfg.random.allow.sk2 = !!allow2.checked;
+      cfg.random.allow.sk3 = !!allow3.checked;
+      cfg.random.allow.sk4 = !!allow4.checked;
 
-    if(e.target.id === 'btnSaveGenerate'){
-      writeCfg();
-      generateAndSavePlan();
-      updateOpenUI();
-    }
-  });
-
-  document.addEventListener('change', (e)=>{
-    const t = e.target;
-
-    if(t && t.id === 'rngStart'){
-      state.startMin = clamp(Number(t.value), 0, 60);
-      if(state.endMin <= state.startMin) state.endMin = state.startMin + 1;
-      syncUI();
-      return;
-    }
-    if(t && t.id === 'rngEnd'){
-      state.endMin = clamp(Number(t.value), 1, 90);
-      if(state.endMin <= state.startMin) state.endMin = state.startMin + 1;
-      syncUI();
-      return;
+      cfg.fixed = readRulesFromUI();
+      return cfg;
     }
 
-    if(t && t.dataset && t.dataset.fixed){
-      const idx = Number(t.dataset.idx);
-      const key = String(t.dataset.fixed);
-      const row = state.fixed[idx];
-      if(!row) return;
-
-      if(key === 'id') row.id = t.value;
-      if(key === 'to') row.to = normCat(t.value);
-
-      writeCfg();
-      renderFixedTable();
-      return;
+    function resetPlan(){
+      try{ localStorage.removeItem(KEY_PLAN); }catch{}
     }
-  });
 
-  document.addEventListener('click', (e)=>{
-    const box = e.target.closest('[data-fixedstep]');
-    if(!box) return;
+    function showPlan(){
+      const plan = load(KEY_PLAN, null);
+      if(!plan){
+        planText.textContent = 'Noch kein Plan.';
+        return;
+      }
+      planText.textContent = JSON.stringify(plan, null, 2);
+    }
 
-    const idx = Number(box.getAttribute('data-fixedstep'));
-    const row = state.fixed[idx];
-    if(!row) return;
+    document.addEventListener('click', (e) => {
+      const t = e.target;
 
-    const act = e.target && e.target.getAttribute('data-act');
-    if(act === 'plus') row.atMin = clamp(Number(row.atMin||0) + 1, 0, 120);
-    if(act === 'minus') row.atMin = clamp(Number(row.atMin||0) - 1, 0, 120);
+      if(t && t.id==='btnSave'){
+        const cfg = readUI();
+        save(KEY_CFG, cfg);
+        resetPlan();
+        setStatus();
+        showHide();
+        showPlan();
+        return;
+      }
 
-    const lab = el('fixedMin_' + idx);
-    if(lab) lab.textContent = String(row.atMin||0);
+      if(t && t.id==='btnReseed'){
+        resetPlan();
+        showPlan();
+        return;
+      }
 
-    writeCfg();
-  });
+      if(t && t.id==='btnResetPlan'){
+        resetPlan();
+        showPlan();
+        return;
+      }
 
-  function boot(){
-    readFromStorage();
-    if(state.startMin < 0) state.startMin = 0;
-    if(state.endMin <= state.startMin) state.endMin = state.startMin + 1;
+      if(t && t.id==='btnRefreshPlan'){
+        showPlan();
+        return;
+      }
 
-    syncUI();
-    updatePlanState();
-  }
+      if(t && t.id==='btnAddRule'){
+        const cfg = readUI();
+        cfg.fixed = Array.isArray(cfg.fixed) ? cfg.fixed : [];
+        cfg.fixed.push({ id:'patient1', afterMin: 3, delta: -1 });
+        renderRules(cfg.fixed);
+        return;
+      }
 
+      if(t && t.dataset && t.dataset.act==='del'){
+        const tr = t.closest('tr');
+        if(tr) tr.remove();
+        return;
+      }
+    });
 
-  // BottomBar Bridge
-  try{
-    const bbR = el('bbReload'); if(bbR) bbR.addEventListener('click', ()=>{ const b = el('btnReload'); if(b) b.click(); });
-    const bbC = el('bbClear');  if(bbC) bbC.addEventListener('click', ()=>{ const b = el('btnClearPlan'); if(b) b.click(); });
-    const bbG = el('bbGenerate');if(bbG) bbG.addEventListener('click', ()=>{ const b = el('btnSaveGenerate'); if(b) b.click(); });
-  }catch(_){}
+    document.addEventListener('input', (e)=>{
+      if(e.target && (e.target.id==='enabled' || e.target.id==='mode')){
+        setStatus();
+        showHide();
+      }
+    });
 
-  boot();
+    const cfg = Object.assign(defaults(), load(KEY_CFG, {}));
+    fillUI(cfg);
+    showPlan();
 
-})();
-</script>
-
+  })();
+  </script>
 
 <div class="bottomBar" role="region" aria-label="Dynamik Aktionen">
   <div class="inner">
