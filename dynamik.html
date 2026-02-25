@@ -505,6 +505,20 @@
 
   const el = (id)=>document.getElementById(id);
 
+
+  function setText(id, txt){
+    const n = el(id);
+    if(n) n.textContent = String(txt ?? '');
+  }
+  function setHTML(id, html){
+    const n = el(id);
+    if(n) n.innerHTML = String(html ?? '');
+  }
+  function setClass(id, cls){
+    const n = el(id);
+    if(n) n.className = cls;
+  }
+
   const state = {
     mode: 'distribution',
     startMin: 2,
@@ -653,45 +667,45 @@
       m.classList.toggle('active', is);
     });
 
-    el('sectionDistribution').style.display = (state.mode === 'distribution') ? '' : 'none';
-    el('sectionRandom').style.display = (state.mode === 'random') ? '' : 'none';
-    el('sectionFixed').style.display = (state.mode === 'fixed') ? '' : 'none';
+    const sd=el('sectionDistribution'); if(sd) sd.style.display = (state.mode === 'distribution') ? '' : 'none';
+    const sr=el('sectionRandom'); if(sr) sr.style.display = (state.mode === 'random') ? '' : 'none';
+    const sf=el('sectionFixed'); if(sf) sf.style.display = (state.mode === 'fixed') ? '' : 'none';
   }
 
   function updateTimeUI(){
-    el('rngStart').value = String(state.startMin);
-    el('rngEnd').value = String(state.endMin);
-    el('lblStartMin').textContent = String(state.startMin);
-    el('lblEndMin').textContent = String(state.endMin);
+    const rs=el('rngStart'); if(rs) rs.value = String(state.startMin);
+    const re2=el('rngEnd'); if(re2) re2.value = String(state.endMin);
+    setText('lblStartMin', state.startMin);
+    setText('lblEndMin', state.endMin);
   }
 
   function updateDistUI(){
-    el('val_g2y').textContent = String(state.dist.g2y);
-    el('val_y2r').textContent = String(state.dist.y2r);
-    el('val_r2k').textContent = String(state.dist.r2k);
-    el('val_totMin').textContent = String(state.dist.totMin);
+    setText('val_g2y', state.dist.g2y);
+    setText('val_y2r', state.dist.y2r);
+    setText('val_r2k', state.dist.r2k);
+    setText('val_totMin', state.dist.totMin);
 
-    el('need_g2y').textContent = String(state.dist.g2y);
-    el('need_y2r').textContent = String(state.dist.y2r);
-    el('need_r2k').textContent = String(state.dist.r2k);
+    setText('need_g2y', state.dist.g2y);
+    setText('need_y2r', state.dist.y2r);
+    setText('need_r2k', state.dist.r2k);
 
     validateDistribution();
   }
 
   function updateRandomUI(){
-    el('val_rndCount').textContent = String(state.rnd.count);
-    el('val_rndLower').textContent = state.rnd.lowerOnly ? 'An' : 'Aus';
+    setText('val_rndCount', state.rnd.count);
+    setText('val_rndLower', state.rnd.lowerOnly ? 'An' : 'Aus');
   }
 
   function updateOpenUI(){
     const open = getOpenPatients();
     const c = countCats(open);
 
-    el('openTotal').textContent = String(c.total);
-    el('openG').textContent = String(c.gruen);
-    el('openY').textContent = String(c.gelb);
-    el('openR').textContent = String(c.rot);
-    el('openK').textContent = String(c.schwarz);
+    setText('openTotal', c.total);
+    setText('openG', c.gruen);
+    setText('openY', c.gelb);
+    setText('openR', c.rot);
+    setText('openK', c.schwarz);
 
     validateDistribution();
     updatePlanState();
@@ -699,24 +713,24 @@
 
   function updatePlanState(){
     const plan = loadJSON(LS_PLAN, null);
-    const dot = el('dotPlan');
-    const msg = el('planState');
+    
+    
 
     if(plan && plan.events && Array.isArray(plan.events) && plan.events.length){
-      dot.className = 'dot ok';
+      setClass('dotPlan','dot ok');
       const n = plan.events.filter(e=>e && !e.done).length;
-      msg.innerHTML = 'Plan aktiv. ' + n + ' Events offen.<small>Wenn du die Dynamik neu starten willst, lösche den Plan und erzeuge einen neuen.</small>';
+      setHTML('planState','Plan aktiv. ' + n + ' Events offen.<small>Wenn du die Dynamik neu starten willst, lösche den Plan und erzeuge einen neuen.</small>');
       return;
     }
-    dot.className = 'dot warn';
-    msg.innerHTML = 'Kein Plan erzeugt.<small>Wenn du Speichern und Plan erzeugen drückst, wird ein Plan erstellt.</small>';
+    setClass('dotPlan','dot warn');
+    setHTML('planState','Kein Plan erzeugt.<small>Wenn du Speichern und Plan erzeugen drückst, wird ein Plan erstellt.</small>');
   }
 
   function validateDistribution(){
     if(state.mode !== 'distribution'){
-      el('dotDist').className = 'dot';
-      el('distMsg').textContent = 'Bereit.';
-      el('distSmall').textContent = 'Plan wird automatisch an die reale Ablage angepasst.';
+      setClass('dotDist','dot');
+      setText('distMsg','Bereit.');
+      setText('distSmall','Plan wird automatisch an die reale Ablage angepasst.');
       return;
     }
 
@@ -734,22 +748,22 @@
     const changed = (okG !== wantG) || (okY !== wantY) || (okR !== wantR);
 
     if(cats.total === 0){
-      el('dotDist').className = 'dot bad';
-      el('distMsg').textContent = 'Keine offenen Patienten.';
-      el('distSmall').textContent = 'Du brauchst Sichtungen in der Ablage.';
+      setClass('dotDist','dot bad');
+      setText('distMsg','Keine offenen Patienten.');
+      setText('distSmall','Du brauchst Sichtungen in der Ablage.');
       return;
     }
 
     if(changed){
-      el('dotDist').className = 'dot warn';
-      el('distMsg').textContent = 'Wird automatisch angepasst.';
-      el('distSmall').textContent = 'Verfügbar. SK3 ' + cats.gruen + ', SK2 ' + cats.gelb + ', SK1 ' + cats.rot + '.';
+      setClass('dotDist','dot warn');
+      setText('distMsg','Wird automatisch angepasst.');
+      setText('distSmall','Verfügbar. SK3 ' + cats.gruen + ', SK2 ' + cats.gelb + ', SK1 ' + cats.rot + '.');
       return;
     }
 
-    el('dotDist').className = 'dot ok';
-    el('distMsg').textContent = 'Bereit.';
-    el('distSmall').textContent = 'Verfügbar. SK3 ' + cats.gruen + ', SK2 ' + cats.gelb + ', SK1 ' + cats.rot + '.';
+    setClass('dotDist','dot ok');
+    setText('distMsg','Bereit.');
+    setText('distSmall','Verfügbar. SK3 ' + cats.gruen + ', SK2 ' + cats.gelb + ', SK1 ' + cats.rot + '.');
   }
 
   function setStepper(key, delta){
@@ -931,7 +945,7 @@
       lines.push('TOT frühestens ab Minute. ' + out.report.totMin);
     }
 
-    el('debugOut').textContent = lines.join('\n');
+    setText('debugOut', lines.join('\n'));
 
     updatePlanState();
   }
@@ -939,7 +953,7 @@
   function clearPlan(){
     try{ localStorage.removeItem(LS_PLAN); }catch(_){}
     updatePlanState();
-    el('debugOut').textContent = 'Plan gelöscht.';
+    setText('debugOut', 'Plan gelöscht.');
   }
 
   function setPreset(name){
