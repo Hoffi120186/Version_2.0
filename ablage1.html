@@ -551,7 +551,7 @@ function __labelFromCat(cat){
   if (c === 'rot') return 'SK1';
   if (c === 'gelb') return 'SK2';
   if (c === 'gruen') return 'SK3';
-  if (c === 'schwarz') return 'SK4';
+  if (c === 'schwarz') return 'Tot';
   return '';
 }
 function getSichtungDisplay(id, cat){
@@ -560,7 +560,7 @@ function getSichtungDisplay(id, cat){
   if (c === 'rot') return 'SK1' + ((p && p.t) ? ' , T' : '');
   if (c === 'gelb') return 'SK2';
   if (c === 'gruen') return 'SK3' + ((p && p.b) ? ' , B' : '');
-  if (c === 'schwarz') return 'SK4';
+  if (c === 'schwarz') return 'Tot';
   return '';
 }
 
@@ -1324,10 +1324,10 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 
   function catLabel(cat){
     var c = normCat(cat);
-    if(c === 'rot') return 'SK1 (rot)';
-    if(c === 'gelb') return 'SK2 (gelb)';
-    if(c === 'gruen') return 'SK3 (grün)';
-    if(c === 'schwarz') return 'SK4 (schwarz)';
+    if(c === 'rot') return 'SK1 ';
+    if(c === 'gelb') return 'SK2 ';
+    if(c === 'gruen') return 'SK3';
+    if(c === 'schwarz') return 'Tot';
     return String(cat||'');
   }
 
