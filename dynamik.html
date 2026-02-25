@@ -18,10 +18,12 @@
       --border:rgba(255,255,255,.18);
       --shadow:0 10px 26px rgba(0,0,0,.28);
       --radius:16px;
-      --ok:#22c55e;
-      --bad:#ef4444;
       --accent:#0B5FFF;
       --muted:rgba(255,255,255,.75);
+      --ok:#22c55e;
+      --warn:#f59e0b;
+      --bad:#ef4444;
+      --black:#111827;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -53,18 +55,15 @@
       cursor:pointer;
       font-weight:800;
       box-shadow:0 10px 26px rgba(0,0,0,.22);
+      touch-action:manipulation;
     }
     .btn.alt{ background:#e53935; }
-    .btnSmall{
+    .btn.ghost{
       background:rgba(255,255,255,.10);
       border:1px solid rgba(255,255,255,.20);
-      color:#fff;
-      padding:10px 12px;
-      border-radius:12px;
-      cursor:pointer;
-      font-weight:800;
+      box-shadow:none;
     }
-    .btnSmall:hover{ filter:brightness(1.05); }
+    .btn:active{ transform:scale(.99); }
 
     .card{
       background:var(--glass);
@@ -80,36 +79,9 @@
       gap:14px;
     }
 
-    .row{
-      display:flex;
-      gap:12px;
-      flex-wrap:wrap;
-      align-items:flex-start;
-    }
-    .col{
-      flex:1 1 320px;
-      min-width:280px;
-    }
+    .row{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start}
+    .col{flex:1 1 320px; min-width:280px}
     .muted{ color:var(--muted); }
-    .pill{
-      display:inline-flex; align-items:center; gap:10px;
-      padding:10px 12px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.18);
-      background:rgba(255,255,255,.08);
-      font-weight:900;
-    }
-
-    label{ font-weight:800; }
-    input[type="number"], select{
-      background:rgba(255,255,255,.08);
-      color:#fff;
-      border:1px solid rgba(255,255,255,.18);
-      border-radius:12px;
-      padding:10px;
-      outline:none;
-    }
-    select option{ color:#111; }
 
     .status{
       display:inline-flex;
@@ -124,46 +96,130 @@
     .status.ok{ border-color:rgba(34,197,94,.45); background:rgba(34,197,94,.14); color:#bbf7d0; }
     .status.bad{ border-color:rgba(239,68,68,.45); background:rgba(239,68,68,.12); color:#fecaca; }
 
-    .rules{
-      margin-top:12px;
-      border-top:1px solid rgba(255,255,255,.14);
-      padding-top:12px;
-    }
-    table{
-      width:100%;
-      border-collapse:collapse;
-      overflow:hidden;
+    label{ font-weight:900; }
+    input[type="number"], select{
+      background:rgba(255,255,255,.08);
+      color:#fff;
+      border:1px solid rgba(255,255,255,.18);
       border-radius:12px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(0,0,0,.20);
-    }
-    th,td{
       padding:10px;
-      border-bottom:1px solid rgba(255,255,255,.10);
-      text-align:left;
-      font-size:14px;
+      outline:none;
     }
-    th{ font-weight:900; opacity:.95; }
-    tr:last-child td{ border-bottom:none; }
-    .tRight{ text-align:right; }
-    .danger{ color:#fecaca; }
+    select option{ color:#111; }
 
-    .plan{
-      white-space:pre-wrap;
-      font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-      font-size:12px;
-      background:rgba(0,0,0,.22);
+    .divider{margin-top:12px;border-top:1px solid rgba(255,255,255,.14);padding-top:12px}
+
+    .switch{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:12px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.08);
+    }
+    .switch strong{font-size:15px}
+    .switch .sub{font-size:13px; color:var(--muted); margin-top:4px; font-weight:600}
+    .toggle{
+      position:relative;
+      width:62px;
+      height:34px;
+      flex:0 0 auto;
+    }
+    .toggle input{position:absolute; inset:0; opacity:0}
+    .toggle .track{
+      position:absolute; inset:0;
+      border-radius:999px;
+      background:rgba(255,255,255,.18);
+      border:1px solid rgba(255,255,255,.18);
+      transition:200ms;
+    }
+    .toggle .thumb{
+      position:absolute;
+      top:4px; left:4px;
+      width:26px; height:26px;
+      border-radius:999px;
+      background:#fff;
+      transition:200ms;
+      box-shadow:0 10px 20px rgba(0,0,0,.25);
+    }
+    .toggle input:checked + .track{
+      background:rgba(11,95,255,.45);
+      border-color:rgba(11,95,255,.55);
+    }
+    .toggle input:checked + .track .thumb{
+      transform:translateX(28px);
+    }
+
+    .seg{
+      display:inline-flex;
+      gap:0;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.08);
+      overflow:hidden;
+    }
+    .seg button{
+      appearance:none;
+      border:none;
+      background:transparent;
+      color:#fff;
+      padding:10px 12px;
+      font-weight:900;
+      cursor:pointer;
+      min-width:130px;
+      touch-action:manipulation;
+    }
+    .seg button + button{ border-left:1px solid rgba(255,255,255,.14); }
+    .seg button.active{
+      background:rgba(11,95,255,.55);
+    }
+
+    .choiceRow{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+      padding:10px 10px;
+      border-radius:14px;
       border:1px solid rgba(255,255,255,.14);
-      border-radius:12px;
-      padding:12px;
-      max-height:340px;
-      overflow:auto;
+      background:rgba(0,0,0,.18);
+    }
+    .chip{
+      display:inline-flex; align-items:center; gap:10px;
+      padding:10px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.08);
+      font-weight:900;
+      user-select:none;
+    }
+    .chip input{width:18px;height:18px}
+    .chip.sk3{ border-color:rgba(34,197,94,.45); background:rgba(34,197,94,.12); }
+    .chip.sk2{ border-color:rgba(245,158,11,.45); background:rgba(245,158,11,.12); }
+    .chip.sk1{ border-color:rgba(239,68,68,.45); background:rgba(239,68,68,.12); }
+    .chip.tot{ border-color:rgba(17,24,39,.55); background:rgba(17,24,39,.35); }
+
+    .inline{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+    }
+
+    .opt{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:10px 10px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.18);
+    }
+    .opt .left{display:flex; flex-direction:column; gap:4px}
+    .opt .left strong{font-size:14px}
+    .opt .left span{font-size:12px; color:var(--muted); font-weight:650}
+
+    .footerActions{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:flex-end;
+      margin-top:12px;
     }
 
     @media (max-width:640px){
       header{ padding:12px 10px 10px; }
-      .btn,.btnSmall{ padding:12px 14px; }
+      .btn{ padding:12px 14px; }
       .col{ min-width:100%; }
+      .seg button{ min-width:105px; }
     }
   </style>
 </head>
@@ -182,144 +238,143 @@
     <div class="grid">
 
       <div class="card">
-        <div class="row">
-          <div class="col">
-            <label class="pill">
-              <input id="enabled" type="checkbox" style="width:18px;height:18px;">
-              Dynamik aktiv
-            </label>
-            <div class="muted" style="margin-top:10px;">
-              Wenn aktiv, werden geplante Verschlechterungen automatisch ausgelöst.
-            </div>
+        <div class="switch">
+          <div>
+            <strong>Dynamik aktiv</strong>
+            <div class="sub">Wenn aktiv, werden geplante Verschlechterungen automatisch ausgelöst.</div>
           </div>
+          <label class="toggle" aria-label="Dynamik aktiv">
+            <input id="enabled" type="checkbox">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
 
-          <div class="col">
-            <label for="mode">Modus</label>
-            <div style="margin-top:8px;">
-              <select id="mode" style="min-width:240px;">
-                <option value="off">Aus</option>
-                <option value="random">Zufällig</option>
-                <option value="fixed">Fix</option>
-              </select>
+        <div class="divider">
+          <label style="display:block; margin-bottom:10px;">Modus</label>
+          <div class="inline">
+            <div class="seg" role="tablist" aria-label="Modus Auswahl">
+              <button type="button" id="modeOff" class="active">Aus</button>
+              <button type="button" id="modeRandom">Zufällig</button>
+              <button type="button" id="modeFixed">Fix</button>
             </div>
-            <div class="muted" style="margin-top:10px;">
-              Zufällig würfelt Ereignisse, Fix nutzt deine Tabelle unten.
-            </div>
-          </div>
-
-          <div class="col">
-            <label for="basis">Zeitbasis</label>
-            <div style="margin-top:8px;">
-              <select id="basis" style="min-width:240px;">
-                <option value="patient">pro Patient. ab Eintritt in Ablage</option>
-                <option value="global">global. ab Übungsstart</option>
-              </select>
-            </div>
-            <div class="muted" style="margin-top:10px;">
-              Empfehlung. pro Patient.
-            </div>
+            <span class="muted" style="font-weight:700;">Zufällig würfelt Ereignisse, Fix nutzt deine Tabelle unten.</span>
           </div>
         </div>
       </div>
 
       <div class="card" id="randomCard">
-        <div style="font-weight:900; font-size:16px;">Zufällig</div>
+        <div style="font-weight:950; font-size:16px;">Zufällig</div>
 
-        <div class="row" style="margin-top:12px;">
-          <div class="col">
-            <label>Start nach. Minuten</label>
-            <div style="margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-              <input id="minMin" type="number" min="0" step="1" value="3" style="width:110px;">
-              <span class="muted">bis</span>
-              <input id="maxMin" type="number" min="0" step="1" value="5" style="width:110px;">
+        <div class="divider">
+          <div style="font-weight:950; margin-bottom:10px;">Start der Patientenverschlechterung</div>
+
+          <div class="choiceRow" role="group" aria-label="Start Fenster">
+            <div class="seg" style="width:100%;">
+              <button type="button" class="active" data-win="1">1 bis 3 Minuten</button>
+              <button type="button" data-win="2">3 bis 6 Minuten</button>
+              <button type="button" data-win="3">6 bis 9 Minuten</button>
+              <button type="button" data-win="4">9 bis 12 Minuten</button>
             </div>
           </div>
 
+          <div class="muted" style="margin-top:10px; font-weight:650;">
+            Wird bei Zufall genutzt, Beginn liegt innerhalb des Fensters.
+          </div>
+
+          <div style="display:none;">
+            <input id="minMin" type="number" min="0" step="1" value="3">
+            <input id="maxMin" type="number" min="0" step="1" value="5">
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:12px;">
           <div class="col">
             <label>Anzahl Events</label>
             <div style="margin-top:8px;">
-              <input id="count" type="number" min="0" step="1" value="3" style="width:110px;">
+              <input id="count" type="number" min="0" step="1" value="3" style="width:120px;">
             </div>
-            <div class="muted" style="margin-top:10px;">
+            <div class="muted" style="margin-top:10px; font-weight:650;">
               Gesamtanzahl Verschlechterungen.
             </div>
           </div>
 
           <div class="col">
-            <label>Minimaler Abstand. Sekunden</label>
-            <div style="margin-top:8px;">
-              <input id="minGapSec" type="number" min="0" step="1" value="60" style="width:110px;">
+            <div class="opt">
+              <div class="left">
+                <strong>Minimaler Abstand</strong>
+                <span>Optional. Mindestabstand zwischen Verschlechterungen in Sekunden.</span>
+              </div>
+              <div class="inline" style="gap:10px;">
+                <label class="toggle" aria-label="Minimaler Abstand aktiv">
+                  <input id="gapEnabled" type="checkbox">
+                  <span class="track"><span class="thumb"></span></span>
+                </label>
+                <input id="minGapSec" type="number" min="0" step="1" value="60" style="width:120px;">
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="row" style="margin-top:12px; align-items:center;">
-          <label class="pill">
-            <input id="toLowerOnly" type="checkbox" style="width:18px;height:18px;">
-            Nur eine Stufe schlechter
-          </label>
-          <span class="muted">
-            Grün zu Gelb, Gelb zu Rot, Rot zu Schwarz.
-          </span>
-        </div>
-
-        <div class="rules">
-          <div style="font-weight:900;">Welche Klassen dürfen ausgewählt werden</div>
+        <div class="divider">
+          <div style="font-weight:950;">Welche Klassen dürfen sich verschlechtern</div>
           <div class="row" style="margin-top:10px;">
-          <span class="pill"><input id="allow1" type="checkbox" style="width:18px;height:18px;" /> SK1</span>
-          <span class="pill"><input id="allow2" type="checkbox" style="width:18px;height:18px;" /> SK2</span>
-          <span class="pill"><input id="allow3" type="checkbox" style="width:18px;height:18px;" /> SK3</span>
-          <span class="pill"><input id="allow4" type="checkbox" style="width:18px;height:18px;" /> Schwarz</span>
-        </div>
-        <div class="row" style="margin-top:10px; align-items:center; gap:10px;">
-          <span class="muted" style="min-width:160px;">Max Schwarz Events</span>
-          <input id="maxSchwarz" type="number" min="0" max="10" step="1" value="2" style="width:110px; padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.08); color:#fff;">
-          <span class="muted">Empfehlung 1 oder 2</span>
-        </div>
-        <div class="muted" style="margin-top:8px;">Empfehlung. Schwarz selten nutzen, ideal 1 oder 2.</div>
-      </div>
+            <span class="chip sk1"><input id="allow1" type="checkbox" /> SK1</span>
+            <span class="chip sk2"><input id="allow2" type="checkbox" /> SK2</span>
+            <span class="chip sk3"><input id="allow3" type="checkbox" /> SK3</span>
+            <span class="chip tot"><input id="allow4" type="checkbox" /> Tot</span>
+          </div>
 
-      <div class="row" style="margin-top:12px;">
-        <button class="btnSmall" type="button" id="btnReseed">Neu würfeln</button>
-        <span class="muted">Erzeugt einen neuen Plan beim nächsten Betreten der Ablage.</span>
+          <div class="row" style="margin-top:10px; align-items:center; gap:10px;">
+            <span class="muted" style="min-width:280px; font-weight:800;">Maximale SK1 Verschlechterung zu Tot</span>
+            <input id="maxSchwarz" type="number" min="0" max="10" step="1" value="2" style="width:120px;">
+            <span class="muted" style="font-weight:650;">Empfehlung 1 oder 2</span>
+          </div>
+
+          <div class="muted" style="margin-top:8px; font-weight:650;">
+            Nur eine Stufe schlechter ist aktiv, Grün zu Gelb, Gelb zu Rot, Rot zu Tot.
+          </div>
+
+          <div style="display:none;">
+            <input id="toLowerOnly" type="checkbox" checked>
+          </div>
+        </div>
       </div>
-    </div>
 
       <div class="card" id="fixedCard">
-        <div style="font-weight:900; font-size:16px;">Fix</div>
-        <div class="muted" style="margin-top:10px;">
-          Hier kannst du feste Regeln pflegen. Beispiel. Patient 7 nach 4 Minuten um eine Stufe schlechter.
+        <div style="font-weight:950; font-size:16px;">Fix</div>
+        <div class="muted" style="margin-top:10px; font-weight:650;">
+          Hier kannst du feste Regeln pflegen. Beispiel, Patient 7 nach 4 Minuten um eine Stufe schlechter.
         </div>
 
-        <div class="rules">
-          <table>
+        <div class="divider">
+          <table style="width:100%; border-collapse:collapse; overflow:hidden; border-radius:12px; border:1px solid rgba(255,255,255,.14); background:rgba(0,0,0,.20);">
             <thead>
               <tr>
-                <th style="width:120px;">Patient</th>
-                <th style="width:170px;">Nach Minuten</th>
-                <th>Delta</th>
-                <th class="tRight" style="width:120px;">Aktion</th>
+                <th style="padding:10px; border-bottom:1px solid rgba(255,255,255,.10); text-align:left; width:120px;">Patient</th>
+                <th style="padding:10px; border-bottom:1px solid rgba(255,255,255,.10); text-align:left; width:170px;">Nach Minuten</th>
+                <th style="padding:10px; border-bottom:1px solid rgba(255,255,255,.10); text-align:left;">Delta</th>
+                <th style="padding:10px; border-bottom:1px solid rgba(255,255,255,.10); text-align:right; width:120px;">Aktion</th>
               </tr>
             </thead>
             <tbody id="rulesBody"></tbody>
           </table>
 
           <div class="row" style="margin-top:12px;">
-            <button class="btnSmall" id="btnAddRule" type="button">Regel hinzufügen</button>
-            <span class="muted">Delta. 1 bedeutet eine Stufe schlechter. 2 bedeutet zwei Stufen.</span>
+            <button class="btn ghost" id="btnAddRule" type="button">Regel hinzufügen</button>
+            <span class="muted" style="font-weight:650;">Delta, 1 bedeutet eine Stufe schlechter, 2 bedeutet zwei Stufen.</span>
           </div>
         </div>
       </div>
 
-      <div class="card" id="planCard">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
-          <div style="font-weight:900; font-size:16px;">Aktueller Plan</div>
-          <div class="row" style="gap:10px; align-items:center;">
-            <button class="btnSmall" id="btnRefreshPlan" type="button">Plan anzeigen</button>
-            <button class="btnSmall" id="btnResetPlan" type="button">Plan löschen</button>
-          </div>
+      <div class="card">
+        <div style="font-weight:950; font-size:16px;">Weiter</div>
+        <div class="muted" style="margin-top:8px; font-weight:650;">
+          Optional, direkt zur Auswahl der Patienten oder zum Start der Sichtung.
         </div>
-        <div class="plan" id="planText" style="margin-top:12px;">Noch kein Plan.</div>
+        <div class="footerActions">
+          <button class="btn ghost" type="button" id="btnPatienten">Patientenauswahl</button>
+          <button class="btn" type="button" id="btnSichtung">Sichtung starten</button>
+        </div>
       </div>
 
     </div>
@@ -358,8 +413,10 @@
 
     const status = el('status');
     const enabled = el('enabled');
-    const mode = el('mode');
-    const basis = el('basis');
+
+    const modeOff = el('modeOff');
+    const modeRandom = el('modeRandom');
+    const modeFixed = el('modeFixed');
 
     const randomCard = el('randomCard');
     const fixedCard = el('fixedCard');
@@ -368,18 +425,29 @@
     const maxMin = el('maxMin');
     const count = el('count');
     const minGapSec = el('minGapSec');
-    const toLowerOnly = el('toLowerOnly');
+    const gapEnabled = el('gapEnabled');
+
     const allow1 = el('allow1');
     const allow2 = el('allow2');
     const allow3 = el('allow3');
     const allow4 = el('allow4');
     const maxSchwarz = el('maxSchwarz');
 
-    const planCard = el('planCard');
-    const planText = el('planText');
+    const toLowerOnly = el('toLowerOnly');
+
+    let modeValue = 'off';
+
+    function setMode(m){
+      modeValue = m || 'off';
+      modeOff.classList.toggle('active', modeValue==='off');
+      modeRandom.classList.toggle('active', modeValue==='random');
+      modeFixed.classList.toggle('active', modeValue==='fixed');
+      showHide();
+      setStatus();
+    }
 
     function setStatus(){
-      if(!enabled.checked || mode.value==='off'){
+      if(!enabled.checked || modeValue==='off'){
         status.textContent = 'Aus';
         status.className = 'status';
         return;
@@ -389,10 +457,8 @@
     }
 
     function showHide(){
-      const m = mode.value || 'off';
-      randomCard.style.display = (m==='random') ? '' : 'none';
-      fixedCard.style.display = (m==='fixed') ? '' : 'none';
-      planCard.style.display = (enabled.checked && m!=='off') ? '' : 'none';
+      randomCard.style.display = (modeValue==='random') ? '' : 'none';
+      fixedCard.style.display = (modeValue==='fixed') ? '' : 'none';
     }
 
     function renderRules(rows){
@@ -401,7 +467,7 @@
       const list = Array.isArray(rows) ? rows : [];
       if(!list.length){
         const tr = document.createElement('tr');
-        tr.innerHTML = '<td colspan="4" class="muted">Keine Regeln.</td>';
+        tr.innerHTML = '<td colspan="4" class="muted" style="padding:10px;">Keine Regeln.</td>';
         tb.appendChild(tr);
         return;
       }
@@ -413,21 +479,21 @@
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td>
+          <td style="padding:10px; border-bottom:1px solid rgba(255,255,255,.10);">
             <input type="number" min="1" step="1" value="${idNum}" style="width:90px;" data-k="id">
           </td>
-          <td>
+          <td style="padding:10px; border-bottom:1px solid rgba(255,255,255,.10);">
             <input type="number" min="0" step="1" value="${afterMin}" style="width:120px;" data-k="afterMin">
           </td>
-          <td>
+          <td style="padding:10px; border-bottom:1px solid rgba(255,255,255,.10);">
             <select data-k="delta" style="min-width:160px;">
               <option value="-1" ${delta===-1?'selected':''}>1 Stufe schlechter</option>
               <option value="-2" ${delta===-2?'selected':''}>2 Stufen schlechter</option>
               <option value="-3" ${delta===-3?'selected':''}>3 Stufen schlechter</option>
             </select>
           </td>
-          <td class="tRight">
-            <button class="btnSmall danger" type="button" data-act="del">Löschen</button>
+          <td style="padding:10px; border-bottom:1px solid rgba(255,255,255,.10); text-align:right;">
+            <button class="btn ghost" type="button" data-act="del">Löschen</button>
           </td>
         `;
         tb.appendChild(tr);
@@ -450,17 +516,51 @@
       return out;
     }
 
+    function setStartWindowPreset(preset){
+      const map = {
+        1:{a:1,b:3},
+        2:{a:3,b:6},
+        3:{a:6,b:9},
+        4:{a:9,b:12}
+      };
+      const v = map[preset] || map[2];
+      minMin.value = v.a;
+      maxMin.value = v.b;
+
+      const seg = randomCard.querySelector('.seg');
+      if(!seg) return;
+      const btns = seg.querySelectorAll('button[data-win]');
+      btns.forEach(b=>{
+        b.classList.toggle('active', String(b.dataset.win)===String(preset));
+      });
+    }
+
+    function inferPresetFromValues(a,b){
+      a = Number(a||0);
+      b = Number(b||0);
+      if(a===1 && b===3) return 1;
+      if(a===3 && b===6) return 2;
+      if(a===6 && b===9) return 3;
+      if(a===9 && b===12) return 4;
+      return 2;
+    }
+
     function fillUI(cfg){
       enabled.checked = !!cfg.enabled;
-      mode.value = cfg.mode || 'off';
-      basis.value = cfg.basis || 'patient';
+      modeValue = cfg.mode || 'off';
+
+      count.value = Number(cfg.random?.count ?? 3);
 
       minMin.value = Number(cfg.random?.minMin ?? 3);
       maxMin.value = Number(cfg.random?.maxMin ?? 5);
-      count.value = Number(cfg.random?.count ?? 3);
+
       minGapSec.value = Number(cfg.random?.minGapSec ?? 60);
+      gapEnabled.checked = Number(cfg.random?.minGapSec ?? 60) > 0;
+
       maxSchwarz.value = Number(cfg.random?.maxSchwarz ?? 2);
-      toLowerOnly.checked = !!cfg.random?.toLowerOnly;
+
+      toLowerOnly.checked = true;
+      toLowerOnly.disabled = true;
 
       allow1.checked = !!cfg.random?.allow?.sk1;
       allow2.checked = !!cfg.random?.allow?.sk2;
@@ -468,22 +568,30 @@
       allow4.checked = !!cfg.random?.allow?.sk4;
 
       renderRules(cfg.fixed || []);
-      showHide();
+      setMode(modeValue);
+
+      const p = inferPresetFromValues(minMin.value, maxMin.value);
+      setStartWindowPreset(p);
+
       setStatus();
     }
 
     function readUI(){
       const cfg = defaults();
       cfg.enabled = !!enabled.checked;
-      cfg.mode = mode.value || 'off';
-      cfg.basis = basis.value || 'patient';
+      cfg.mode = modeValue;
+      cfg.basis = 'patient';
+
+      cfg.random.count = Number(count.value || 0);
 
       cfg.random.minMin = Number(minMin.value || 0);
       cfg.random.maxMin = Number(maxMin.value || 0);
-      cfg.random.count = Number(count.value || 0);
-      cfg.random.minGapSec = Number(minGapSec.value || 0);
+
+      cfg.random.minGapSec = gapEnabled.checked ? Number(minGapSec.value || 0) : 0;
+
       cfg.random.maxSchwarz = Math.max(0, Number(maxSchwarz.value || 0));
-      cfg.random.toLowerOnly = !!toLowerOnly.checked;
+
+      cfg.random.toLowerOnly = true;
 
       cfg.random.allow.sk1 = !!allow1.checked;
       cfg.random.allow.sk2 = !!allow2.checked;
@@ -498,17 +606,17 @@
       try{ localStorage.removeItem(KEY_PLAN); }catch{}
     }
 
-    function showPlan(){
-      const plan = load(KEY_PLAN, null);
-      if(!plan){
-        planText.textContent = 'Noch kein Plan.';
-        return;
-      }
-      planText.textContent = JSON.stringify(plan, null, 2);
-    }
-
     document.addEventListener('click', (e) => {
       const t = e.target;
+
+      if(t === modeOff) return setMode('off');
+      if(t === modeRandom) return setMode('random');
+      if(t === modeFixed) return setMode('fixed');
+
+      if(t && t.dataset && t.dataset.win){
+        setStartWindowPreset(Number(t.dataset.win));
+        return;
+      }
 
       if(t && t.id==='btnSave'){
         const cfg = readUI();
@@ -516,24 +624,6 @@
         resetPlan();
         setStatus();
         showHide();
-        showPlan();
-        return;
-      }
-
-      if(t && t.id==='btnReseed'){
-        resetPlan();
-        showPlan();
-        return;
-      }
-
-      if(t && t.id==='btnResetPlan'){
-        resetPlan();
-        showPlan();
-        return;
-      }
-
-      if(t && t.id==='btnRefreshPlan'){
-        showPlan();
         return;
       }
 
@@ -550,18 +640,35 @@
         if(tr) tr.remove();
         return;
       }
+
+      if(t && t.id==='btnPatienten'){
+        location.href = 'patientenauswahl.html';
+        return;
+      }
+
+      if(t && t.id==='btnSichtung'){
+        location.href = 'index.html';
+        return;
+      }
     });
 
     document.addEventListener('input', (e)=>{
-      if(e.target && (e.target.id==='enabled' || e.target.id==='mode')){
+      if(e.target === enabled){
         setStatus();
-        showHide();
+        return;
+      }
+      if(e.target === gapEnabled){
+        if(!gapEnabled.checked){
+          minGapSec.value = 0;
+        } else {
+          if(Number(minGapSec.value||0) <= 0) minGapSec.value = 60;
+        }
+        return;
       }
     });
 
     const cfg = Object.assign(defaults(), load(KEY_CFG, {}));
     fillUI(cfg);
-    showPlan();
 
   })();
   </script>
