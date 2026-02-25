@@ -1324,8 +1324,8 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 
   function catLabel(cat){
     var c = normCat(cat);
-    if(c === 'rot') return 'SK1 ';
-    if(c === 'gelb') return 'SK2 ';
+    if(c === 'rot') return 'SK1';
+    if(c === 'gelb') return 'SK2';
     if(c === 'gruen') return 'SK3';
     if(c === 'schwarz') return 'Tot';
     return String(cat||'');
@@ -1372,6 +1372,8 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
         var parts = [];
         if(w.af != null) parts.push('AF ' + w.af + '/min');
         if(w.puls != null) parts.push('Puls ' + w.puls + '/min');
+        if(w.rr != null) parts.push('RR ' + w.rr);
+        if(w.spo2 != null) parts.push('SpO2 ' + w.spo2 + '%');
         werte = parts.join(', ');
       }
     }catch(_2){ werte=''; }
@@ -1402,35 +1404,62 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 
   if(ok) ok.addEventListener('click', close);
 
+  function handleFiredArray(arr){
+    try{
+      if(Array.isArray(arr) && arr.length && typeof window.__AblageDynApply === 'function'){
+        window.__AblageDynApply(arr);
+      }
+    }catch(_){}
+
+    try{
+      if(Array.isArray(arr) && arr.length){
+        for(var i=0;i<arr.length;i++) q.push(arr[i]);
+      } else {
+        q.push({ label:'Patient', fromCat:'', toCat:'' });
+      }
+    }catch(_2){
+      q.push({ label:'Patient', fromCat:'', toCat:'' });
+    }
+
+    showNext();
+  }
+
   window.addEventListener('ablage:dynamik:fired', function(e){
     var firedArr = null;
     try{
       var d = e && e.detail ? e.detail : null;
       firedArr = d && d.fired ? d.fired : null;
     }catch(_){ firedArr = null; }
-
-    try{
-      if(Array.isArray(firedArr) && firedArr.length && typeof window.__AblageDynApply === 'function'){
-        window.__AblageDynApply(firedArr);
-      }
-    }catch(_){}
-
-    try{
-      if(Array.isArray(firedArr)){
-        for(var i=0;i<firedArr.length;i++) q.push(firedArr[i]);
-      }else{
-        q.push({ label:'Patient', fromCat:'', toCat:'' });
-      }
-    }catch(_){
-      q.push({ label:'Patient', fromCat:'', toCat:'' });
-    }
-
-    showNext();
+    handleFiredArray(firedArr);
   });
+
+  document.addEventListener('ablage:dynamik:fired', function(e){
+    var firedArr = null;
+    try{
+      var d = e && e.detail ? e.detail : null;
+      firedArr = d && d.fired ? d.fired : null;
+    }catch(_){ firedArr = null; }
+    handleFiredArray(firedArr);
+  });
+
+  var LAST_KEY = 'ablage.dyn.lastFired.v1';
+  var lastSeenTs = 0;
+
+  setInterval(function(){
+    try{
+      var raw = localStorage.getItem(LAST_KEY);
+      if(!raw) return;
+      var obj = JSON.parse(raw) || {};
+      var ts = Number(obj.ts || 0);
+      if(!ts || ts <= lastSeenTs) return;
+      lastSeenTs = ts;
+
+      handleFiredArray(obj.fired);
+    }catch(_e){}
+  }, 800);
 
 })();
 </script>
-
 <script>
 (function(){
   'use strict'; 
@@ -1528,5 +1557,4 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 
 </body>
 </html>
-
 
