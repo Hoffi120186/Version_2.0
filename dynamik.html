@@ -13,7 +13,6 @@
 
   <style>
     :root{
-      --bg:#0b0f1a;
       --glass:rgba(255,255,255,.14);
       --border:rgba(255,255,255,.22);
       --shadow:0 14px 34px rgba(0,0,0,.34);
@@ -21,8 +20,6 @@
       --accent:#0B5FFF;
       --muted:rgba(255,255,255,.80);
       --ok:#22c55e;
-      --warn:#f59e0b;
-      --bad:#ef4444;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -52,7 +49,7 @@
       padding:10px 14px;
       border-radius:12px;
       cursor:pointer;
-      font-weight:900;
+      font-weight:950;
       box-shadow:0 10px 26px rgba(0,0,0,.22);
       touch-action:manipulation;
     }
@@ -72,12 +69,7 @@
       padding:14px;
       backdrop-filter:blur(10px);
     }
-    .grid{
-      margin-top:14px;
-      display:grid;
-      grid-template-columns:1fr;
-      gap:14px;
-    }
+    .grid{ margin-top:14px; display:grid; grid-template-columns:1fr; gap:14px; }
 
     .row{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start}
     .col{flex:1 1 320px; min-width:280px}
@@ -96,18 +88,6 @@
     }
     .status.ok{ border-color:rgba(34,197,94,.50); background:rgba(34,197,94,.16); color:#bbf7d0; }
 
-    label{ font-weight:950; }
-    input[type="number"], select{
-      background:rgba(255,255,255,.10);
-      color:#fff;
-      border:1px solid rgba(255,255,255,.22);
-      border-radius:12px;
-      padding:10px;
-      outline:none;
-      backdrop-filter:blur(8px);
-    }
-    select option{ color:#111; }
-
     .divider{margin-top:12px;border-top:1px solid rgba(255,255,255,.16);padding-top:12px}
 
     .switch{
@@ -121,36 +101,12 @@
     .switch strong{font-size:15px; font-weight:950}
     .switch .sub{font-size:13px; color:var(--muted); margin-top:4px; font-weight:650}
 
-    .toggle{
-      position:relative;
-      width:62px;
-      height:34px;
-      flex:0 0 auto;
-    }
+    .toggle{position:relative;width:62px;height:34px;flex:0 0 auto}
     .toggle input{position:absolute; inset:0; opacity:0}
-    .toggle .track{
-      position:absolute; inset:0;
-      border-radius:999px;
-      background:rgba(255,255,255,.20);
-      border:1px solid rgba(255,255,255,.22);
-      transition:200ms;
-    }
-    .toggle .thumb{
-      position:absolute;
-      top:4px; left:4px;
-      width:26px; height:26px;
-      border-radius:999px;
-      background:#fff;
-      transition:200ms;
-      box-shadow:0 10px 20px rgba(0,0,0,.25);
-    }
-    .toggle input:checked + .track{
-      background:rgba(11,95,255,.55);
-      border-color:rgba(11,95,255,.60);
-    }
-    .toggle input:checked + .track .thumb{
-      transform:translateX(28px);
-    }
+    .toggle .track{position:absolute; inset:0;border-radius:999px;background:rgba(255,255,255,.20);border:1px solid rgba(255,255,255,.22);transition:200ms}
+    .toggle .thumb{position:absolute;top:4px; left:4px;width:26px;height:26px;border-radius:999px;background:#fff;transition:200ms;box-shadow:0 10px 20px rgba(0,0,0,.25)}
+    .toggle input:checked + .track{background:rgba(11,95,255,.55);border-color:rgba(11,95,255,.60)}
+    .toggle input:checked + .track .thumb{transform:translateX(28px)}
 
     .seg{
       display:inline-flex;
@@ -160,6 +116,7 @@
       background:rgba(255,255,255,.10);
       overflow:hidden;
       backdrop-filter:blur(10px);
+      width:100%;
     }
     .seg button{
       appearance:none;
@@ -169,17 +126,16 @@
       padding:10px 12px;
       font-weight:950;
       cursor:pointer;
-      min-width:130px;
+      flex:1 1 auto;
+      min-width:0;
       touch-action:manipulation;
+      white-space:nowrap;
     }
     .seg button + button{ border-left:1px solid rgba(255,255,255,.16); }
-    .seg button.active{
-      background:rgba(11,95,255,.60);
-    }
-    .startSeg button{ min-width:unset; width:25%; }
+    .seg button.active{ background:rgba(11,95,255,.60); }
 
     .choiceRow{
-      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+      display:flex; gap:10px; flex-wrap:wrap; align-items:stretch;
       padding:10px 10px;
       border-radius:14px;
       border:1px solid rgba(255,255,255,.20);
@@ -199,39 +155,100 @@
       backdrop-filter:blur(10px);
     }
     .chip input{width:18px;height:18px}
-
     .chip.sk3{ border-color:rgba(34,197,94,.78); background:rgba(34,197,94,.24); }
     .chip.sk2{ border-color:rgba(245,158,11,.82); background:rgba(245,158,11,.24); }
     .chip.sk1{ border-color:rgba(239,68,68,.82); background:rgba(239,68,68,.24); }
     .chip.tot{ border-color:rgba(255,255,255,.30); background:rgba(17,24,39,.52); }
 
-    .inline{
-      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
-    }
-
     .opt{
-      display:flex; align-items:center; justify-content:space-between; gap:12px;
-      padding:10px 10px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      padding:12px 12px;
       border-radius:14px;
       border:1px solid rgba(255,255,255,.20);
       background:rgba(255,255,255,.08);
       backdrop-filter:blur(10px);
+      align-items:flex-start;
     }
-    .opt .left{display:flex; flex-direction:column; gap:4px}
+    .opt .left{
+      flex:1 1 220px;
+      min-width:220px;
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
     .opt .left strong{font-size:14px; font-weight:950}
     .opt .left span{font-size:12px; color:var(--muted); font-weight:650}
 
+    .sliderWrap{
+      flex:1 1 260px;
+      min-width:260px;
+      width:100%;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .sliderTop{display:flex; align-items:center; justify-content:space-between; gap:10px}
+    .valPill{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.22);
+      background:rgba(255,255,255,.10);
+      font-weight:950;
+      min-width:64px;
+    }
+
+    .toggleLine{
+      display:flex;
+      justify-content:flex-end;
+      width:100%;
+    }
+
+    input[type="range"]{
+      width:100%;
+      height:34px;
+      background:transparent;
+      appearance:none;
+      -webkit-appearance:none;
+      touch-action:pan-x;
+    }
+    input[type="range"]::-webkit-slider-runnable-track{
+      height:10px;
+      border-radius:999px;
+      background:rgba(255,255,255,.22);
+      border:1px solid rgba(255,255,255,.22);
+    }
+    input[type="range"]::-webkit-slider-thumb{
+      -webkit-appearance:none;
+      appearance:none;
+      width:24px;height:24px;
+      border-radius:999px;
+      background:#fff;
+      margin-top:-8px;
+      box-shadow:0 10px 20px rgba(0,0,0,.25);
+    }
+    input[type="range"]::-moz-range-track{
+      height:10px;border-radius:999px;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.22);
+    }
+    input[type="range"]::-moz-range-thumb{
+      width:24px;height:24px;border-radius:999px;background:#fff;border:none;box-shadow:0 10px 20px rgba(0,0,0,.25);
+    }
+
     .footerActions{
-      display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:flex-end;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:flex-end;
       margin-top:12px;
     }
 
     @media (max-width:640px){
-      header{ padding:12px 10px 10px; }
-      .btn{ padding:12px 14px; }
       .col{ min-width:100%; }
-      .seg button{ min-width:105px; }
-      .startSeg button{ width:50%; }
+      .sliderWrap{ min-width:100%; }
+      .opt .left{ min-width:100%; }
     }
   </style>
 </head>
@@ -242,7 +259,6 @@
     <h1>Dynamik. Patientenverschlechterung</h1>
     <div class="right">
       <span class="status" id="status">Aus</span>
-      <button class="btn" id="btnSave" type="button">Speichern</button>
     </div>
   </header>
 
@@ -262,15 +278,13 @@
         </div>
 
         <div class="divider">
-          <label style="display:block; margin-bottom:10px;">Modus</label>
-          <div class="inline">
-            <div class="seg" role="tablist" aria-label="Modus Auswahl">
-              <button type="button" id="modeOff" class="active" data-mode="off">Aus</button>
-              <button type="button" id="modeRandom" data-mode="random">Zufällig</button>
-              <button type="button" id="modeFixed" data-mode="fixed">Fix</button>
-            </div>
-            <span class="muted">Zufällig würfelt Ereignisse, Fix nutzt deine Tabelle unten.</span>
+          <label style="display:block; margin-bottom:10px; font-weight:950;">Modus</label>
+          <div class="seg" role="tablist" aria-label="Modus Auswahl">
+            <button type="button" id="modeOff" class="active" data-mode="off">Aus</button>
+            <button type="button" id="modeRandom" data-mode="random">Zufällig</button>
+            <button type="button" id="modeFixed" data-mode="fixed">Fix</button>
           </div>
+          <div class="muted" style="margin-top:10px;">Zufällig würfelt Ereignisse, Fix nutzt deine Tabelle unten.</div>
         </div>
       </div>
 
@@ -280,14 +294,14 @@
         <div class="divider">
           <div style="font-weight:950; margin-bottom:10px;">Start der Patientenverschlechterung</div>
 
-          <div class="choiceRow" role="group" aria-label="Start Fenster" style="flex-direction:column; align-items:stretch;">
-            <div class="seg startSeg" style="width:100%;">
+          <div class="choiceRow" role="group" aria-label="Start Fenster" style="flex-direction:column;">
+            <div class="seg startSeg">
               <button type="button" class="active" data-win="1">1 bis 3 Minuten</button>
               <button type="button" data-win="2">3 bis 6 Minuten</button>
               <button type="button" data-win="3">6 bis 9 Minuten</button>
               <button type="button" data-win="4">9 bis 12 Minuten</button>
             </div>
-            <div class="seg startSeg" style="width:100%; margin-top:10px;">
+            <div class="seg startSeg" style="margin-top:10px;">
               <button type="button" data-win="5">12 bis 15 Minuten</button>
               <button type="button" data-win="6">15 bis 18 Minuten</button>
               <button type="button" data-win="7">18 bis 21 Minuten</button>
@@ -295,9 +309,7 @@
             </div>
           </div>
 
-          <div class="muted" style="margin-top:10px;">
-            Wird bei Zufall genutzt, Beginn liegt innerhalb des Fensters.
-          </div>
+          <div class="muted" style="margin-top:10px;">Wird bei Zufall genutzt, Beginn liegt innerhalb des Fensters.</div>
 
           <div style="display:none;">
             <input id="minMin" type="number" min="0" step="1" value="3">
@@ -307,13 +319,20 @@
 
         <div class="row" style="margin-top:12px;">
           <div class="col">
-            <label>Wieviele Patienten sich verschlechtern sollen</label>
-            <div style="margin-top:8px;">
-              <input id="count" type="number" min="0" step="1" value="3" style="width:140px;">
+            <div class="opt">
+              <div class="left">
+                <strong>Wieviele Patienten sich verschlechtern sollen</strong>
+                <span>Anzahl der Patienten, die im Verlauf schlechter werden.</span>
+              </div>
+              <div class="sliderWrap">
+                <div class="sliderTop">
+                  <span class="muted">0 bis 10</span>
+                  <span class="valPill" id="countVal">3</span>
+                </div>
+                <input id="countRange" type="range" min="0" max="10" step="1" value="3">
+              </div>
             </div>
-            <div class="muted" style="margin-top:10px;">
-              Anzahl der Patienten, die im Verlauf schlechter werden.
-            </div>
+            <input id="count" type="number" min="0" step="1" value="3" style="display:none;">
           </div>
 
           <div class="col">
@@ -322,14 +341,23 @@
                 <strong>Minimaler Abstand</strong>
                 <span>Optional. Mindestabstand zwischen Verschlechterungen in Sekunden.</span>
               </div>
-              <div class="inline" style="gap:10px;">
+
+              <div class="toggleLine">
                 <label class="toggle" aria-label="Minimaler Abstand aktiv">
                   <input id="gapEnabled" type="checkbox">
                   <span class="track"><span class="thumb"></span></span>
                 </label>
-                <input id="minGapSec" type="number" min="0" step="1" value="60" style="width:120px;">
+              </div>
+
+              <div class="sliderWrap">
+                <div class="sliderTop">
+                  <span class="muted">0 bis 300</span>
+                  <span class="valPill" id="gapVal">60</span>
+                </div>
+                <input id="gapRange" type="range" min="0" max="300" step="10" value="60">
               </div>
             </div>
+            <input id="minGapSec" type="number" min="0" step="1" value="60" style="display:none;">
           </div>
         </div>
 
@@ -342,13 +370,24 @@
             <span class="chip tot"><input id="allow4" type="checkbox" /> Tot</span>
           </div>
 
-          <div class="row" style="margin-top:10px; align-items:center; gap:10px;">
-            <span class="muted" style="min-width:320px; font-weight:900;">Maximale SK1 Verschlechterung zu Tot</span>
-            <input id="maxSchwarz" type="number" min="0" max="10" step="1" value="2" style="width:120px;">
-            <span class="muted">Empfehlung 1 oder 2</span>
+          <div class="row" style="margin-top:12px;">
+            <div class="opt" style="width:100%;">
+              <div class="left">
+                <strong>Maximale SK1 Verschlechterung zu Tot</strong>
+                <span>Empfehlung 1 oder 2</span>
+              </div>
+              <div class="sliderWrap">
+                <div class="sliderTop">
+                  <span class="muted">0 bis 5</span>
+                  <span class="valPill" id="totVal">2</span>
+                </div>
+                <input id="totRange" type="range" min="0" max="5" step="1" value="2">
+              </div>
+            </div>
+            <input id="maxSchwarz" type="number" min="0" max="10" step="1" value="2" style="display:none;">
           </div>
 
-          <div class="muted" style="margin-top:8px;">
+          <div class="muted" style="margin-top:10px;">
             Nur eine Stufe schlechter ist aktiv, Grün zu Gelb, Gelb zu Rot, Rot zu Tot.
           </div>
 
@@ -386,11 +425,10 @@
 
       <div class="card">
         <div style="font-weight:950; font-size:16px;">Weiter</div>
-        <div class="muted" style="margin-top:8px;">
-          Optional, direkt zur Auswahl der Patienten oder zum Start der Sichtung.
-        </div>
+        <div class="muted" style="margin-top:8px;">Einstellungen speichern und dann weiter.</div>
         <div class="footerActions">
           <button class="btn ghost" type="button" id="btnPatienten">Patientenauswahl</button>
+          <button class="btn" type="button" id="btnSaveBottom">Speichern</button>
           <button class="btn" type="button" id="btnSichtung">Sichtung starten</button>
         </div>
       </div>
@@ -441,15 +479,24 @@
 
     const minMin = el('minMin');
     const maxMin = el('maxMin');
+
     const count = el('count');
+    const countRange = el('countRange');
+    const countVal = el('countVal');
+
     const minGapSec = el('minGapSec');
     const gapEnabled = el('gapEnabled');
+    const gapRange = el('gapRange');
+    const gapVal = el('gapVal');
 
     const allow1 = el('allow1');
     const allow2 = el('allow2');
     const allow3 = el('allow3');
     const allow4 = el('allow4');
+
     const maxSchwarz = el('maxSchwarz');
+    const totRange = el('totRange');
+    const totVal = el('totVal');
 
     const toLowerOnly = el('toLowerOnly');
 
@@ -481,6 +528,7 @@
 
     function renderRules(rows){
       const tb = el('rulesBody');
+      if(!tb) return;
       tb.innerHTML = '';
       const list = Array.isArray(rows) ? rows : [];
       if(!list.length){
@@ -506,8 +554,8 @@
           <td style="padding:10px; border-bottom:1px solid rgba(255,255,255,.12);">
             <select data-k="delta" style="min-width:160px;">
               <option value="-1" ${delta===-1?'selected':''}>1 Stufe schlechter</option>
-              <option value="-2" ${delta===-2?'selected':''}>2 Stufen schlechter</option>
-              <option value="-3" ${delta===-3?'selected':''}>3 Stufen schlechter</option>
+              <option value="-2" ${delta===-2?'selected':''}>2 Stufe schlechter</option>
+              <option value="-3" ${delta===-3?'selected':''}>3 Stufe schlechter</option>
             </select>
           </td>
           <td style="padding:10px; border-bottom:1px solid rgba(255,255,255,.12); text-align:right;">
@@ -519,8 +567,9 @@
     }
 
     function readRulesFromUI(){
-      const out = [];
       const tb = el('rulesBody');
+      if(!tb) return [];
+      const out = [];
       const trs = tb.querySelectorAll('tr');
       trs.forEach(tr=>{
         const idNum = Number(tr.querySelector('input[data-k="id"]')?.value || 0);
@@ -572,19 +621,41 @@
       return 2;
     }
 
+    function syncCountUI(v){
+      v = Math.max(0, Math.min(10, Number(v||0)));
+      count.value = v;
+      countRange.value = String(v);
+      countVal.textContent = String(v);
+    }
+
+    function syncGapUI(v){
+      v = Math.max(0, Math.min(300, Number(v||0)));
+      minGapSec.value = v;
+      gapRange.value = String(v);
+      gapVal.textContent = String(v);
+    }
+
+    function syncTotUI(v){
+      v = Math.max(0, Math.min(5, Number(v||0)));
+      maxSchwarz.value = v;
+      totRange.value = String(v);
+      totVal.textContent = String(v);
+    }
+
     function fillUI(cfg){
       enabled.checked = !!cfg.enabled;
       modeValue = cfg.mode || 'off';
 
-      count.value = Number(cfg.random?.count ?? 3);
-
       minMin.value = Number(cfg.random?.minMin ?? 3);
       maxMin.value = Number(cfg.random?.maxMin ?? 5);
 
-      minGapSec.value = Number(cfg.random?.minGapSec ?? 60);
-      gapEnabled.checked = Number(cfg.random?.minGapSec ?? 60) > 0;
+      syncCountUI(Number(cfg.random?.count ?? 3));
 
-      maxSchwarz.value = Number(cfg.random?.maxSchwarz ?? 2);
+      const gap = Number(cfg.random?.minGapSec ?? 60);
+      gapEnabled.checked = gap > 0;
+      syncGapUI(gapEnabled.checked ? gap : 0);
+
+      syncTotUI(Number(cfg.random?.maxSchwarz ?? 2));
 
       toLowerOnly.checked = true;
       toLowerOnly.disabled = true;
@@ -609,15 +680,11 @@
       cfg.mode = modeValue;
       cfg.basis = 'patient';
 
-      cfg.random.count = Number(count.value || 0);
-
       cfg.random.minMin = Number(minMin.value || 0);
       cfg.random.maxMin = Number(maxMin.value || 0);
-
+      cfg.random.count = Number(count.value || 0);
       cfg.random.minGapSec = gapEnabled.checked ? Number(minGapSec.value || 0) : 0;
-
       cfg.random.maxSchwarz = Math.max(0, Number(maxSchwarz.value || 0));
-
       cfg.random.toLowerOnly = true;
 
       cfg.random.allow.sk1 = !!allow1.checked;
@@ -633,6 +700,14 @@
       try{ localStorage.removeItem(KEY_PLAN); }catch{}
     }
 
+    function doSave(){
+      const cfg = readUI();
+      save(KEY_CFG, cfg);
+      resetPlan();
+      setStatus();
+      showHide();
+    }
+
     document.addEventListener('click', (e) => {
       const btn = e.target.closest('button');
 
@@ -646,12 +721,8 @@
         return;
       }
 
-      if(btn && btn.id==='btnSave'){
-        const cfg = readUI();
-        save(KEY_CFG, cfg);
-        resetPlan();
-        setStatus();
-        showHide();
+      if(btn && btn.id==='btnSaveBottom'){
+        doSave();
         return;
       }
 
@@ -670,28 +741,29 @@
       }
 
       if(btn && btn.id==='btnPatienten'){
-        location.href = 'patienten.html';
+        doSave();
+        location.href = 'patientenauswahl.html';
         return;
       }
 
       if(btn && btn.id==='btnSichtung'){
-        location.href = 'index1.html';
+        doSave();
+        location.href = 'index.html';
         return;
       }
     });
 
-    document.addEventListener('input', (e)=>{
-      if(e.target === enabled){
-        setStatus();
-        return;
-      }
-      if(e.target === gapEnabled){
-        if(!gapEnabled.checked){
-          minGapSec.value = 0;
-        } else {
-          if(Number(minGapSec.value||0) <= 0) minGapSec.value = 60;
-        }
-        return;
+    enabled.addEventListener('input', setStatus);
+
+    countRange.addEventListener('input', function(){ syncCountUI(this.value); });
+    gapRange.addEventListener('input', function(){ syncGapUI(this.value); });
+    totRange.addEventListener('input', function(){ syncTotUI(this.value); });
+
+    gapEnabled.addEventListener('input', function(){
+      if(!gapEnabled.checked){
+        syncGapUI(0);
+      } else {
+        if(Number(minGapSec.value||0) <= 0) syncGapUI(60);
       }
     });
 
