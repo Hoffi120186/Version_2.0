@@ -2,1000 +2,568 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Dynamik</title>
-  <meta name="mobile-web-app-capable" content="yes" />
-  <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#0b0f1a" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Ablage Dynamik</title>
+
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/app-flow.css">
 
   <style>
     :root{
-      --w:min(96vw,980px);
       --bg:#0b0f1a;
       --glass:rgba(255,255,255,.10);
-      --glass2:rgba(255,255,255,.14);
       --border:rgba(255,255,255,.18);
       --shadow:0 10px 26px rgba(0,0,0,.28);
-      --shadow2:0 18px 60px rgba(0,0,0,.55);
+      --radius:16px;
+      --ok:#22c55e;
+      --bad:#ef4444;
       --accent:#0B5FFF;
-      --danger:#e53935;
-      --ok:#2e7d32;
-      --warn:#f3fc02;
-      --tap:54px;
-      --r:18px;
+      --muted:rgba(255,255,255,.75);
     }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
       margin:0;
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:var(--bg);
+      background:#0b0f1a url("fotos/ablageB.jpg") center/cover no-repeat fixed;
       color:#fff;
-      min-height:100vh;
-      padding-bottom:92px;
     }
-    body::before{
-      content:"";
-      position:fixed;
-      inset:0;
-      background:
-        radial-gradient(1100px 700px at 15% 10%, rgba(11,95,255,.22), transparent 60%),
-        radial-gradient(900px 650px at 85% 25%, rgba(229,57,53,.16), transparent 60%),
-        radial-gradient(900px 650px at 45% 90%, rgba(46,125,50,.14), transparent 60%),
-        rgba(0,0,0,.35);
-      z-index:-1;
-    }
+    body::before{content:"";position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:-1}
 
+    .wrap{width:min(1100px,94vw); margin:0 auto; padding:14px 0 26px}
     header{
-      position:sticky;
-      top:0;
-      z-index:20;
-      display:flex;
-      gap:10px;
-      align-items:center;
-      flex-wrap:wrap;
-      padding:12px;
-      background:rgba(0,0,0,.58);
-      backdrop-filter:blur(10px);
-      border-bottom:1px solid rgba(255,255,255,.12);
+      position:sticky; top:0; z-index:10;
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+      padding:10px 10px;
+      background:rgba(0,0,0,.60);
+      backdrop-filter:blur(6px);
     }
-    header h1{margin:0;font-size:18px;font-weight:900;letter-spacing:.2px}
-    .btn{
-      min-height:var(--tap);
-      padding:12px 14px;
-      border-radius:16px;
-      border:1px solid rgba(255,255,255,.20);
-      background:rgba(255,255,255,.12);
-      color:#fff;
-      font-weight:900;
-      cursor:pointer;
-      box-shadow:var(--shadow);
-      user-select:none;
-    }
-    .btn.primary{
-      background:linear-gradient(180deg, rgba(11,95,255,1), rgba(11,95,255,.78));
-      border-color:rgba(255,255,255,.22);
-    }
-    .btn.danger{ background:linear-gradient(180deg, rgba(229,57,53,1), rgba(183,28,28,.95)); }
-    .btn:active{transform:scale(.99)}
-    .btn:disabled{opacity:.55;cursor:not-allowed}
+    header h1{margin:0; font-size:18px}
+    .right{margin-left:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap}
 
-    .wrap{
-      width:var(--w);
-      margin:0 auto;
-      padding:14px 12px 20px;
-      display:flex;
-      flex-direction:column;
-      gap:12px;
+    .btn{
+      background:var(--accent);
+      color:#fff;
+      border:none;
+      padding:10px 14px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:800;
+      box-shadow:0 10px 26px rgba(0,0,0,.22);
     }
+    .btn.alt{ background:#e53935; }
+    .btnSmall{
+      background:rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.20);
+      color:#fff;
+      padding:10px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:800;
+    }
+    .btnSmall:hover{ filter:brightness(1.05); }
+
     .card{
       background:var(--glass);
       border:1px solid var(--border);
-      border-radius:var(--r);
+      border-radius:var(--radius);
       box-shadow:var(--shadow);
       padding:14px;
     }
-    .card h2{
-      margin:0 0 10px 0;
-      font-size:16px;
-      font-weight:900;
-      letter-spacing:.2px;
-    }
-    .muted{opacity:.86}
-    .line{height:1px;background:rgba(255,255,255,.10);margin:12px 0}
-
-    .grid2{
+    .grid{
+      margin-top:14px;
       display:grid;
-      grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
-      gap:12px;
-    }
-    label{display:block;font-size:13px;opacity:.9;font-weight:800;margin:0 0 6px 0}
-    .pill{
-      display:inline-flex;
-      gap:10px;
-      align-items:center;
-      padding:9px 12px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.16);
-      background:rgba(255,255,255,.10);
-      font-weight:900;
-      font-size:13px;
-      min-height:40px;
-      user-select:none;
+      grid-template-columns:1fr;
+      gap:14px;
     }
 
-    .toggle{
+    .row{
       display:flex;
-      align-items:center;
-      justify-content:space-between;
       gap:12px;
-      padding:12px;
-      border-radius:16px;
-      background:rgba(255,255,255,.08);
-      border:1px solid rgba(255,255,255,.16);
-    }
-    .toggle .tTitle{font-weight:900}
-    .toggle .tSub{font-size:12px;opacity:.86;margin-top:2px;line-height:1.25}
-
-    .switch{
-      width:58px;height:34px;border-radius:999px;
-      border:1px solid rgba(255,255,255,.22);
-      background:rgba(255,255,255,.10);
-      position:relative;
-      flex:0 0 auto;
-      cursor:pointer;
-    }
-    .switch::after{
-      content:"";
-      width:28px;height:28px;border-radius:999px;
-      background:rgba(255,255,255,.86);
-      position:absolute;
-      top:2px;left:2px;
-      transition:transform .16s ease, background .16s ease;
-    }
-    .switch.on{
-      background:rgba(11,95,255,.22);
-      border-color:rgba(11,95,255,.55);
-    }
-    .switch.on::after{
-      transform:translateX(24px);
-      background:rgba(11,95,255,.95);
-    }
-
-    .rangeBox{
-      padding:12px;
-      border-radius:16px;
-      background:rgba(255,255,255,.08);
-      border:1px solid rgba(255,255,255,.16);
-    }
-    .rangeLabel{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
       flex-wrap:wrap;
-      font-weight:900;
+      align-items:flex-start;
     }
-    .kv{
-      display:inline-flex;
-      gap:8px;
-      align-items:center;
-      padding:7px 11px;
+    .col{
+      flex:1 1 320px;
+      min-width:280px;
+    }
+    .muted{ color:var(--muted); }
+    .pill{
+      display:inline-flex; align-items:center; gap:10px;
+      padding:10px 12px;
       border-radius:999px;
-      background:rgba(0,0,0,.22);
-      border:1px solid rgba(255,255,255,.14);
-      font-variant-numeric:tabular-nums;
-    }
-    input[type="range"]{ width:100%; accent-color:var(--accent); }
-
-    .presetRow{
-      display:grid;
-      grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
-      gap:10px;
-    }
-    .presetBtn{
-      background:rgba(255,255,255,.12);
       border:1px solid rgba(255,255,255,.18);
-      border-radius:16px;
-      padding:12px;
-      cursor:pointer;
-      min-height:72px;
-      text-align:left;
+      background:rgba(255,255,255,.08);
       font-weight:900;
-      box-shadow:var(--shadow);
-    }
-    .presetBtn small{display:block;opacity:.86;font-weight:700;margin-top:2px;line-height:1.2}
-    .presetBtn.active{
-      border-color:rgba(11,95,255,.75);
-      box-shadow:0 0 0 2px rgba(11,95,255,.18), var(--shadow);
-      background:rgba(11,95,255,.12);
     }
 
-    .choiceRow{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:10px;
-    }
-    .choice{
-      border:1px solid rgba(255,255,255,.16);
+    label{ font-weight:800; }
+    input[type="number"], select{
       background:rgba(255,255,255,.08);
-      border-radius:16px;
-      padding:12px;
-      cursor:pointer;
-      min-height:70px;
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-    }
-    .choice strong{font-size:14px}
-    .choice small{opacity:.86;line-height:1.2}
-    .choice.active{
-      border-color:rgba(11,95,255,.75);
-      background:rgba(11,95,255,.12);
-      box-shadow:0 0 0 2px rgba(11,95,255,.18), var(--shadow);
-    }
-
-    .stepper{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      padding:10px;
-      border-radius:16px;
-      background:rgba(255,255,255,.08);
-      border:1px solid rgba(255,255,255,.16);
-      min-height:var(--tap);
-    }
-    .stepper button{
-      width:48px;height:48px;border-radius:14px;
-      border:1px solid rgba(255,255,255,.18);
-      background:rgba(255,255,255,.10);
       color:#fff;
-      font-size:22px;
-      font-weight:900;
-      cursor:pointer;
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:12px;
+      padding:10px;
+      outline:none;
     }
-    .stepper .val{
-      font-weight:900;
-      font-size:18px;
-      min-width:64px;
-      text-align:center;
-      font-variant-numeric:tabular-nums;
-    }
-    .stepper .hint{
-      margin-left:auto;
-      font-size:12px;
-      opacity:.86;
-      text-align:right;
-      line-height:1.15;
-    }
+    select option{ color:#111; }
 
     .status{
-      display:flex;
-      gap:10px;
-      align-items:flex-start;
-      padding:12px;
-      border-radius:16px;
-      background:rgba(0,0,0,.18);
-      border:1px solid rgba(255,255,255,.14);
-    }
-    .dot{
-      width:12px;height:12px;border-radius:999px;
-      background:#9aa0a6;
-      margin-top:4px;
-      box-shadow:0 0 0 2px rgba(255,255,255,.08);
-      flex:0 0 auto;
-    }
-    .dot.ok{background:var(--ok)}
-    .dot.warn{background:var(--warn)}
-    .dot.bad{background:var(--danger)}
-    .status .msg{font-weight:900}
-    .status .msg small{display:block;opacity:.86;font-weight:700;line-height:1.25;margin-top:2px}
-
-    details{
-      border-radius:16px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.06);
-      padding:10px 12px;
-    }
-    details summary{
-      cursor:pointer;
-      font-weight:900;
-      list-style:none;
-    }
-    details summary::-webkit-details-marker{display:none}
-    pre{
-      margin:10px 0 0 0;
-      white-space:pre-wrap;
-      word-break:break-word;
-      font-size:12px;
-      opacity:.9;
-    }
-
-    .bottomBar{
-      position:fixed;
-      left:0; right:0; bottom:0;
-      z-index:50;
-      padding:10px 12px max(10px, env(safe-area-inset-bottom));
-      background:rgba(0,0,0,.76);
-      backdrop-filter:blur(12px);
-      border-top:1px solid rgba(255,255,255,.14);
-    }
-    .bottomBar .inner{
-      width:var(--w);
-      margin:0 auto;
-      display:flex;
-      gap:10px;
+      display:inline-flex;
       align-items:center;
-      flex-wrap:wrap;
+      gap:10px;
+      padding:8px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.08);
+      font-weight:900;
     }
-    .bottomBar .inner .btn{box-shadow:var(--shadow2)}
-    .bottomBar .inner .btn.primary{flex:1 1 260px}
-    @media (max-width:760px){
-      .choiceRow{grid-template-columns:1fr}
-      .bottomBar .inner{gap:8px}
-      .bottomBar .inner .btn{flex:1 1 46%}
-      .bottomBar .inner .btn.primary{flex:1 1 100%}
+    .status.ok{ border-color:rgba(34,197,94,.45); background:rgba(34,197,94,.14); color:#bbf7d0; }
+    .status.bad{ border-color:rgba(239,68,68,.45); background:rgba(239,68,68,.12); color:#fecaca; }
+
+    .rules{
+      margin-top:12px;
+      border-top:1px solid rgba(255,255,255,.14);
+      padding-top:12px;
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      overflow:hidden;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.20);
+    }
+    th,td{
+      padding:10px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+      text-align:left;
+      font-size:14px;
+    }
+    th{ font-weight:900; opacity:.95; }
+    tr:last-child td{ border-bottom:none; }
+    .tRight{ text-align:right; }
+    .danger{ color:#fecaca; }
+
+    .plan{
+      white-space:pre-wrap;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size:12px;
+      background:rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:12px;
+      padding:12px;
+      max-height:340px;
+      overflow:auto;
     }
 
-    .disabled{
-      opacity:.55;
-      filter:saturate(.6);
-      pointer-events:none;
+    @media (max-width:640px){
+      header{ padding:12px 10px 10px; }
+      .btn,.btnSmall{ padding:12px 14px; }
+      .col{ min-width:100%; }
     }
   </style>
 </head>
 
 <body>
   <header>
-    <button class="btn" type="button" onclick="location.href='index.html'">Startseite</button>
-    <h1>Dynamik</h1>
+    <button class="btn alt" onclick="location.href='Instruktor.html'">Zurück</button>
+    <h1>Dynamik. Patientenverschlechterung</h1>
+    <div class="right">
+      <span class="status" id="status">Aus</span>
+      <button class="btn" id="btnSave" type="button">Speichern</button>
+    </div>
   </header>
 
-  <main class="wrap">
+  <div class="wrap">
+    <div class="grid">
 
-    <section class="card">
-      <h2>1. Aktivieren</h2>
-
-      <div class="toggle" id="toggleWrap">
-        <div>
-          <div class="tTitle">Dynamische Verschlechterung in der Ablage</div>
-          <div class="tSub">Wenn aktiv, werden Patientensichtungen innerhalb des Zeitfensters zufällig verschlechtert.</div>
-        </div>
-        <div class="switch" id="swEnabled" role="switch" aria-checked="false" tabindex="0"></div>
-      </div>
-
-      <div class="line"></div>
-
-      <div class="status" id="statusBox">
-        <div class="dot" id="statusDot"></div>
-        <div class="msg" id="statusMsg">Dynamik ist aus.<small>Aktiviere oben die Dynamik, um Einstellungen vorzunehmen.</small></div>
-      </div>
-    </section>
-
-    <section class="card" id="cfgCard">
-      <h2>2. Schnellprofil</h2>
-      <div class="muted">Wähle ein Preset. Du kannst danach alles fein einstellen.</div>
-
-      <div class="presetRow" style="margin-top:10px;">
-        <button class="presetBtn" id="presetLight" type="button">Leicht<small>Wenig Verschlechterungen, viel Zeit</small></button>
-        <button class="presetBtn" id="presetMedium" type="button">Mittel<small>Realistisch für Ausbildung</small></button>
-        <button class="presetBtn" id="presetHard" type="button">Hart<small>Mehr Druck im Szenario</small></button>
-      </div>
-
-      <div class="line"></div>
-
-      <h2 style="margin-top:0;">3. Zeitfenster</h2>
-      <div class="grid2">
-        <div class="rangeBox">
-          <div class="rangeLabel">
-            <span>Start ab Minute</span>
-            <span class="kv"><span id="lblStart">3</span> min</span>
+      <div class="card">
+        <div class="row">
+          <div class="col">
+            <label class="pill">
+              <input id="enabled" type="checkbox" style="width:18px;height:18px;">
+              Dynamik aktiv
+            </label>
+            <div class="muted" style="margin-top:10px;">
+              Wenn aktiv, werden geplante Verschlechterungen automatisch ausgelöst.
+            </div>
           </div>
-          <input type="range" id="rngStart" min="0" max="60" step="1" value="3" />
-          <div class="muted" style="font-size:12px;margin-top:6px;">Ab dieser Minute können Verschlechterungen beginnen.</div>
-        </div>
 
-        <div class="rangeBox">
-          <div class="rangeLabel">
-            <span>Ende bis Minute</span>
-            <span class="kv"><span id="lblEnd">20</span> min</span>
+          <div class="col">
+            <label for="mode">Modus</label>
+            <div style="margin-top:8px;">
+              <select id="mode" style="min-width:240px;">
+                <option value="off">Aus</option>
+                <option value="random">Zufällig</option>
+                <option value="fixed">Fix</option>
+              </select>
+            </div>
+            <div class="muted" style="margin-top:10px;">
+              Zufällig würfelt Ereignisse, Fix nutzt deine Tabelle unten.
+            </div>
           </div>
-          <input type="range" id="rngEnd" min="1" max="120" step="1" value="20" />
-          <div class="muted" style="font-size:12px;margin-top:6px;">Bis zu dieser Minute werden Events verteilt.</div>
+
+          <div class="col">
+            <label for="basis">Zeitbasis</label>
+            <div style="margin-top:8px;">
+              <select id="basis" style="min-width:240px;">
+                <option value="patient">pro Patient. ab Eintritt in Ablage</option>
+                <option value="global">global. ab Übungsstart</option>
+              </select>
+            </div>
+            <div class="muted" style="margin-top:10px;">
+              Empfehlung. pro Patient.
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="line"></div>
+      <div class="card" id="randomCard">
+        <div style="font-weight:900; font-size:16px;">Zufällig</div>
 
-      <h2 style="margin-top:0;">4. Intensität</h2>
-      <div class="choiceRow">
-        <div class="choice active" id="chPercent" role="button" tabindex="0">
-          <strong>Prozent</strong>
-          <small>Passt sich automatisch an die spätere Ablage an.</small>
+        <div class="row" style="margin-top:12px;">
+          <div class="col">
+            <label>Start nach. Minuten</label>
+            <div style="margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <input id="minMin" type="number" min="0" step="1" value="3" style="width:110px;">
+              <span class="muted">bis</span>
+              <input id="maxMin" type="number" min="0" step="1" value="5" style="width:110px;">
+            </div>
+          </div>
+
+          <div class="col">
+            <label>Anzahl Events</label>
+            <div style="margin-top:8px;">
+              <input id="count" type="number" min="0" step="1" value="3" style="width:110px;">
+            </div>
+            <div class="muted" style="margin-top:10px;">
+              Gesamtanzahl Verschlechterungen.
+            </div>
+          </div>
+
+          <div class="col">
+            <label>Minimaler Abstand. Sekunden</label>
+            <div style="margin-top:8px;">
+              <input id="minGapSec" type="number" min="0" step="1" value="60" style="width:110px;">
+            </div>
+          </div>
         </div>
-        <div class="choice" id="chCount" role="button" tabindex="0">
-          <strong>Anzahl</strong>
-          <small>Feste Anzahl Patienten verschlechtert sich.</small>
+
+        <div class="row" style="margin-top:12px; align-items:center;">
+          <label class="pill">
+            <input id="toLowerOnly" type="checkbox" style="width:18px;height:18px;">
+            Nur eine Stufe schlechter
+          </label>
+          <span class="muted">
+            Grün zu Gelb, Gelb zu Rot, Rot zu Schwarz.
+          </span>
+        </div>
+
+        <div class="rules">
+          <div style="font-weight:900;">Welche Klassen dürfen ausgewählt werden</div>
+          <div class="row" style="margin-top:10px;">
+          <span class="pill"><input id="allow1" type="checkbox" style="width:18px;height:18px;" /> SK1</span>
+          <span class="pill"><input id="allow2" type="checkbox" style="width:18px;height:18px;" /> SK2</span>
+          <span class="pill"><input id="allow3" type="checkbox" style="width:18px;height:18px;" /> SK3</span>
+          <span class="pill"><input id="allow4" type="checkbox" style="width:18px;height:18px;" /> Schwarz</span>
+        </div>
+        <div class="row" style="margin-top:10px; align-items:center; gap:10px;">
+          <span class="muted" style="min-width:160px;">Max Schwarz Events</span>
+          <input id="maxSchwarz" type="number" min="0" max="10" step="1" value="2" style="width:110px; padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.08); color:#fff;">
+          <span class="muted">Empfehlung 1 oder 2</span>
+        </div>
+        <div class="muted" style="margin-top:8px;">Empfehlung. Schwarz selten nutzen, ideal 1 oder 2.</div>
+      </div>
+
+      <div class="row" style="margin-top:12px;">
+        <button class="btnSmall" type="button" id="btnReseed">Neu würfeln</button>
+        <span class="muted">Erzeugt einen neuen Plan beim nächsten Betreten der Ablage.</span>
+      </div>
+    </div>
+
+      <div class="card" id="fixedCard">
+        <div style="font-weight:900; font-size:16px;">Fix</div>
+        <div class="muted" style="margin-top:10px;">
+          Hier kannst du feste Regeln pflegen. Beispiel. Patient 7 nach 4 Minuten um eine Stufe schlechter.
+        </div>
+
+        <div class="rules">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:120px;">Patient</th>
+                <th style="width:170px;">Nach Minuten</th>
+                <th>Delta</th>
+                <th class="tRight" style="width:120px;">Aktion</th>
+              </tr>
+            </thead>
+            <tbody id="rulesBody"></tbody>
+          </table>
+
+          <div class="row" style="margin-top:12px;">
+            <button class="btnSmall" id="btnAddRule" type="button">Regel hinzufügen</button>
+            <span class="muted">Delta. 1 bedeutet eine Stufe schlechter. 2 bedeutet zwei Stufen.</span>
+          </div>
         </div>
       </div>
 
-      <div class="grid2" style="margin-top:12px;">
-        <div class="rangeBox" id="boxPercent">
-          <div class="rangeLabel">
-            <span>Anteil der offenen Patienten</span>
-            <span class="kv"><span id="lblPercent">30</span> Prozent</span>
+      <div class="card" id="planCard">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+          <div style="font-weight:900; font-size:16px;">Aktueller Plan</div>
+          <div class="row" style="gap:10px; align-items:center;">
+            <button class="btnSmall" id="btnRefreshPlan" type="button">Plan anzeigen</button>
+            <button class="btnSmall" id="btnResetPlan" type="button">Plan löschen</button>
           </div>
-          <input type="range" id="rngPercent" min="0" max="100" step="5" value="30" />
-          <div class="muted" style="font-size:12px;margin-top:6px;">Beispiel. 30 Prozent der offenen Patienten werden eingeplant.</div>
         </div>
-
-        <div class="stepper disabled" id="boxCount">
-          <button type="button" id="btnCountMinus">−</button>
-          <div class="val" id="lblCount">3</div>
-          <button type="button" id="btnCountPlus">+</button>
-          <div class="hint">Anzahl Events</div>
-        </div>
+        <div class="plan" id="planText" style="margin-top:12px;">Noch kein Plan.</div>
       </div>
 
-      <div class="line"></div>
-
-      <h2 style="margin-top:0;">5. Auswahllogik</h2>
-      <div class="grid2">
-        <div class="toggle">
-          <div>
-            <div class="tTitle">Proportional zur Ablage</div>
-            <div class="tSub">Wenn in der Ablage überwiegend SK3 sind, werden auch überwiegend SK3 verschlechtert.</div>
-          </div>
-          <div class="switch on" id="swProportional" role="switch" aria-checked="true" tabindex="0"></div>
-        </div>
-
-        <div class="toggle">
-          <div>
-            <div class="tTitle">Nur eine Stufe schlechter</div>
-            <div class="tSub">SK3 wird SK2, SK2 wird SK1. SK1 wird nicht automatisch TOT.</div>
-          </div>
-          <div class="switch on" id="swLowerOnly" role="switch" aria-checked="true" tabindex="0"></div>
-        </div>
-      </div>
-
-      <div class="line"></div>
-
-      <h2 style="margin-top:0;">6. SK1 zu TOT</h2>
-      <div class="muted">Optional. Nur aktivieren, wenn du es wirklich willst.</div>
-
-      <div class="grid2" style="margin-top:10px;">
-        <div class="toggle">
-          <div>
-            <div class="tTitle">TOT zulassen</div>
-            <div class="tSub">SK1 kann zu TOT werden. Sichtbar steht TOT, intern ist es schwarz.</div>
-          </div>
-          <div class="switch" id="swTot" role="switch" aria-checked="false" tabindex="0"></div>
-        </div>
-
-        <div class="stepper disabled" id="boxMaxTot">
-          <button type="button" id="btnTotMinus">−</button>
-          <div class="val" id="lblTotMax">3</div>
-          <button type="button" id="btnTotPlus">+</button>
-          <div class="hint">Max TOT</div>
-        </div>
-
-        <div class="rangeBox disabled" id="boxTotMin">
-          <div class="rangeLabel">
-            <span>TOT frühestens ab Minute</span>
-            <span class="kv"><span id="lblTotMin">6</span> min</span>
-          </div>
-          <input type="range" id="rngTotMin" min="0" max="60" step="1" value="6" />
-          <div class="muted" style="font-size:12px;margin-top:6px;">Empfehlung. 6 bis 12 Minuten.</div>
-        </div>
-
-        <div class="rangeBox disabled" id="boxTotShare">
-          <div class="rangeLabel">
-            <span>Anteil TOT innerhalb SK1 Events</span>
-            <span class="kv"><span id="lblTotShare">40</span> Prozent</span>
-          </div>
-          <input type="range" id="rngTotShare" min="0" max="100" step="10" value="40" />
-          <div class="muted" style="font-size:12px;margin-top:6px;">Beispiel. 40 Prozent der ausgewählten SK1 Events werden TOT.</div>
-        </div>
-      </div>
-
-      <div class="line"></div>
-
-      <h2 style="margin-top:0;">7. Vorschau</h2>
-      <div class="status">
-        <div class="dot" id="prevDot"></div>
-        <div class="msg" id="prevMsg">Noch keine Ablage geladen.<small>Wenn offene Patienten vorhanden sind, wird hier die geschätzte Anzahl Events angezeigt.</small></div>
-      </div>
-
-      <details style="margin-top:12px;">
-        <summary>Debug anzeigen</summary>
-        <pre id="debugOut"></pre>
-      </details>
-    </section>
-  </main>
-
-  <div class="bottomBar" role="region" aria-label="Aktionen">
-    <div class="inner">
-      <button class="btn danger" id="btnResetPlan" type="button">Plan zurücksetzen</button>
-      <button class="btn primary" id="btnSave" type="button">Speichern</button>
     </div>
   </div>
 
-<script>
-(function(){
-  'use strict';
+  <script>
+  (function(){
+    'use strict';
 
-  const LS_CFG  = 'ablage.dynamik.v1';
-  const LS_PLAN = 'ablage.dynamik.plan.v1';
-  const LS_DONE = 'ablage.done.v1';
-  const LS_SMAP = 'sichtungMap';
+    const KEY_CFG = 'ablage.dynamik.v1';
+    const KEY_PLAN = 'ablage.dynamik.plan.v1';
 
-  const el = (id)=>document.getElementById(id);
+    function safeParse(s,f){ try{ return JSON.parse(s); }catch{ return f; } }
+    function load(k,f){ return safeParse(localStorage.getItem(k), f); }
+    function save(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
 
-  function safeParse(raw, fallback){
-    try{ return JSON.parse(raw); }catch(e){ return fallback; }
-  }
-  function load(key, fallback){
-    try{
-      const raw = localStorage.getItem(key);
-      if(!raw) return fallback;
-      return safeParse(raw, fallback);
-    }catch(e){
-      return fallback;
-    }
-  }
-  function save(key, value){
-    try{ localStorage.setItem(key, JSON.stringify(value)); }catch(e){}
-  }
-
-  function clamp(n, a, b){
-    n = Number(n);
-    if(!Number.isFinite(n)) n = a;
-    return Math.max(a, Math.min(b, n));
-  }
-
-  function normCat(x){
-    return String(x||'').toLowerCase().replace('grün','gruen').trim();
-  }
-
-  function setSwitch(sw, on){
-    sw.classList.toggle('on', !!on);
-    sw.setAttribute('aria-checked', on ? 'true' : 'false');
-  }
-  function getSwitch(sw){
-    return sw.classList.contains('on');
-  }
-
-  function setChoice(which){
-    const isPercent = which === 'percent';
-    el('chPercent').classList.toggle('active', isPercent);
-    el('chCount').classList.toggle('active', !isPercent);
-
-    el('boxPercent').classList.toggle('disabled', !isPercent);
-    el('boxCount').classList.toggle('disabled', isPercent);
-
-    state.intensityMode = isPercent ? 'percent' : 'count';
-    updatePreview();
-    updateDebug();
-  }
-
-  function setPreset(name){
-    state.preset = name;
-
-    el('presetLight').classList.toggle('active', name === 'light');
-    el('presetMedium').classList.toggle('active', name === 'medium');
-    el('presetHard').classList.toggle('active', name === 'hard');
-
-    if(name === 'light'){
-      state.startMin = 5;
-      state.endMin = 25;
-      state.percent = 10;
-      state.count = 2;
-      state.totEnabled = false;
-      state.maxTot = 1;
-      state.totMin = 10;
-      state.totShare = 20;
-    } else if(name === 'medium'){
-      state.startMin = 3;
-      state.endMin = 20;
-      state.percent = 30;
-      state.count = 3;
-      state.totEnabled = false;
-      state.maxTot = 2;
-      state.totMin = 8;
-      state.totShare = 30;
-    } else if(name === 'hard'){
-      state.startMin = 2;
-      state.endMin = 10;
-      state.percent = 60;
-      state.count = 6;
-      state.totEnabled = true;
-      state.maxTot = 4;
-      state.totMin = 6;
-      state.totShare = 50;
+    function defaults(){
+      return {
+        enabled:false,
+        mode:'off',
+        basis:'patient',
+        random:{
+          minMin:3,
+          maxMin:5,
+          count:3,
+          minGapSec:60,
+          maxSchwarz:2,
+          allow:{ sk1:true, sk2:true, sk3:true, sk4:false },
+          toLowerOnly:true
+        },
+        fixed:[]
+      };
     }
 
-    syncUI();
-  }
+    function el(id){ return document.getElementById(id); }
 
-  function getOpenCounts(){
-    const doneList = load(LS_DONE, []);
-    const done = new Set(Array.isArray(doneList) ? doneList : []);
-    const sMap = load(LS_SMAP, {});
-    const ids = Object.keys(sMap || {}).filter(id => /^patient\d+$/i.test(id) && !done.has(id));
+    const status = el('status');
+    const enabled = el('enabled');
+    const mode = el('mode');
+    const basis = el('basis');
 
-    let gruen=0, gelb=0, rot=0, schwarz=0;
-    for(const id of ids){
-      const c = normCat(sMap[id]);
-      if(c === 'gruen') gruen++;
-      else if(c === 'gelb') gelb++;
-      else if(c === 'rot') rot++;
-      else if(c === 'schwarz') schwarz++;
+    const randomCard = el('randomCard');
+    const fixedCard = el('fixedCard');
+
+    const minMin = el('minMin');
+    const maxMin = el('maxMin');
+    const count = el('count');
+    const minGapSec = el('minGapSec');
+    const toLowerOnly = el('toLowerOnly');
+    const allow1 = el('allow1');
+    const allow2 = el('allow2');
+    const allow3 = el('allow3');
+    const allow4 = el('allow4');
+    const maxSchwarz = el('maxSchwarz');
+
+    const planCard = el('planCard');
+    const planText = el('planText');
+
+    function setStatus(){
+      if(!enabled.checked || mode.value==='off'){
+        status.textContent = 'Aus';
+        status.className = 'status';
+        return;
+      }
+      status.textContent = 'An';
+      status.className = 'status ok';
     }
-    return { total: ids.length, gruen, gelb, rot, schwarz };
-  }
 
-  function estimateEvents(counts){
-    const total = counts.total;
-    if(total <= 0) return { total:0, from:{gruen:0,gelb:0,rot:0}, tot:0 };
-
-    let n = 0;
-    if(state.intensityMode === 'percent'){
-      n = Math.round(total * (state.percent/100));
-    } else {
-      n = state.count;
+    function showHide(){
+      const m = mode.value || 'off';
+      randomCard.style.display = (m==='random') ? '' : 'none';
+      fixedCard.style.display = (m==='fixed') ? '' : 'none';
+      planCard.style.display = (enabled.checked && m!=='off') ? '' : 'none';
     }
-    n = clamp(n, 0, total);
 
-    let g=0,y=0,r=0;
-    if(getSwitch(el('swProportional'))){
-      const sum = (counts.gruen + counts.gelb + counts.rot) || total;
-      g = Math.round(n * (counts.gruen / sum));
-      y = Math.round(n * (counts.gelb / sum));
-      r = n - g - y;
+    function renderRules(rows){
+      const tb = el('rulesBody');
+      tb.innerHTML = '';
+      const list = Array.isArray(rows) ? rows : [];
+      if(!list.length){
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="4" class="muted">Keine Regeln.</td>';
+        tb.appendChild(tr);
+        return;
+      }
 
-      g = clamp(g, 0, counts.gruen);
-      y = clamp(y, 0, counts.gelb);
-      r = clamp(r, 0, counts.rot);
+      for(const r of list){
+        const idNum = Number(String(r.id||'').replace(/\D/g,'')||0);
+        const afterMin = Number(r.afterMin||0);
+        const delta = Number(r.delta||-1);
 
-      let left = n - (g+y+r);
-      if(left > 0){
-        let capG = counts.gruen - g;
-        let capY = counts.gelb - y;
-        let capR = counts.rot - r;
-        while(left > 0 && (capG+capY+capR) > 0){
-          if(capG > 0){ g++; capG--; left--; continue; }
-          if(capY > 0){ y++; capY--; left--; continue; }
-          if(capR > 0){ r++; capR--; left--; continue; }
-          break;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <input type="number" min="1" step="1" value="${idNum}" style="width:90px;" data-k="id">
+          </td>
+          <td>
+            <input type="number" min="0" step="1" value="${afterMin}" style="width:120px;" data-k="afterMin">
+          </td>
+          <td>
+            <select data-k="delta" style="min-width:160px;">
+              <option value="-1" ${delta===-1?'selected':''}>1 Stufe schlechter</option>
+              <option value="-2" ${delta===-2?'selected':''}>2 Stufen schlechter</option>
+              <option value="-3" ${delta===-3?'selected':''}>3 Stufen schlechter</option>
+            </select>
+          </td>
+          <td class="tRight">
+            <button class="btnSmall danger" type="button" data-act="del">Löschen</button>
+          </td>
+        `;
+        tb.appendChild(tr);
+      }
+    }
+
+    function readRulesFromUI(){
+      const out = [];
+      const tb = el('rulesBody');
+      const trs = tb.querySelectorAll('tr');
+      trs.forEach(tr=>{
+        const idNum = Number(tr.querySelector('input[data-k="id"]')?.value || 0);
+        const afterMinVal = Number(tr.querySelector('input[data-k="afterMin"]')?.value || 0);
+        const deltaSel = tr.querySelector('select[data-k="delta"]');
+        const delta = Number(deltaSel ? deltaSel.value : -1);
+        if(idNum>0){
+          out.push({ id:'patient'+idNum, afterMin: afterMinVal, delta: delta });
         }
+      });
+      return out;
+    }
+
+    function fillUI(cfg){
+      enabled.checked = !!cfg.enabled;
+      mode.value = cfg.mode || 'off';
+      basis.value = cfg.basis || 'patient';
+
+      minMin.value = Number(cfg.random?.minMin ?? 3);
+      maxMin.value = Number(cfg.random?.maxMin ?? 5);
+      count.value = Number(cfg.random?.count ?? 3);
+      minGapSec.value = Number(cfg.random?.minGapSec ?? 60);
+      maxSchwarz.value = Number(cfg.random?.maxSchwarz ?? 2);
+      toLowerOnly.checked = !!cfg.random?.toLowerOnly;
+
+      allow1.checked = !!cfg.random?.allow?.sk1;
+      allow2.checked = !!cfg.random?.allow?.sk2;
+      allow3.checked = !!cfg.random?.allow?.sk3;
+      allow4.checked = !!cfg.random?.allow?.sk4;
+
+      renderRules(cfg.fixed || []);
+      showHide();
+      setStatus();
+    }
+
+    function readUI(){
+      const cfg = defaults();
+      cfg.enabled = !!enabled.checked;
+      cfg.mode = mode.value || 'off';
+      cfg.basis = basis.value || 'patient';
+
+      cfg.random.minMin = Number(minMin.value || 0);
+      cfg.random.maxMin = Number(maxMin.value || 0);
+      cfg.random.count = Number(count.value || 0);
+      cfg.random.minGapSec = Number(minGapSec.value || 0);
+      cfg.random.maxSchwarz = Math.max(0, Number(maxSchwarz.value || 0));
+      cfg.random.toLowerOnly = !!toLowerOnly.checked;
+
+      cfg.random.allow.sk1 = !!allow1.checked;
+      cfg.random.allow.sk2 = !!allow2.checked;
+      cfg.random.allow.sk3 = !!allow3.checked;
+      cfg.random.allow.sk4 = !!allow4.checked;
+
+      cfg.fixed = readRulesFromUI();
+      return cfg;
+    }
+
+    function resetPlan(){
+      try{ localStorage.removeItem(KEY_PLAN); }catch{}
+    }
+
+    function showPlan(){
+      const plan = load(KEY_PLAN, null);
+      if(!plan){
+        planText.textContent = 'Noch kein Plan.';
+        return;
       }
-    } else {
-      g = clamp(n, 0, counts.gruen);
-      let left = n - g;
-      y = clamp(left, 0, counts.gelb);
-      left -= y;
-      r = clamp(left, 0, counts.rot);
+      planText.textContent = JSON.stringify(plan, null, 2);
     }
 
-    let tot = 0;
-    if(state.totEnabled){
-      const totPossible = Math.min(state.maxTot, r);
-      tot = Math.round(r * (state.totShare/100));
-      tot = clamp(tot, 0, totPossible);
-    }
+    document.addEventListener('click', (e) => {
+      const t = e.target;
 
-    return { total:n, from:{gruen:g,gelb:y,rot:r}, tot:tot };
-  }
-
-  function updateStatus(){
-    const enabled = state.enabled;
-
-    setSwitch(el('swEnabled'), enabled);
-    el('cfgCard').classList.toggle('disabled', !enabled);
-
-    if(!enabled){
-      el('statusDot').className = 'dot';
-      el('statusMsg').innerHTML = 'Dynamik ist aus.<small>Aktiviere oben die Dynamik, um Einstellungen vorzunehmen.</small>';
-      return;
-    }
-
-    el('statusDot').className = 'dot ok';
-    el('statusMsg').innerHTML = 'Dynamik ist aktiv.<small>Einstellungen speichern und dann im Einsatz wie gewohnt arbeiten.</small>';
-  }
-
-  function updateTotUI(){
-    const on = state.totEnabled;
-    setSwitch(el('swTot'), on);
-    el('boxMaxTot').classList.toggle('disabled', !on);
-    el('boxTotMin').classList.toggle('disabled', !on);
-    el('boxTotShare').classList.toggle('disabled', !on);
-  }
-
-  function updateTimeUI(){
-    el('rngStart').value = String(state.startMin);
-    el('rngEnd').value = String(state.endMin);
-    el('lblStart').textContent = String(state.startMin);
-    el('lblEnd').textContent = String(state.endMin);
-  }
-
-  function updateIntensityUI(){
-    el('rngPercent').value = String(state.percent);
-    el('lblPercent').textContent = String(state.percent);
-    el('lblCount').textContent = String(state.count);
-  }
-
-  function updatePreview(){
-    const counts = getOpenCounts();
-    const est = estimateEvents(counts);
-
-    if(!state.enabled){
-      el('prevDot').className = 'dot';
-      el('prevMsg').innerHTML = 'Dynamik ist aus.<small>Aktiviere oben die Dynamik.</small>';
-      return;
-    }
-
-    if(counts.total <= 0){
-      el('prevDot').className = 'dot bad';
-      el('prevMsg').innerHTML = 'Keine offenen Patienten.<small>Es werden erst Events geplant, wenn Patienten offen sind.</small>';
-      return;
-    }
-
-    if(est.total <= 0){
-      el('prevDot').className = 'dot warn';
-      el('prevMsg').innerHTML = 'Events. 0.<small>Erhöhe Prozent oder Anzahl.</small>';
-      return;
-    }
-
-    const parts = [];
-    if(est.from.gruen) parts.push('SK3 ' + est.from.gruen);
-    if(est.from.gelb) parts.push('SK2 ' + est.from.gelb);
-    if(est.from.rot) parts.push('SK1 ' + est.from.rot);
-    const base = parts.length ? parts.join(', ') : 'Keine Auswahl möglich';
-
-    let extra = '';
-    if(state.totEnabled && est.tot){
-      extra = ' plus TOT ' + est.tot;
-    }
-
-    el('prevDot').className = 'dot ok';
-    el('prevMsg').innerHTML = 'Geplant. ' + est.total + ' Events.<small>Verteilung. ' + base + extra + '.</small>';
-  }
-
-  function updateDebug(){
-    const counts = getOpenCounts();
-    const est = estimateEvents(counts);
-
-    const cfg = toConfig(counts);
-    const lines = [];
-    lines.push('enabled: ' + cfg.enabled);
-    lines.push('mode: ' + cfg.mode);
-    lines.push('window: ' + cfg.random.minMin + ' bis ' + cfg.random.maxMin + ' Minuten');
-    lines.push('intensityMode: ' + state.intensityMode);
-    lines.push('percent: ' + state.percent);
-    lines.push('count: ' + state.count);
-    lines.push('open: total ' + counts.total + ', sk3 ' + counts.gruen + ', sk2 ' + counts.gelb + ', sk1 ' + counts.rot);
-    lines.push('estimate: events ' + est.total + ', sk3 ' + est.from.gruen + ', sk2 ' + est.from.gelb + ', sk1 ' + est.from.rot + ', tot ' + est.tot);
-    lines.push('savedCfg: ' + JSON.stringify(cfg, null, 2));
-    el('debugOut').textContent = lines.join('\n');
-  }
-
-  function syncUI(){
-    updateStatus();
-    updateTimeUI();
-    updateIntensityUI();
-    updateTotUI();
-
-    if(state.intensityMode === 'percent') setChoice('percent');
-    else setChoice('count');
-
-    el('lblTotMax').textContent = String(state.maxTot);
-    el('lblTotMin').textContent = String(state.totMin);
-    el('rngTotMin').value = String(state.totMin);
-    el('lblTotShare').textContent = String(state.totShare);
-    el('rngTotShare').value = String(state.totShare);
-
-    setSwitch(el('swProportional'), state.proportional);
-    setSwitch(el('swLowerOnly'), state.lowerOnly);
-
-    updatePreview();
-    updateDebug();
-  }
-
-  function toConfig(counts){
-    const est = estimateEvents(counts || getOpenCounts());
-    const cfg = {
-      enabled: !!state.enabled,
-      mode: 'random',
-      basis: 'patient',
-      random: {
-        minMin: clamp(state.startMin, 0, 999),
-        maxMin: clamp(state.endMin, 1, 999),
-        minGapSec: 10,
-        toLowerOnly: !!state.lowerOnly,
-        proportional: !!state.proportional,
-        intensityMode: state.intensityMode,
-        percent: clamp(state.percent, 0, 100),
-        count: clamp(state.count, 0, 999),
-        countEstimate: est.total,
-        allowTot: !!state.totEnabled,
-        maxTot: clamp(state.maxTot, 0, 999),
-        totMin: clamp(state.totMin, 0, 999),
-        totShare: clamp(state.totShare, 0, 100)
+      if(t && t.id==='btnSave'){
+        const cfg = readUI();
+        save(KEY_CFG, cfg);
+        resetPlan();
+        setStatus();
+        showHide();
+        showPlan();
+        return;
       }
-    };
-    return cfg;
-  }
 
-  function saveCfg(){
-    const counts = getOpenCounts();
-    const cfg = toConfig(counts);
-    save(LS_CFG, cfg);
-    updateStatus();
-    updatePreview();
-    updateDebug();
-  }
-
-  function resetPlan(){
-    try{ localStorage.removeItem(LS_PLAN); }catch(e){}
-    updatePreview();
-    updateDebug();
-  }
-
-  function toggleSwitch(sw, stateKey){
-    const on = !getSwitch(sw);
-    setSwitch(sw, on);
-    state[stateKey] = on;
-    if(stateKey === 'enabled') updateStatus();
-    if(stateKey === 'totEnabled') updateTotUI();
-    updatePreview();
-    updateDebug();
-  }
-
-  const state = {
-    enabled: false,
-    preset: 'medium',
-    startMin: 3,
-    endMin: 20,
-    intensityMode: 'percent',
-    percent: 30,
-    count: 3,
-    proportional: true,
-    lowerOnly: true,
-    totEnabled: false,
-    maxTot: 3,
-    totMin: 6,
-    totShare: 40
-  };
-
-  function loadCfg(){
-    const cfg = load(LS_CFG, null);
-    if(!cfg) return;
-
-    state.enabled = !!cfg.enabled;
-
-    const rnd = cfg.random || {};
-    state.startMin = clamp(rnd.minMin != null ? rnd.minMin : state.startMin, 0, 60);
-    state.endMin   = clamp(rnd.maxMin != null ? rnd.maxMin : state.endMin, 1, 120);
-    if(state.endMin < state.startMin) state.endMin = state.startMin + 1;
-
-    state.lowerOnly = (rnd.toLowerOnly != null) ? !!rnd.toLowerOnly : state.lowerOnly;
-    state.proportional = (rnd.proportional != null) ? !!rnd.proportional : state.proportional;
-
-    state.intensityMode = (rnd.intensityMode === 'count') ? 'count' : 'percent';
-    state.percent = clamp(rnd.percent != null ? rnd.percent : state.percent, 0, 100);
-    state.count = clamp(rnd.count != null ? rnd.count : state.count, 0, 999);
-
-    state.totEnabled = !!rnd.allowTot;
-    state.maxTot = clamp(rnd.maxTot != null ? rnd.maxTot : state.maxTot, 0, 999);
-    state.totMin = clamp(rnd.totMin != null ? rnd.totMin : state.totMin, 0, 60);
-    state.totShare = clamp(rnd.totShare != null ? rnd.totShare : state.totShare, 0, 100);
-  }
-
-  function bind(){
-    const swEnabled = el('swEnabled');
-    swEnabled.addEventListener('click', ()=>toggleSwitch(swEnabled,'enabled'));
-    swEnabled.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); toggleSwitch(swEnabled,'enabled'); }});
-
-    const swProp = el('swProportional');
-    swProp.addEventListener('click', ()=>toggleSwitch(swProp,'proportional'));
-    swProp.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); toggleSwitch(swProp,'proportional'); }});
-
-    const swLower = el('swLowerOnly');
-    swLower.addEventListener('click', ()=>toggleSwitch(swLower,'lowerOnly'));
-    swLower.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); toggleSwitch(swLower,'lowerOnly'); }});
-
-    const swTot = el('swTot');
-    swTot.addEventListener('click', ()=>toggleSwitch(swTot,'totEnabled'));
-    swTot.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); toggleSwitch(swTot,'totEnabled'); }});
-
-    el('presetLight').addEventListener('click', ()=>setPreset('light'));
-    el('presetMedium').addEventListener('click', ()=>setPreset('medium'));
-    el('presetHard').addEventListener('click', ()=>setPreset('hard'));
-
-    el('rngStart').addEventListener('input', ()=>{
-      state.startMin = clamp(el('rngStart').value, 0, 60);
-      if(state.endMin < state.startMin + 1){
-        state.endMin = state.startMin + 1;
+      if(t && t.id==='btnReseed'){
+        resetPlan();
+        showPlan();
+        return;
       }
-      syncUI();
-    });
-    el('rngEnd').addEventListener('input', ()=>{
-      state.endMin = clamp(el('rngEnd').value, 1, 120);
-      if(state.endMin < state.startMin + 1){
-        state.startMin = Math.max(0, state.endMin - 1);
+
+      if(t && t.id==='btnResetPlan'){
+        resetPlan();
+        showPlan();
+        return;
       }
-      syncUI();
+
+      if(t && t.id==='btnRefreshPlan'){
+        showPlan();
+        return;
+      }
+
+      if(t && t.id==='btnAddRule'){
+        const cfg = readUI();
+        cfg.fixed = Array.isArray(cfg.fixed) ? cfg.fixed : [];
+        cfg.fixed.push({ id:'patient1', afterMin: 3, delta: -1 });
+        renderRules(cfg.fixed);
+        return;
+      }
+
+      if(t && t.dataset && t.dataset.act==='del'){
+        const tr = t.closest('tr');
+        if(tr) tr.remove();
+        return;
+      }
     });
 
-    el('rngPercent').addEventListener('input', ()=>{
-      state.percent = clamp(el('rngPercent').value, 0, 100);
-      updateIntensityUI();
-      updatePreview();
-      updateDebug();
+    document.addEventListener('input', (e)=>{
+      if(e.target && (e.target.id==='enabled' || e.target.id==='mode')){
+        setStatus();
+        showHide();
+      }
     });
 
-    el('btnCountMinus').addEventListener('click', ()=>{
-      state.count = clamp(state.count - 1, 0, 999);
-      updateIntensityUI();
-      updatePreview();
-      updateDebug();
-    });
-    el('btnCountPlus').addEventListener('click', ()=>{
-      state.count = clamp(state.count + 1, 0, 999);
-      updateIntensityUI();
-      updatePreview();
-      updateDebug();
-    });
+    const cfg = Object.assign(defaults(), load(KEY_CFG, {}));
+    fillUI(cfg);
+    showPlan();
 
-    el('chPercent').addEventListener('click', ()=>setChoice('percent'));
-    el('chCount').addEventListener('click', ()=>setChoice('count'));
-    el('chPercent').addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); setChoice('percent'); }});
-    el('chCount').addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); setChoice('count'); }});
-
-    el('btnTotMinus').addEventListener('click', ()=>{
-      state.maxTot = clamp(state.maxTot - 1, 0, 999);
-      el('lblTotMax').textContent = String(state.maxTot);
-      updatePreview();
-      updateDebug();
-    });
-    el('btnTotPlus').addEventListener('click', ()=>{
-      state.maxTot = clamp(state.maxTot + 1, 0, 999);
-      el('lblTotMax').textContent = String(state.maxTot);
-      updatePreview();
-      updateDebug();
-    });
-
-    el('rngTotMin').addEventListener('input', ()=>{
-      state.totMin = clamp(el('rngTotMin').value, 0, 60);
-      el('lblTotMin').textContent = String(state.totMin);
-      updatePreview();
-      updateDebug();
-    });
-
-    el('rngTotShare').addEventListener('input', ()=>{
-      state.totShare = clamp(el('rngTotShare').value, 0, 100);
-      el('lblTotShare').textContent = String(state.totShare);
-      updatePreview();
-      updateDebug();
-    });
-
-    el('btnSave').addEventListener('click', saveCfg);
-    el('btnResetPlan').addEventListener('click', resetPlan);
-  }
-
-  function tick(){
-    updatePreview();
-    updateDebug();
-  }
-
-  loadCfg();
-  setPreset('medium');
-  bind();
-  syncUI();
-  setInterval(tick, 1200);
-
-})();
-</script>
-
+  })();
+  </script>
 </body>
 </html>
