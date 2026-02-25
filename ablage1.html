@@ -76,24 +76,33 @@ header h1{margin:0;font-size:20px}
 .vx-thumb{
   grid-area:thumb;
   width:200px;
-  height:140px;
+  min-height:140px;
+  height:auto;
   border-radius:12px;
-  padding:10px;
+  padding:12px;
   display:flex;
   flex-direction:column;
-  justify-content:center;
-  gap:6px;
+  justify-content:flex-start;
+  gap:8px;
   box-shadow: 0 10px 26px rgba(0,0,0,.28);
   border:1px solid rgba(255,255,255,.20);
   background: rgba(255,255,255,.08);
 }
-.vx-thumb .vx-title{ font-weight:900; letter-spacing:.2px; }
-.vx-thumb .vx-reason{ font-weight:900; line-height:1.2; 
+.vx-thumb .vx-title{
+  font-weight:900;
+  letter-spacing:.2px;
+  font-size:14px;
+  line-height:1.1;
+}
+.vx-thumb .vx-reason{
+  font-weight:900;
+  font-size:14px;
+  line-height:1.2;
   white-space:normal;
   word-break:break-word;
   overflow:hidden;
   display:-webkit-box;
-  -webkit-line-clamp:5;
+  -webkit-line-clamp:6;
   -webkit-box-orient:vertical;
 }
 .vx-thumb .vx-meta{ margin-top:2px; font-size:12px; opacity:.9; }
@@ -123,7 +132,30 @@ header h1{margin:0;font-size:20px}
   background: rgba(17,17,17,.55);
   box-shadow: 0 10px 26px rgba(0,0,0,.32), 0 0 0 2px rgba(17,17,17,.25);
 }
+.vx-values.sk1{
+  border-color: rgba(229,57,53,.70);
+  background: rgba(229,57,53,.14);
+  box-shadow: 0 10px 26px rgba(0,0,0,.18), 0 0 0 2px rgba(229,57,53,.18);
+}
 
+.vx-values.sk2{
+  border-color: rgba(243,252,2,.70);
+  background: rgba(243,252,2,.12);
+  box-shadow: 0 10px 26px rgba(0,0,0,.18), 0 0 0 2px rgba(243,252,2,.14);
+  color:#111;
+}
+
+.vx-values.sk3{
+  border-color: rgba(46,125,50,.75);
+  background: rgba(46,125,50,.14);
+  box-shadow: 0 10px 26px rgba(0,0,0,.18), 0 0 0 2px rgba(46,125,50,.16);
+}
+
+.vx-values.sk4{
+  border-color: rgba(17,17,17,.85);
+  background: rgba(17,17,17,.40);
+  box-shadow: 0 10px 26px rgba(0,0,0,.18), 0 0 0 2px rgba(17,17,17,.16);
+}
 /* Titel + Badges */
 h2{
   margin:0 0 6px 0;font-size:22px;font-weight:900;letter-spacing:.2px;
@@ -793,18 +825,17 @@ function upsertCard(p){
     : `<span>${p.label}<br>Kein Foto</span>`;
 
   const thumbHtml = hasVX
-    ? `
-      <div class="vx-thumb ${vxSkClass}" title="Dynamische Verschlechterung">
-        <div class="vx-title">Verschlechterung</div>
-        <div class="vx-reason">${p.verschlechterung.grund}</div>
-        <div class="vx-meta">Bitte neu bewerten</div>
-      </div>
-    `
-    : `
-      <div class="thumb" ${p.img ? `data-view="${withV(abs(p.img))}"` : ''} title="${p.img ? 'Foto ansehen' : ''}">
-        ${imgBlock}
-      </div>
-    `;
+  ? `
+    <div class="vx-thumb ${vxSkClass}" title="Dynamische Verschlechterung">
+      <div class="vx-title">Verschlechterung</div>
+      <div class="vx-reason">${p.verschlechterung.grund}</div>
+    </div>
+  `
+  : `
+    <div class="thumb" ${p.img ? `data-view="${withV(abs(p.img))}"` : ''} title="${p.img ? 'Foto ansehen' : ''}">
+      ${imgBlock}
+    </div>
+  `;
 
   const injText = (p.injury || ' ').trim();
   const baseAf = (p.baseAf != null ? p.baseAf : (p.af != null ? p.af : null));
