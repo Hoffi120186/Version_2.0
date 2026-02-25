@@ -428,9 +428,31 @@
       try{ window.dispatchEvent(new CustomEvent('ablage:dynamik', { detail: plan })); }catch(_){
         try{ window.dispatchEvent(new Event('ablage:dynamik')); }catch(__){}
       }
-      if(fired.length){
-        try{ window.dispatchEvent(new CustomEvent('ablage:dynamik:fired', { detail: { fired: fired, plan: plan } })); }catch(_e){
-          try{ window.dispatchEvent(new Event('ablage:dynamik:fired')); }catch(__e){}
+           if (fired.length) {
+        // iOS Fallback. Fired Events zusätzlich in localStorage ablegen
+        try{
+          localStorage.setItem('ablage.dyn.lastFired.v1', JSON.stringify({
+            ts: now(),
+            fired: fired,
+            plan: plan
+          }));
+        }catch(_ls){}
+
+        // Event auf window und document feuern, mit bubbles. iOS ist manchmal zickig
+        try{
+          var ev1 = new CustomEvent('ablage:dynamik:fired', {
+            detail: { fired: fired, plan: plan },
+            bubbles: true,
+            composed: true
+          });
+          window.dispatchEvent(ev1);
+          try{ document.dispatchEvent(ev1); }catch(_d1){}
+        }catch(_e1){
+          try{
+            var ev2 = new Event('ablage:dynamik:fired', { bubbles:true, composed:true });
+            window.dispatchEvent(ev2);
+            try{ document.dispatchEvent(ev2); }catch(_d2){}
+          }catch(_e2){}
         }
       }
     }
