@@ -1,10 +1,10 @@
-// /service-worker.js  (FINAL: 2026-02-02-4)
+// /service-worker.js  (FINAL: 2026-02-02-27)
 // Fix: Lizenz persistent im SW speichern (überlebt Updates / kalte Starts)
 // + Patienten 1–40 + QR 1–40 + Szenarien 1–8
 // + patienten.json network-first (iPad/PWA Cache-Falle gelöst)
 // + Duplikat-RespondWith-Block entfernt
 
-const CACHE_VERSION = 'app-v2026-02-28-25';
+const CACHE_VERSION = 'app-v2025-12-28-9';
 const CACHE_NAME = `mein-pwa-cache-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 
@@ -120,7 +120,7 @@ self.addEventListener('install', (event) => {
     '/vendor/jsqr.min.js',
 
     // Assets
-    '/Alarmton2.mp3','/status1_pre.mp3',
+    '/Alarmton2.mp3','/status1_pre.mp3','/Patientenverschlechterung.mp3',
     '/Leit1.jpg','/LogoApp.jpg','/Patientenkarte.jpg',
     '/apple-touch-icon.png','/logoneu.png','/IMG_4004.JPG','/hinter1.JPEG','/achtung.jpg',
 
@@ -326,7 +326,7 @@ self.addEventListener('fetch', (event) => {
 
   // Kritische Seiten network-first
   if (sameOrigin && (
-     url.pathname === '/index1.html'
+     url.pathname === '/index1.html'||
     url.pathname === '/klinik.html' ||
     url.pathname === '/ablage1.html' ||
     url.pathname === '/auswertung.html'
@@ -540,11 +540,6 @@ self.addEventListener('message', (event) => {
     }
   })());
 });
-
-
-
-
-
 
 
 
