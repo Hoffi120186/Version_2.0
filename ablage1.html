@@ -182,7 +182,7 @@ h2{
 .badge-rot .flag{     background:#e53935; color:#fff; border-color:#e53935; }
 .badge-gelb .flag{    background:#f3fc02; color:#111; border-color:#f3fc02; }
 .badge-gruen .flag{   background:#2e7d32; color:#fff; border-color:#2e7d32; }
-.badge-schwarz .flag{ background:#111;    color:#fff; border-color:#111; }
+.badge-schwarz .flag{ background:#111; color:#fff; border-color:#111; }
 
 .meta{font-size:14px;opacity:.9;margin:6px 0}
 .injury{font-size:15px}
@@ -273,7 +273,7 @@ h2{
 
   <link rel="stylesheet" href="/app-flow.css">
   <script src="/vx_profiles.js"></script>
-  <script src="/ablage.js?v=20260227_ios_popup1" defer></script>
+  <script src="/ablage.js?v=20260226_ios_sound3" defer></script>
 </head>
 
 <body>
@@ -320,7 +320,7 @@ document.addEventListener('visibilitychange', () => {
 allowAutostart();
 
 /* Helpers */
-const VERSION = 'v-0901-06';
+const VERSION = 'v-20260226-01';
 function abs(href, base){
   try{
     const b = base ? new URL(base, location.href).href : location.href;
@@ -377,7 +377,6 @@ function getVXAllowedKeys(patientId){
     const map = window.VX_MAP || {};
     const a = map[n];
     if(!Array.isArray(a)) return [];
-    // VX_MAP erlaubt Strings oder Objekte {id,w}. Wir geben hier nur die Profil IDs zurück.
     return a.map(x=>{
       if(typeof x === 'string') return x;
       if(x && typeof x === 'object' && x.id) return String(x.id);
@@ -801,7 +800,7 @@ function upsertCard(p){
   const active = loadLS('ablage.active.v1', []);
   if(Array.isArray(active)){
     const hit = active.find(x => x && String(x.id) === String(p.id));
-        if(hit){
+    if(hit){
       if(hit.af != null) p.af = hit.af;
       if(hit.puls != null) p.puls = hit.puls;
       if(hit.rr != null) p.rr = hit.rr;
@@ -809,8 +808,8 @@ function upsertCard(p){
       if(hit.basePuls != null) p.basePuls = hit.basePuls;
       if(hit.baseRr != null) p.baseRr = hit.baseRr;
       if(hit.verschlechterung) p.verschlechterung = hit.verschlechterung;
+    }
   }
-}
 
   const kat = sichtungFor(p.id);
   const flags = __readTogglePayload(p.id) || {};
@@ -860,7 +859,6 @@ function upsertCard(p){
         (baseRr!=null ? ('RR ' + baseRr) : '')
       ].filter(Boolean).join(', '))
     : '';
-
 
   const vitalsLine = baseVitalsText || (p.vitals ? ('Vitalwerte: ' + String(p.vitals).replace(/^Vitalwerte:\s*/i,'')) : '');
 
@@ -1007,7 +1005,6 @@ function observeImage(img){
 
 /* Verschlechterung anwenden und Profil auswählen */
 function pickVXProfile(patientId){
-  // bevorzugt die gewichtete Auswahl aus vx_profiles.js
   try{
     if(typeof window.VX_PICK_PROFILE === 'function'){
       const n = String(patientId||'').replace(/\D/g,'');
@@ -1016,7 +1013,6 @@ function pickVXProfile(patientId){
     }
   }catch(e){}
 
-  // Fallback: gleichmäßig aus erlaubten Keys ziehen
   const keys = getVXAllowedKeys(patientId);
   const chosenKey = pickRandom(keys);
   return chosenKey ? getVXProfileByKey(chosenKey) : null;
@@ -1049,7 +1045,6 @@ function setVXIntoActive(patientId, toCat, profileFromEvent){
   return hit.verschlechterung;
 }
 
-
 /* Dynamik Apply */
 async function applyDynamikToSichtungMap(firedArr){
   if(!Array.isArray(firedArr) || !firedArr.length) return;
@@ -1062,7 +1057,6 @@ async function applyDynamikToSichtungMap(firedArr){
     const to = normCat((it && (it.toCat || it.to)) || '');
     if(!id || !to) continue;
 
-    // Keine Verschlechterung ohne hinterlegtes Profil
     if(getVXAllowedKeys(id).length === 0) continue;
 
     const profEvent = (it && it.profile && (it.profile.grund || it.profile.titel || it.profile.werte)) ? it.profile : null;
@@ -1306,31 +1300,27 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
   .dynBadge.sk3{ background:rgba(34,197,94,.20); border:1px solid rgba(34,197,94,.55); color:#bbf7d0; }
   .dynBadge.sk4{ background:rgba(148,163,184,.16); border:1px solid rgba(148,163,184,.45); color:#e2e8f0; }
 </style>
-<script>
-/* ===============================
-   iOS SAFE Alarm für Dynamik Popup
-   =============================== */
 
+<script>
+/* iOS SAFE Audio für Dynamik Popup, Datei hier setzen */
 (function(){
   'use strict';
 
+  var AUDIO_URL = '/Patientenverschlechterung.mp3';
   var audio = null;
   var armed = false;
   var lastPlay = 0;
 
   function getAudio(){
     if(audio) return audio;
-
-    audio = new Audio('/Patientenverschlechterung.mp3');
+    audio = new Audio(AUDIO_URL);
     audio.preload = 'auto';
     audio.playsInline = true;
-
     return audio;
   }
 
   async function arm(){
     if(armed) return true;
-
     try{
       var a = getAudio();
       a.muted = true;
@@ -1372,14 +1362,11 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
   document.addEventListener('pointerdown', armOnce);
   document.addEventListener('click', armOnce);
 
-  window.__dynAlarm = {
-    play: play
-  };
-
+  window.__dynAlarm = { play: play };
 })();
 </script>
+
 <script>
-  
 (function(){
   'use strict';
 
@@ -1390,8 +1377,13 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
   var tag = document.getElementById('dynAlertTag');
   var ok = document.getElementById('dynAlertOk');
 
-  function normCat(x){
-    return (x||'').toString().toLowerCase().replace('grün','gruen');
+  var seen = new Set();
+  function normCat(x){ return (x||'').toString().toLowerCase().replace('grün','gruen'); }
+  function sig(it){
+    var id = String((it && it.id) || '');
+    var to = String((it && (it.toCat || it.to)) || '');
+    var after = String((it && it.afterMs) || '');
+    return id + '|' + to + '|' + after;
   }
 
   function catLabel(cat){
@@ -1404,12 +1396,13 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
   }
 
   function showNext(){
-    if(window.__dynAlarm && typeof window.__dynAlarm.play === 'function'){
-  window.__dynAlarm.play();
-  }
     if(showing) return;
     if(!q.length) return;
     showing = true;
+
+    if(window.__dynAlarm && typeof window.__dynAlarm.play === 'function'){
+      window.__dynAlarm.play();
+    }
 
     var item = q.shift();
     var name = item.label || item.id || 'Patient';
@@ -1488,27 +1481,33 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 
     try{
       if(Array.isArray(arr) && arr.length){
-        for(var i=0;i<arr.length;i++) q.push(arr[i]);
+        for(var i=0;i<arr.length;i++){
+          var s = sig(arr[i]);
+          if(seen.has(s)) continue;
+          seen.add(s);
+          q.push(arr[i]);
+        }
       } else {
-        q.push({ label:'Patient', fromCat:'', toCat:'' });
+        var fallback = { label:'Patient', fromCat:'', toCat:'' };
+        var sf = sig(fallback);
+        if(!seen.has(sf)){
+          seen.add(sf);
+          q.push(fallback);
+        }
       }
     }catch(_2){
-      q.push({ label:'Patient', fromCat:'', toCat:'' });
+      var fb = { label:'Patient', fromCat:'', toCat:'' };
+      var sfb = sig(fb);
+      if(!seen.has(sfb)){
+        seen.add(sfb);
+        q.push(fb);
+      }
     }
 
     showNext();
   }
 
   window.addEventListener('ablage:dynamik:fired', function(e){
-    var firedArr = null;
-    try{
-      var d = e && e.detail ? e.detail : null;
-      firedArr = d && d.fired ? d.fired : null;
-    }catch(_){ firedArr = null; }
-    handleFiredArray(firedArr);
-  });
-
-  document.addEventListener('ablage:dynamik:fired', function(e){
     var firedArr = null;
     try{
       var d = e && e.detail ? e.detail : null;
@@ -1535,9 +1534,10 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 
 })();
 </script>
+
 <script>
 (function(){
-  'use strict'; 
+  'use strict';
 
   function safeParseKey(key, fallback){
     try{
@@ -1632,4 +1632,3 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 
 </body>
 </html>
-
