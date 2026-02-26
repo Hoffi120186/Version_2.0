@@ -156,7 +156,6 @@ header h1{margin:0;font-size:20px}
   background: rgba(17,17,17,.40);
   box-shadow: 0 10px 26px rgba(0,0,0,.18), 0 0 0 2px rgba(17,17,17,.16);
 }
-
 /* Titel + Badges */
 h2{
   margin:0 0 6px 0;font-size:22px;font-weight:900;letter-spacing:.2px;
@@ -394,107 +393,6 @@ function getVXProfileByKey(key){
   }catch(e){
     return null;
   }
-}
-
-/* Dynamik Plan Fallback */
-function nextWorse(cat){
-  const c = normCat(cat);
-  if(c === 'gruen') return 'gelb';
-  if(c === 'gelb') return 'rot';
-  if(c === 'rot') return 'schwarz';
-  return '';
-}
-function ensurePlanFallback(){
-  if(window.ABLAGE_DYN_ACTIVE) return;
-
-  const cfg = loadLS('ablage.dynamik.v1', null);
-  if(!cfg || !cfg.enabled) return;
-
-  const existing = loadLS('ablage.dynamik.plan.v1', null);
-  if(existing && Array.isArray(existing.events) && existing.events.length) return;
-
-  const active = loadLS('ablage.active.v1', []);
-  if(!Array.isArray(active) || !active.length) return;
-
-  const sMap = loadLS('sichtungMap', {});
-  const mode = String(cfg.mode || 'off').toLowerCase();
-  let events = [];
-
-  if(mode === 'fixed' && Array.isArray(cfg.fixed) && cfg.fixed.length){
-    for(const f of cfg.fixed){
-      if(!f) continue;
-      const id = String(f.id || '');
-      const to = normCat(f.to || f.toCat || '');
-      const atMs = Number(f.atMs != null ? f.atMs : (Number(f.atMin||0) * 60000));
-      if(!id || !to || !isFinite(atMs)) continue;
-      events.push({ id:id, to:to, atMs:atMs, done:false });
-    }
-  } else if(mode === 'random'){
-    const rnd = cfg.random || {};
-    const count = Math.max(0, Number(rnd.count || 0));
-    const minMs = Math.max(0, Number(rnd.minMin || 0) * 60000);
-    const maxMs = Math.max(minMs, Number(rnd.maxMin || 0) * 60000);
-    const minGapMs = Math.max(0, Number(rnd.minGapSec || 0) * 1000);
-    const allow = rnd.allow || { sk1:true, sk2:true, sk3:true, sk4:false };
-    const toLowerOnly = !!rnd.toLowerOnly;
-
-    const pool = active
-      .map(a => ({ id:String(a && a.id || ''), label:(a && a.label) || '', startAt:a && a.startAt }))
-      .filter(x => x.id)
-      .filter(x => getVXAllowedKeys(x.id).length > 0);
-
-    function allowedTo(cat){
-      const c = normCat(cat);
-      if(c === 'rot') return !!allow.sk1;
-      if(c === 'gelb') return !!allow.sk2;
-      if(c === 'gruen') return !!allow.sk3;
-      if(c === 'schwarz') return !!allow.sk4;
-      return false;
-    }
-
-    let used = {};
-    let lastAt = -999999999;
-
-    for(let i=0;i<count && pool.length;i++){
-      const pick = pool[Math.floor(Math.random() * pool.length)];
-      if(!pick || !pick.id) continue;
-      if(used[pick.id]) continue;
-
-      const from = normCat((sMap && sMap[pick.id]) || '');
-      let to = '';
-
-      if(toLowerOnly){
-        to = nextWorse(from);
-      } else {
-        const opts = ['gruen','gelb','rot','schwarz'].filter(allowedTo);
-        to = opts[Math.floor(Math.random() * opts.length)] || '';
-      }
-
-      if(!to) continue;
-      if(!allowedTo(to)) continue;
-      if(normCat(to) === normCat(from)) continue;
-
-      let atMs = Math.floor(minMs + Math.random() * (maxMs - minMs + 1));
-      if(atMs < lastAt + minGapMs) atMs = lastAt + minGapMs;
-      lastAt = atMs;
-
-      used[pick.id] = true;
-      events.push({ id:pick.id, to:to, atMs:atMs, done:false });
-    }
-  } else {
-    return;
-  }
-
-  if(!events.length) return;
-
-  const plan = {
-    mode: mode,
-    basis: cfg.basis || 'patient',
-    createdAt: Date.now(),
-    events: events
-  };
-
-  saveLS('ablage.dynamik.plan.v1', plan);
 }
 
 /* Datenquellen */
@@ -748,7 +646,7 @@ function extractMainInjuryFromButtonHTML(rawHtml){
   let t = cleanText(rawHtml);
   const hv = t.match(/Hauptverletzung\s*:?\s*(.+)$/i);
   let base = hv ? hv[1] : t;
-  base = base.replace(/^[\s\-\|•·–—]+/, '').split(/[\|—–\-•·]/)[0].trim();
+  base = base.replace(/^[\s\-\|•·]+/, '').split(/[\|•·]/)[0].trim();
   const p = base.indexOf('.');
   if (p>0 && p<80) base = base.slice(0,p).trim();
   return base || '';
@@ -862,6 +760,7 @@ function upsertCard(p){
     : '';
 
   const vitalsLine = baseVitalsText || (p.vitals ? ('Vitalwerte: ' + String(p.vitals).replace(/^Vitalwerte:\s*/i,'')) : '');
+
   const newValuesText = hasVX ? fmtNewValues(p.verschlechterung && (p.verschlechterung.werte || p.verschlechterung.vitals || null)) : '';
 
   const html = `
@@ -1102,7 +1001,6 @@ window.__AblageDynApply = applyDynamikToSichtungMap;
 
 /* Laden */
 async function load(){
-  ensurePlanFallback();
 
   const done = getDoneSet();
   const ids = sightedIds().filter(id => !done.has(id));
@@ -1302,40 +1200,77 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 </style>
 
 <script>
-/* ===============================
-   iOS SAFE Alarm, mit unlock()
-   Datei: /patientenverschlechterung.mp3
-   =============================== */
 (function(){
   'use strict';
 
-  var audio = null;
-  var armed = false;
+  window.__ablageUiReady = false;
+
+  var AUDIO_URL = '/patientenverschlechterung.mp3?v=20260226_2';
+
+  var ctx = null;
+  var buffer = null;
+  var loading = null;
+  var unlocked = false;
   var lastPlay = 0;
 
-  function getAudio(){
-    if(audio) return audio;
-    audio = new Audio('/patientenverschlechterung.mp3');
-    audio.preload = 'auto';
-    audio.playsInline = true;
-    return audio;
+  function AC(){ return window.AudioContext || window.webkitAudioContext; }
+
+  function getCtx(){
+    if(ctx) return ctx;
+    var C = AC();
+    if(!C) return null;
+    ctx = new C();
+    return ctx;
   }
 
-  async function arm(){
-    if(armed) return true;
+  async function loadBuffer(){
+    if(buffer) return buffer;
+    if(loading) return loading;
+
+    loading = (async function(){
+      var c = getCtx();
+      if(!c) return null;
+
+      var res = await fetch(AUDIO_URL, { cache:'no-store' });
+      var arr = await res.arrayBuffer();
+
+      var b = await new Promise(function(resolve, reject){
+        c.decodeAudioData(arr, resolve, reject);
+      });
+
+      buffer = b;
+      return buffer;
+    })();
+
+    try{ return await loading; }
+    finally{ loading = null; }
+  }
+
+  async function unlock(){
+    var c = getCtx();
+    if(!c) return false;
+
     try{
-      var a = getAudio();
+      if(c.state === 'suspended') await c.resume();
+    }catch(e){}
 
-      a.pause();
-      a.currentTime = 0;
+    try{
+      var b = await loadBuffer();
+      if(!b) return false;
 
-      a.muted = true;
-      await a.play();
-      a.pause();
-      a.currentTime = 0;
-      a.muted = false;
+      var src = c.createBufferSource();
+      src.buffer = b;
 
-      armed = true;
+      var g = c.createGain();
+      g.gain.value = 0.0001;
+
+      src.connect(g);
+      g.connect(c.destination);
+
+      src.start(0);
+      src.stop(c.currentTime + 0.02);
+
+      unlocked = true;
       return true;
     }catch(e){
       return false;
@@ -1343,34 +1278,34 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
   }
 
   async function play(){
+    if(!window.__ablageUiReady) return;
+
     var now = Date.now();
     if(now - lastPlay < 1200) return;
     lastPlay = now;
 
-    var ok = await arm();
-    if(!ok) return;
+    var c = getCtx();
+    if(!c) return;
+
+    if(!unlocked){
+      var ok = await unlock();
+      if(!ok) return;
+    }
 
     try{
-      var a = getAudio();
-      a.pause();
-      a.currentTime = 0;
-      await a.play();
+      if(c.state === 'suspended') await c.resume();
+    }catch(e){}
+
+    var b = buffer || await loadBuffer();
+    if(!b) return;
+
+    try{
+      var src = c.createBufferSource();
+      src.buffer = b;
+      src.connect(c.destination);
+      src.start(0);
     }catch(e){}
   }
-
-  async function unlock(){
-    return await arm();
-  }
-
-  function armOnce(){
-    arm();
-    document.removeEventListener('touchstart', armOnce);
-    document.removeEventListener('pointerdown', armOnce);
-    document.removeEventListener('click', armOnce);
-  }
-  document.addEventListener('touchstart', armOnce);
-  document.addEventListener('pointerdown', armOnce);
-  document.addEventListener('click', armOnce);
 
   window.__dynAlarm = { play: play, unlock: unlock };
 })();
@@ -1429,6 +1364,8 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
   function showNext(){
     if(showing) return;
     if(!q.length) return;
+    if(!window.__ablageUiReady) return;
+
     showing = true;
 
     var item = q.shift();
@@ -1491,7 +1428,7 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
   function close(){
     backdrop.style.display = 'none';
     showing = false;
-    setTimeout(showNext, 20);
+    setTimeout(showNext, 30);
   }
 
   if(ok) ok.addEventListener('click', close);
@@ -1562,6 +1499,8 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
   var lastSeenTs = 0;
 
   setInterval(function(){
+    if(!window.__ablageUiReady) return;
+
     try{
       var raw = localStorage.getItem(LAST_KEY);
       if(!raw) return;
@@ -1574,86 +1513,7 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
     }catch(e){}
   }, 800);
 
-})();
-</script>
-
-<script>
-(function(){
-  'use strict'; 
-
-  function safeParseKey(key, fallback){
-    try{
-      var raw = localStorage.getItem(key);
-      if(!raw) return fallback;
-      return JSON.parse(raw);
-    }catch(_){ return fallback; }
-  }
-
-  function safeSet(key, value){
-    try{ localStorage.setItem(key, JSON.stringify(value)); }catch(_){}
-  }
-
-  function normCat(x){
-    return (x||'').toString().toLowerCase().replace('grün','gruen');
-  }
-
-  function getActive(){
-    var a = safeParseKey('ablage.active.v1', []);
-    return Array.isArray(a) ? a : [];
-  }
-
-  function getPlan(){
-    var p = safeParseKey('ablage.dynamik.plan.v1', null);
-    if(!p || !p.events || !Array.isArray(p.events)) return null;
-    return p;
-  }
-
-  function tick(){
-    try{
-      var plan = getPlan();
-      if(!plan || !plan.events.length) return;
-
-      var active = getActive();
-      if(!active.length) return;
-
-      var sMap = safeParseKey('sichtungMap', {});
-      var t = Date.now();
-
-      for(var i=0;i<active.length;i++){
-        var a = active[i];
-        if(!a || !a.id) continue;
-        if(typeof a.startAt !== 'number') continue;
-
-        var elapsed = t - a.startAt + (Number(a.offset)||0);
-
-        for(var j=0;j<plan.events.length;j++){
-          var ev = plan.events[j];
-          if(!ev || ev.done) continue;
-          if(String(ev.id) !== String(a.id)) continue;
-
-          if(elapsed >= Number(ev.atMs||0)){
-            ev.done = true;
-            safeSet('ablage.dynamik.plan.v1', plan);
-
-            var fromCat = normCat((sMap && sMap[a.id]) || '');
-            var toCat = normCat(ev.to || ev.toCat || '');
-
-            try{
-              window.dispatchEvent(new CustomEvent('ablage:dynamik:fired', {
-                detail:{
-                  fired:[{ id:a.id, label:a.label||a.id, fromCat:fromCat, toCat:toCat, afterMs:ev.atMs }],
-                  plan:plan
-                }
-              }));
-            }catch(_e){}
-            return;
-          }
-        }
-      }
-    }catch(_){}
-  }
-
-  if(!window.ABLAGE_DYN_ACTIVE){ setInterval(tick, 1000); }
+  window.__dynShowNext = showNext;
 })();
 </script>
 
@@ -1665,170 +1525,147 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
       if(window.Ablage && typeof window.Ablage.startOnEnter === 'function'){
         window.Ablage.startOnEnter();
       }
-    }catch(_){}
+    }catch(e){}
   }
   window.addEventListener('pageshow', startOnEnterOnShow);
   setTimeout(startOnEnterOnShow, 1200);
 })();
 </script>
 
-<!-- ========= Start Übersicht Popup ========= -->
-<div id="startInfoBackdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:9998; align-items:center; justify-content:center; padding:18px;">
-  <div id="startInfoModal" style="max-width:560px; width:100%; background:rgba(20,25,35,.95); border:1px solid rgba(255,255,255,.18); border-radius:16px; box-shadow:0 18px 60px rgba(0,0,0,.55); padding:16px;">
+<!-- Aktuelle Lage Popup -->
+<div id="lageBackdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.60); z-index:9998; align-items:center; justify-content:center; padding:18px;">
+  <div id="lageModal" style="max-width:520px; width:100%; background:rgba(20,25,35,.95); border:1px solid rgba(255,255,255,.18); border-radius:16px; box-shadow:0 18px 60px rgba(0,0,0,.55); padding:16px 16px 14px;">
     <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
-      <div style="font-weight:900; font-size:18px; letter-spacing:.2px;">Aktuelle Lage Patientenablage</div>
-      <div style="font-size:12px; opacity:.85; padding:4px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.18);">
-        Tippe auf Verstanden, um fortzufahren
+      <div style="font-weight:900; font-size:18px; letter-spacing:.2px;">Aktuelle Lage in der Patientenablage</div>
+    </div>
+
+    <div class="lageGrid" style="margin-top:14px;">
+      <div class="lageBox sk1">
+        <div class="t">SK1</div>
+        <div class="c" id="lageSk1">0</div>
+      </div>
+      <div class="lageBox sk3">
+        <div class="t">SK3</div>
+        <div class="c" id="lageSk3">0</div>
+      </div>
+      <div class="lageBox sk2">
+        <div class="t">SK2</div>
+        <div class="c" id="lageSk2">0</div>
+      </div>
+      <div class="lageBox sk4">
+        <div class="t">Tot</div>
+        <div class="c" id="lageSk4">0</div>
       </div>
     </div>
 
-    <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px;">
-      <div class="skPill sk1">
-        <span class="dot"></span><span class="lbl">SK1</span>
-        <span class="cnt" id="siCntSk1">0</span>
-      </div>
-      <div class="skPill sk2">
-        <span class="dot"></span><span class="lbl">SK2</span>
-        <span class="cnt" id="siCntSk2">0</span>
-      </div>
-      <div class="skPill sk3">
-        <span class="dot"></span><span class="lbl">SK3</span>
-        <span class="cnt" id="siCntSk3">0</span>
-      </div>
-      <div class="skPill sk4">
-        <span class="dot"></span><span class="lbl">SCHWARZ</span>
-        <span class="cnt" id="siCntSk4">0</span>
-      </div>
-      <div class="skPill total">
-        <span class="dot"></span><span class="lbl">GESAMT</span>
-        <span class="cnt" id="siCntTotal">0</span>
-      </div>
-    </div>
-
-    <div id="startInfoBody" style="margin-top:12px; line-height:1.4;"></div>
-
-    <div style="display:flex; justify-content:flex-end; margin-top:14px;">
-      <button id="startInfoOk" class="btn" type="button">Verstanden</button>
+    <div style="display:flex; justify-content:center; margin-top:16px;">
+      <button id="lageOk" class="btn" type="button" style="min-width:180px;">Verstanden</button>
     </div>
   </div>
 </div>
 
 <style>
-  .skPill{
-    display:inline-flex; align-items:center; gap:8px;
-    padding:8px 12px; border-radius:999px; font-weight:900; font-size:13px;
+  .lageGrid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:12px;
+  }
+  .lageBox{
+    border-radius:14px;
     border:1px solid rgba(255,255,255,.18);
-    background: rgba(255,255,255,.08);
+    padding:14px 14px 12px;
+    box-shadow:0 10px 26px rgba(0,0,0,.28);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
     user-select:none;
   }
-  .skPill .dot{ width:10px; height:10px; border-radius:999px; background:#9aa0a6; }
-  .skPill .cnt{
-    margin-left:6px;
-    padding:2px 8px; border-radius:999px;
+  .lageBox .t{ font-weight:900; font-size:16px; letter-spacing:.2px; }
+  .lageBox .c{
+    font-weight:900;
+    font-size:22px;
+    padding:6px 12px;
+    border-radius:999px;
     border:1px solid rgba(255,255,255,.18);
-    background: rgba(0,0,0,.25);
+    background:rgba(0,0,0,.25);
+    min-width:52px;
+    text-align:center;
     font-variant-numeric: tabular-nums;
-    min-width:2ch; text-align:center;
   }
 
-  .skPill.sk1{ border-color: rgba(239,68,68,.55); background: rgba(239,68,68,.14); }
-  .skPill.sk1 .dot{ background:#ef4444; }
-
-  .skPill.sk2{ border-color: rgba(234,179,8,.55); background: rgba(234,179,8,.14); color:#111; }
-  .skPill.sk2 .dot{ background:#eab308; }
-  .skPill.sk2 .cnt{ color:#111; border-color: rgba(0,0,0,.20); background: rgba(255,255,255,.35); }
-
-  .skPill.sk3{ border-color: rgba(34,197,94,.55); background: rgba(34,197,94,.14); }
-  .skPill.sk3 .dot{ background:#22c55e; }
-
-  .skPill.sk4{ border-color: rgba(0,0,0,.70); background: rgba(0,0,0,.35); }
-  .skPill.sk4 .dot{ background:#111; }
-
-  .skPill.total{ border-color: rgba(148,163,184,.45); background: rgba(148,163,184,.14); }
-  .skPill.total .dot{ background:#94a3b8; }
+  .lageBox.sk1{ border-color: rgba(239,68,68,.55); background: rgba(239,68,68,.14); }
+  .lageBox.sk2{ border-color: rgba(234,179,8,.55); background: rgba(234,179,8,.14); color:#111; }
+  .lageBox.sk2 .c{ color:#111; border-color: rgba(0,0,0,.20); background: rgba(255,255,255,.35); }
+  .lageBox.sk3{ border-color: rgba(34,197,94,.55); background: rgba(34,197,94,.14); }
+  .lageBox.sk4{ border-color: rgba(0,0,0,.70); background: rgba(0,0,0,.35); }
 </style>
 
 <script>
 (function(){
   'use strict';
 
-  const KEY = 'ablage.startinfo.shown.v2';
+  function safeParse(key, fallback){
+    try{
+      var raw = localStorage.getItem(key);
+      if(!raw) return fallback;
+      return JSON.parse(raw);
+    }catch(e){
+      return fallback;
+    }
+  }
 
   function normCat(x){
     return (x||'').toString().toLowerCase().replace('grün','gruen').trim();
   }
-  function catLabel(cat){
-    const c = normCat(cat);
-    if(c==='rot') return 'SK1';
-    if(c==='gelb') return 'SK2';
-    if(c==='gruen') return 'SK3';
-    if(c==='schwarz') return 'SCHWARZ';
-    return '';
+
+  function getDoneSetLocal(){
+    var arr = safeParse('ablage.done.v1', []);
+    if(!Array.isArray(arr)) arr = [];
+    var s = {};
+    for(var i=0;i<arr.length;i++){
+      s[String(arr[i])] = 1;
+    }
+    return s;
   }
 
-  function readSichtungMap(){
-    try{ return JSON.parse(localStorage.getItem('sichtungMap')||'{}') || {}; }
-    catch(e){ return {}; }
+  function countAblage(){
+    var map = safeParse('sichtungMap', {});
+    var done = getDoneSetLocal();
+
+    var sk1=0, sk2=0, sk3=0, sk4=0;
+
+    Object.keys(map || {}).forEach(function(id){
+      if(!/^patient\d+$/i.test(id)) return;
+      if(done[id]) return;
+
+      var c = normCat(map[id]);
+      if(c === 'rot') sk1++;
+      else if(c === 'gelb') sk2++;
+      else if(c === 'gruen') sk3++;
+      else if(c === 'schwarz') sk4++;
+    });
+
+    return { sk1:sk1, sk2:sk2, sk3:sk3, sk4:sk4 };
   }
 
   function setText(id, val){
-    const el = document.getElementById(id);
+    var el = document.getElementById(id);
     if(el) el.textContent = String(val);
   }
 
-  function buildBody(ids, map){
-    if(!ids.length){
-      return '<div style="opacity:.9;">Keine Patienten in der Ablage.</div>';
-    }
+  function showLage(){
+    var b = document.getElementById('lageBackdrop');
+    var ok = document.getElementById('lageOk');
+    if(!b || !ok) return;
 
-    let html = '<div style="opacity:.95;">Aktuell befindliche Patienten:</div>';
-    html += '<div style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">';
+    var c = countAblage();
+    setText('lageSk1', c.sk1);
+    setText('lageSk2', c.sk2);
+    setText('lageSk3', c.sk3);
+    setText('lageSk4', c.sk4);
 
-    ids.forEach(function(id){
-      const sk = catLabel(map[id]);
-      html += (
-        '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.06);">' +
-          '<div style="font-weight:900;">' + id + '</div>' +
-          '<div style="font-weight:900; opacity:.95;">' + sk + '</div>' +
-        '</div>'
-      );
-    });
-
-    html += '</div>';
-    return html;
-  }
-
-  async function show(){
-    if(localStorage.getItem(KEY)==='1') return;
-
-    const backdrop = document.getElementById('startInfoBackdrop');
-    const body = document.getElementById('startInfoBody');
-    const ok = document.getElementById('startInfoOk');
-
-    if(!backdrop || !body || !ok) return;
-
-    const map = readSichtungMap();
-    const ids = Object.keys(map)
-      .filter(k => /^patient\d+$/i.test(k))
-      .sort((a,b)=> parseInt(a.replace(/\D/g,'')) - parseInt(b.replace(/\D/g,'')));
-
-    let c1=0,c2=0,c3=0,c4=0;
-    ids.forEach(function(id){
-      const c = normCat(map[id]);
-      if(c==='rot') c1++;
-      else if(c==='gelb') c2++;
-      else if(c==='gruen') c3++;
-      else if(c==='schwarz') c4++;
-    });
-
-    setText('siCntSk1', c1);
-    setText('siCntSk2', c2);
-    setText('siCntSk3', c3);
-    setText('siCntSk4', c4);
-    setText('siCntTotal', ids.length);
-
-    body.innerHTML = buildBody(ids, map);
-    backdrop.style.display = 'flex';
+    b.style.display = 'flex';
 
     ok.addEventListener('click', async function(){
       try{
@@ -1837,13 +1674,19 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
         }
       }catch(e){}
 
-      localStorage.setItem(KEY,'1');
-      backdrop.style.display = 'none';
+      window.__ablageUiReady = true;
+      b.style.display = 'none';
+
+      try{
+        if(typeof window.__dynShowNext === 'function'){
+          window.__dynShowNext();
+        }
+      }catch(e){}
     }, { once:true });
   }
 
   window.addEventListener('load', function(){
-    setTimeout(show, 350);
+    setTimeout(showLage, 250);
   });
 })();
 </script>
