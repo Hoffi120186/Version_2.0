@@ -1535,8 +1535,23 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 <!-- Aktuelle Lage Popup -->
 <div id="lageBackdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.60); z-index:9998; align-items:center; justify-content:center; padding:18px;">
   <div id="lageModal" style="max-width:520px; width:100%; background:rgba(20,25,35,.95); border:1px solid rgba(255,255,255,.18); border-radius:16px; box-shadow:0 18px 60px rgba(0,0,0,.55); padding:16px 16px 14px;">
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
-      <div style="font-weight:900; font-size:18px; letter-spacing:.2px;">Aktuelle Lage in der Patientenablage</div>
+    <div style="text-align:center;">
+  <div style="
+    font-weight:900;
+    font-size:20px;
+    letter-spacing:.3px;
+    text-transform:uppercase;
+  ">
+    AKTUELLE LAGE
+  <div style="
+    font-size:13px;
+    opacity:.8;
+    margin-top:4px;
+    letter-spacing:.2px;
+  ">
+    Patientenablage
+  
+</div></div>
     </div>
 
     <div class="lageGrid" style="margin-top:14px;">
@@ -1565,40 +1580,158 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 </div>
 
 <style>
+/* ============================
+   Lage Popup. Styling Feinschliff
+   nutzt deine echten Klassen: .lageGrid .lageBox .t .c
+   ============================ */
+
+/* Backdrop */
+#lageBackdrop{
+  background: rgba(0,0,0,.62) !important;
+  backdrop-filter: blur(7px);
+}
+
+/* Modal */
+#lageModal{
+  border-radius: 18px !important;
+  border: 1px solid rgba(255,255,255,.20) !important;
+  box-shadow: 0 20px 70px rgba(0,0,0,.62) !important;
+  padding: 18px 18px 16px !important;
+}
+
+/* Titel im Header vom Modal, ist bei dir inline, trotzdem ok */
+#lageModal > div:first-child > div{
+  font-size: 19px !important;
+  font-weight: 900 !important;
+  letter-spacing: .2px !important;
+}
+
+/* Grid */
+.lageGrid{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Kachel Basis */
+.lageBox{
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.18);
+  padding: 14px 14px 12px;
+  box-shadow: 0 12px 28px rgba(0,0,0,.28);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  user-select: none;
+  position: relative;
+  overflow: hidden;
+}
+
+/* dezente Lichtkante */
+.lageBox::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background: radial-gradient(120% 80% at 20% 10%, rgba(255,255,255,.14), transparent 55%);
+  pointer-events:none;
+}
+
+/* Label */
+.lageBox .t{
+  font-weight: 900;
+  font-size: 15px;
+  letter-spacing: .25px;
+  opacity: .98;
+}
+
+/* Count Badge */
+.lageBox .c{
+  font-weight: 950;
+  font-size: 22px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(0,0,0,.22);
+  min-width: 56px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 10px 22px rgba(0,0,0,.20);
+}
+
+/* Farben, an deine Klassen sk1 sk2 sk3 sk4 angepasst */
+.lageBox.sk1{
+  border-color: rgba(239,68,68,.55);
+  background: rgba(239,68,68,.14);
+}
+.lageBox.sk2{
+  border-color: rgba(234,179,8,.55);
+  background: rgba(234,179,8,.14);
+  color:#111;
+}
+.lageBox.sk2 .c{
+  color:#111;
+  border-color: rgba(0,0,0,.18);
+  background: rgba(255,255,255,.40);
+}
+.lageBox.sk3{
+  border-color: rgba(34,197,94,.55);
+  background: rgba(34,197,94,.14);
+}
+.lageBox.sk4{
+  border-color: rgba(0,0,0,.72);
+  background: rgba(0,0,0,.36);
+}
+
+/* Wenn Count 0. automatisch ruhiger
+   funktioniert ohne JS, via :has ist nicht überall stabil, daher nur optisch per low contrast
+*/
+.lageBox .c:empty{
+  opacity:.7;
+}
+
+/* Button Verstanden */
+#lageOk{
+  min-width: 200px !important;
+  padding: 12px 16px !important;
+  border-radius: 14px !important;
+  font-weight: 900 !important;
+  letter-spacing: .2px !important;
+  box-shadow: 0 14px 34px rgba(0,0,0,.38) !important;
+}
+#lageOk:hover{
+  filter: brightness(1.05);
+}
+#lageOk:active{
+  transform: scale(.99);
+}
+
+/* Mobile Feinschliff */
+@media (max-width:640px){
+  #lageModal{
+    max-width: 560px !important;
+    padding: 16px 14px 14px !important;
+    border-radius: 18px !important;
+  }
   .lageGrid{
-    display:grid;
-    grid-template-columns: 1fr 1fr;
-    gap:12px;
+    gap: 10px;
   }
   .lageBox{
-    border-radius:14px;
-    border:1px solid rgba(255,255,255,.18);
-    padding:14px 14px 12px;
-    box-shadow:0 10px 26px rgba(0,0,0,.28);
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-    user-select:none;
+    padding: 12px 12px 11px;
+    border-radius: 16px;
   }
-  .lageBox .t{ font-weight:900; font-size:16px; letter-spacing:.2px; }
+  .lageBox .t{
+    font-size: 14px;
+  }
   .lageBox .c{
-    font-weight:900;
-    font-size:22px;
-    padding:6px 12px;
-    border-radius:999px;
-    border:1px solid rgba(255,255,255,.18);
-    background:rgba(0,0,0,.25);
-    min-width:52px;
-    text-align:center;
-    font-variant-numeric: tabular-nums;
+    font-size: 20px;
+    min-width: 52px;
   }
-
-  .lageBox.sk1{ border-color: rgba(239,68,68,.55); background: rgba(239,68,68,.14); }
-  .lageBox.sk2{ border-color: rgba(234,179,8,.55); background: rgba(234,179,8,.14); color:#111; }
-  .lageBox.sk2 .c{ color:#111; border-color: rgba(0,0,0,.20); background: rgba(255,255,255,.35); }
-  .lageBox.sk3{ border-color: rgba(34,197,94,.55); background: rgba(34,197,94,.14); }
-  .lageBox.sk4{ border-color: rgba(0,0,0,.70); background: rgba(0,0,0,.35); }
+  #lageOk{
+    width: 100%;
+    min-width: 0 !important;
+  }
+}
 </style>
 
 <script>
