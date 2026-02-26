@@ -809,7 +809,7 @@ function upsertCard(p){
       if(hit.basePuls != null) p.basePuls = hit.basePuls;
       if(hit.baseRr != null) p.baseRr = hit.baseRr;
       if(hit.verschlechterung) p.verschlechterung = hit.verschlechterung;
-    }
+  }
 }
 
   const kat = sichtungFor(p.id);
@@ -1306,8 +1306,80 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
   .dynBadge.sk3{ background:rgba(34,197,94,.20); border:1px solid rgba(34,197,94,.55); color:#bbf7d0; }
   .dynBadge.sk4{ background:rgba(148,163,184,.16); border:1px solid rgba(148,163,184,.45); color:#e2e8f0; }
 </style>
-
 <script>
+/* ===============================
+   iOS SAFE Alarm für Dynamik Popup
+   =============================== */
+
+(function(){
+  'use strict';
+
+  var audio = null;
+  var armed = false;
+  var lastPlay = 0;
+
+  function getAudio(){
+    if(audio) return audio;
+
+    audio = new Audio('/Patientenverschlechterung.mp3');
+    audio.preload = 'auto';
+    audio.playsInline = true;
+
+    return audio;
+  }
+
+  async function arm(){
+    if(armed) return true;
+
+    try{
+      var a = getAudio();
+      a.muted = true;
+      await a.play();
+      a.pause();
+      a.currentTime = 0;
+      a.muted = false;
+      armed = true;
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+
+  async function play(){
+    var now = Date.now();
+    if(now - lastPlay < 1500) return;
+    lastPlay = now;
+
+    var ok = await arm();
+    if(!ok) return;
+
+    try{
+      var a = getAudio();
+      a.pause();
+      a.currentTime = 0;
+      await a.play();
+    }catch(e){}
+  }
+
+  function armOnce(){
+    arm();
+    document.removeEventListener('touchstart', armOnce);
+    document.removeEventListener('pointerdown', armOnce);
+    document.removeEventListener('click', armOnce);
+  }
+
+  document.addEventListener('touchstart', armOnce);
+  document.addEventListener('pointerdown', armOnce);
+  document.addEventListener('click', armOnce);
+
+  window.__dynAlarm = {
+    play: play
+  };
+
+})();
+</script>
+<script>
+  
 (function(){
   'use strict';
 
@@ -1332,6 +1404,9 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
   }
 
   function showNext(){
+    if(window.__dynAlarm && typeof window.__dynAlarm.play === 'function'){
+  window.__dynAlarm.play();
+  }
     if(showing) return;
     if(!q.length) return;
     showing = true;
@@ -1557,4 +1632,3 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 
 </body>
 </html>
-
