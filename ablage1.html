@@ -156,6 +156,7 @@ header h1{margin:0;font-size:20px}
   background: rgba(17,17,17,.40);
   box-shadow: 0 10px 26px rgba(0,0,0,.18), 0 0 0 2px rgba(17,17,17,.16);
 }
+
 /* Titel + Badges */
 h2{
   margin:0 0 6px 0;font-size:22px;font-weight:900;letter-spacing:.2px;
@@ -861,7 +862,6 @@ function upsertCard(p){
     : '';
 
   const vitalsLine = baseVitalsText || (p.vitals ? ('Vitalwerte: ' + String(p.vitals).replace(/^Vitalwerte:\s*/i,'')) : '');
-
   const newValuesText = hasVX ? fmtNewValues(p.verschlechterung && (p.verschlechterung.werte || p.verschlechterung.vitals || null)) : '';
 
   const html = `
@@ -1302,75 +1302,40 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 </style>
 
 <script>
+/* ===============================
+   iOS SAFE Alarm, mit unlock()
+   Datei: /patientenverschlechterung.mp3
+   =============================== */
 (function(){
   'use strict';
 
-  var AUDIO_URL = '/patientenverschlechterung.mp3?v=20260226_1';
-
-  var ctx = null;
-  var buffer = null;
-  var loading = null;
-  var unlocked = false;
+  var audio = null;
+  var armed = false;
   var lastPlay = 0;
 
-  function AC(){ return window.AudioContext || window.webkitAudioContext; }
-
-  function getCtx(){
-    if(ctx) return ctx;
-    var C = AC();
-    if(!C) return null;
-    ctx = new C();
-    return ctx;
+  function getAudio(){
+    if(audio) return audio;
+    audio = new Audio('/patientenverschlechterung.mp3');
+    audio.preload = 'auto';
+    audio.playsInline = true;
+    return audio;
   }
 
-  async function loadBuffer(){
-    if(buffer) return buffer;
-    if(loading) return loading;
-
-    loading = (async function(){
-      var c = getCtx();
-      if(!c) return null;
-
-      var res = await fetch(AUDIO_URL, { cache:'no-store' });
-      var arr = await res.arrayBuffer();
-
-      var b = await new Promise(function(resolve, reject){
-        c.decodeAudioData(arr, resolve, reject);
-      });
-
-      buffer = b;
-      return buffer;
-    })();
-
-    try{ return await loading; }
-    finally{ loading = null; }
-  }
-
-  async function unlock(){
-    var c = getCtx();
-    if(!c) return false;
-
+  async function arm(){
+    if(armed) return true;
     try{
-      if(c.state === 'suspended') await c.resume();
-    }catch(e){}
+      var a = getAudio();
 
-    try{
-      var b = await loadBuffer();
-      if(!b) return false;
+      a.pause();
+      a.currentTime = 0;
 
-      var src = c.createBufferSource();
-      src.buffer = b;
+      a.muted = true;
+      await a.play();
+      a.pause();
+      a.currentTime = 0;
+      a.muted = false;
 
-      var g = c.createGain();
-      g.gain.value = 0.0001;
-
-      src.connect(g);
-      g.connect(c.destination);
-
-      src.start(0);
-      src.stop(c.currentTime + 0.02);
-
-      unlocked = true;
+      armed = true;
       return true;
     }catch(e){
       return false;
@@ -1382,39 +1347,30 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
     if(now - lastPlay < 1200) return;
     lastPlay = now;
 
-    var c = getCtx();
-    if(!c) return;
-
-    if(!unlocked){
-      var ok = await unlock();
-      if(!ok) return;
-    }
+    var ok = await arm();
+    if(!ok) return;
 
     try{
-      if(c.state === 'suspended') await c.resume();
-    }catch(e){}
-
-    var b = buffer || await loadBuffer();
-    if(!b) return;
-
-    try{
-      var src = c.createBufferSource();
-      src.buffer = b;
-      src.connect(c.destination);
-      src.start(0);
+      var a = getAudio();
+      a.pause();
+      a.currentTime = 0;
+      await a.play();
     }catch(e){}
   }
 
-  function unlockOnce(){
-    unlock();
-    document.removeEventListener('touchstart', unlockOnce, true);
-    document.removeEventListener('pointerdown', unlockOnce, true);
-    document.removeEventListener('click', unlockOnce, true);
+  async function unlock(){
+    return await arm();
   }
 
-  document.addEventListener('touchstart', unlockOnce, true);
-  document.addEventListener('pointerdown', unlockOnce, true);
-  document.addEventListener('click', unlockOnce, true);
+  function armOnce(){
+    arm();
+    document.removeEventListener('touchstart', armOnce);
+    document.removeEventListener('pointerdown', armOnce);
+    document.removeEventListener('click', armOnce);
+  }
+  document.addEventListener('touchstart', armOnce);
+  document.addEventListener('pointerdown', armOnce);
+  document.addEventListener('click', armOnce);
 
   window.__dynAlarm = { play: play, unlock: unlock };
 })();
@@ -1623,6 +1579,86 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 
 <script>
 (function(){
+  'use strict'; 
+
+  function safeParseKey(key, fallback){
+    try{
+      var raw = localStorage.getItem(key);
+      if(!raw) return fallback;
+      return JSON.parse(raw);
+    }catch(_){ return fallback; }
+  }
+
+  function safeSet(key, value){
+    try{ localStorage.setItem(key, JSON.stringify(value)); }catch(_){}
+  }
+
+  function normCat(x){
+    return (x||'').toString().toLowerCase().replace('grün','gruen');
+  }
+
+  function getActive(){
+    var a = safeParseKey('ablage.active.v1', []);
+    return Array.isArray(a) ? a : [];
+  }
+
+  function getPlan(){
+    var p = safeParseKey('ablage.dynamik.plan.v1', null);
+    if(!p || !p.events || !Array.isArray(p.events)) return null;
+    return p;
+  }
+
+  function tick(){
+    try{
+      var plan = getPlan();
+      if(!plan || !plan.events.length) return;
+
+      var active = getActive();
+      if(!active.length) return;
+
+      var sMap = safeParseKey('sichtungMap', {});
+      var t = Date.now();
+
+      for(var i=0;i<active.length;i++){
+        var a = active[i];
+        if(!a || !a.id) continue;
+        if(typeof a.startAt !== 'number') continue;
+
+        var elapsed = t - a.startAt + (Number(a.offset)||0);
+
+        for(var j=0;j<plan.events.length;j++){
+          var ev = plan.events[j];
+          if(!ev || ev.done) continue;
+          if(String(ev.id) !== String(a.id)) continue;
+
+          if(elapsed >= Number(ev.atMs||0)){
+            ev.done = true;
+            safeSet('ablage.dynamik.plan.v1', plan);
+
+            var fromCat = normCat((sMap && sMap[a.id]) || '');
+            var toCat = normCat(ev.to || ev.toCat || '');
+
+            try{
+              window.dispatchEvent(new CustomEvent('ablage:dynamik:fired', {
+                detail:{
+                  fired:[{ id:a.id, label:a.label||a.id, fromCat:fromCat, toCat:toCat, afterMs:ev.atMs }],
+                  plan:plan
+                }
+              }));
+            }catch(_e){}
+            return;
+          }
+        }
+      }
+    }catch(_){}
+  }
+
+  if(!window.ABLAGE_DYN_ACTIVE){ setInterval(tick, 1000); }
+})();
+</script>
+
+<script>
+(function(){
   'use strict';
   function startOnEnterOnShow(){
     try{
@@ -1633,6 +1669,182 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
   }
   window.addEventListener('pageshow', startOnEnterOnShow);
   setTimeout(startOnEnterOnShow, 1200);
+})();
+</script>
+
+<!-- ========= Start Übersicht Popup ========= -->
+<div id="startInfoBackdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:9998; align-items:center; justify-content:center; padding:18px;">
+  <div id="startInfoModal" style="max-width:560px; width:100%; background:rgba(20,25,35,.95); border:1px solid rgba(255,255,255,.18); border-radius:16px; box-shadow:0 18px 60px rgba(0,0,0,.55); padding:16px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+      <div style="font-weight:900; font-size:18px; letter-spacing:.2px;">Aktuelle Lage Patientenablage</div>
+      <div style="font-size:12px; opacity:.85; padding:4px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.18);">
+        Tippe auf Verstanden, um fortzufahren
+      </div>
+    </div>
+
+    <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px;">
+      <div class="skPill sk1">
+        <span class="dot"></span><span class="lbl">SK1</span>
+        <span class="cnt" id="siCntSk1">0</span>
+      </div>
+      <div class="skPill sk2">
+        <span class="dot"></span><span class="lbl">SK2</span>
+        <span class="cnt" id="siCntSk2">0</span>
+      </div>
+      <div class="skPill sk3">
+        <span class="dot"></span><span class="lbl">SK3</span>
+        <span class="cnt" id="siCntSk3">0</span>
+      </div>
+      <div class="skPill sk4">
+        <span class="dot"></span><span class="lbl">SCHWARZ</span>
+        <span class="cnt" id="siCntSk4">0</span>
+      </div>
+      <div class="skPill total">
+        <span class="dot"></span><span class="lbl">GESAMT</span>
+        <span class="cnt" id="siCntTotal">0</span>
+      </div>
+    </div>
+
+    <div id="startInfoBody" style="margin-top:12px; line-height:1.4;"></div>
+
+    <div style="display:flex; justify-content:flex-end; margin-top:14px;">
+      <button id="startInfoOk" class="btn" type="button">Verstanden</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .skPill{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:8px 12px; border-radius:999px; font-weight:900; font-size:13px;
+    border:1px solid rgba(255,255,255,.18);
+    background: rgba(255,255,255,.08);
+    user-select:none;
+  }
+  .skPill .dot{ width:10px; height:10px; border-radius:999px; background:#9aa0a6; }
+  .skPill .cnt{
+    margin-left:6px;
+    padding:2px 8px; border-radius:999px;
+    border:1px solid rgba(255,255,255,.18);
+    background: rgba(0,0,0,.25);
+    font-variant-numeric: tabular-nums;
+    min-width:2ch; text-align:center;
+  }
+
+  .skPill.sk1{ border-color: rgba(239,68,68,.55); background: rgba(239,68,68,.14); }
+  .skPill.sk1 .dot{ background:#ef4444; }
+
+  .skPill.sk2{ border-color: rgba(234,179,8,.55); background: rgba(234,179,8,.14); color:#111; }
+  .skPill.sk2 .dot{ background:#eab308; }
+  .skPill.sk2 .cnt{ color:#111; border-color: rgba(0,0,0,.20); background: rgba(255,255,255,.35); }
+
+  .skPill.sk3{ border-color: rgba(34,197,94,.55); background: rgba(34,197,94,.14); }
+  .skPill.sk3 .dot{ background:#22c55e; }
+
+  .skPill.sk4{ border-color: rgba(0,0,0,.70); background: rgba(0,0,0,.35); }
+  .skPill.sk4 .dot{ background:#111; }
+
+  .skPill.total{ border-color: rgba(148,163,184,.45); background: rgba(148,163,184,.14); }
+  .skPill.total .dot{ background:#94a3b8; }
+</style>
+
+<script>
+(function(){
+  'use strict';
+
+  const KEY = 'ablage.startinfo.shown.v2';
+
+  function normCat(x){
+    return (x||'').toString().toLowerCase().replace('grün','gruen').trim();
+  }
+  function catLabel(cat){
+    const c = normCat(cat);
+    if(c==='rot') return 'SK1';
+    if(c==='gelb') return 'SK2';
+    if(c==='gruen') return 'SK3';
+    if(c==='schwarz') return 'SCHWARZ';
+    return '';
+  }
+
+  function readSichtungMap(){
+    try{ return JSON.parse(localStorage.getItem('sichtungMap')||'{}') || {}; }
+    catch(e){ return {}; }
+  }
+
+  function setText(id, val){
+    const el = document.getElementById(id);
+    if(el) el.textContent = String(val);
+  }
+
+  function buildBody(ids, map){
+    if(!ids.length){
+      return '<div style="opacity:.9;">Keine Patienten in der Ablage.</div>';
+    }
+
+    let html = '<div style="opacity:.95;">Aktuell befindliche Patienten:</div>';
+    html += '<div style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">';
+
+    ids.forEach(function(id){
+      const sk = catLabel(map[id]);
+      html += (
+        '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.06);">' +
+          '<div style="font-weight:900;">' + id + '</div>' +
+          '<div style="font-weight:900; opacity:.95;">' + sk + '</div>' +
+        '</div>'
+      );
+    });
+
+    html += '</div>';
+    return html;
+  }
+
+  async function show(){
+    if(localStorage.getItem(KEY)==='1') return;
+
+    const backdrop = document.getElementById('startInfoBackdrop');
+    const body = document.getElementById('startInfoBody');
+    const ok = document.getElementById('startInfoOk');
+
+    if(!backdrop || !body || !ok) return;
+
+    const map = readSichtungMap();
+    const ids = Object.keys(map)
+      .filter(k => /^patient\d+$/i.test(k))
+      .sort((a,b)=> parseInt(a.replace(/\D/g,'')) - parseInt(b.replace(/\D/g,'')));
+
+    let c1=0,c2=0,c3=0,c4=0;
+    ids.forEach(function(id){
+      const c = normCat(map[id]);
+      if(c==='rot') c1++;
+      else if(c==='gelb') c2++;
+      else if(c==='gruen') c3++;
+      else if(c==='schwarz') c4++;
+    });
+
+    setText('siCntSk1', c1);
+    setText('siCntSk2', c2);
+    setText('siCntSk3', c3);
+    setText('siCntSk4', c4);
+    setText('siCntTotal', ids.length);
+
+    body.innerHTML = buildBody(ids, map);
+    backdrop.style.display = 'flex';
+
+    ok.addEventListener('click', async function(){
+      try{
+        if(window.__dynAlarm && typeof window.__dynAlarm.unlock === 'function'){
+          await window.__dynAlarm.unlock();
+        }
+      }catch(e){}
+
+      localStorage.setItem(KEY,'1');
+      backdrop.style.display = 'none';
+    }, { once:true });
+  }
+
+  window.addEventListener('load', function(){
+    setTimeout(show, 350);
+  });
 })();
 </script>
 
