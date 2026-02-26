@@ -62,6 +62,61 @@
       position:relative;
     }
 
+    /* ===== Start Gate Overlay (Hochformat + Audio Unlock) ===== */
+    #startGate{
+      position:fixed;
+      inset:0;
+      z-index:100000;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:14px;
+      background:rgba(0,0,0,.72);
+      backdrop-filter:blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-sizing:border-box;
+    }
+    #startGate .gateCard{
+      width:min(560px,92vw);
+      background:rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.22);
+      border-radius:18px;
+      padding:16px;
+      box-shadow:0 14px 34px rgba(0,0,0,.34);
+      color:#fff;
+      font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;
+      box-sizing:border-box;
+    }
+    #startGate .gateTitle{
+      font-weight:950;
+      font-size:17px;
+    }
+    #startGate .gateText{
+      margin-top:10px;
+      opacity:.92;
+      font-weight:650;
+      line-height:1.35;
+    }
+    #startGate .gateHint{
+      margin-top:10px;
+      opacity:.75;
+      font-size:12px;
+      font-weight:650;
+    }
+    #btnStartGate{
+      margin-top:14px;
+      width:100%;
+      padding:12px 14px;
+      border-radius:12px;
+      border:none;
+      background:#0B5FFF;
+      color:#fff;
+      font-weight:950;
+      cursor:pointer;
+      touch-action:manipulation;
+    }
+    #btnStartGate:active{ transform:scale(.99); }
+
     /* ===== Top-Buttons ===== */
     .top-button-container{
       position:fixed;
@@ -484,6 +539,16 @@
 
 <body>
 
+  <!-- ✅ Start Popup: Hochformat Hinweis + Audio Unlock -->
+  <div id="startGate" role="dialog" aria-modal="true" aria-label="Hinweis Hochformat und Audio">
+    <div class="gateCard">
+      <div class="gateTitle">Hinweis</div>
+      <div class="gateText">Zur besten Darstellung und Performance bitte das Tablet im Hochformat nutzen.</div>
+      <button id="btnStartGate" type="button">Verstanden</button>
+      <div class="gateHint">Tippen aktiviert auch die Alarmtöne für diesen Einsatz.</div>
+    </div>
+  </div>
+
   <div class="top-button-container">
     <a href="/instruktor.html" class="btn">Instruktor</a>
     <a href="/index.html" class="btn">Startseite</a>
@@ -617,6 +682,35 @@
         return ALARM_URL;
       }
     }
+  </script>
+
+  <!-- ✅ Gate Logik: immer anzeigen, Button tap primed Audio, dann frei -->
+  <script>
+    (function(){
+      'use strict';
+
+      const gate = document.getElementById('startGate');
+      const btn  = document.getElementById('btnStartGate');
+
+      function hideGate(){
+        if (gate) gate.style.display = 'none';
+      }
+
+      async function onConfirm(){
+        try{
+          if (typeof primeAllSounds === 'function') primeAllSounds();
+        }catch{}
+        hideGate();
+      }
+
+      if (btn){
+        btn.addEventListener('click', function(e){
+          e.preventDefault();
+          e.stopPropagation();
+          onConfirm();
+        }, { passive:false });
+      }
+    })();
   </script>
 
   <!-- =========================================================
