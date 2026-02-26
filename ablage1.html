@@ -1,1634 +1,710 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>Patientenablage , gesichtete Patienten</title>
-  <meta name="mobile-web-app-capable" content="yes" />
-  <link rel="manifest" href="/manifest.json" />
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
-
-  <style>
-:root{
-  --w:min(94vw,1120px);
-  --shadow:0 10px 26px rgba(0,0,0,.28);
-  --glass:rgba(255,255,255,.43);
-  --accent:#0B5FFF;
-  --accent2:#e53935;
-  --card-h:200px;
-}
-*{box-sizing:border-box}
-html,body{height:100%}
-body{
-  margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-  background:#0b0f1a url("fotos/ablageB.jpg") center/cover no-repeat fixed;color:#fff;
-  display:flex;flex-direction:column;min-height:100vh;
-}
-body::before{content:"";position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:-1;}
-
-/* Header */
-header{
-  position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-  padding:10px;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);
-}
-header h1{margin:0;font-size:20px}
-.header-right{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.btn{background:var(--accent);color:#fff;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600}
-.btn.alt{background:var(--accent2)}
-.search{
-  padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.35);
-  min-width:200px;background:rgba(255,255,255,.12);color:#fff;
-}
-.search::placeholder{color:rgba(255,255,255,.8)}
-
-/* Viewport & Grid */
-.viewport{flex:1;width:var(--w);margin:0 auto;padding:10px;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}
-
-/* Karten */
-.card{
-  display:grid;gap:14px;align-items:start;cursor:pointer;
-  grid-template-columns:200px 1fr;
-  grid-template-areas:"thumb body" "actions body";
-  min-height:var(--card-h);
-  background:var(--glass);border:2px solid rgba(255,255,255,.55);border-radius:12px;box-shadow:var(--shadow);
-  padding:12px;break-inside:avoid;page-break-inside:avoid;
-  border-left: 10px solid rgba(255,255,255,.25);
-  position:relative;
-}
-
-.k-rot{     border-left-color:#e53935 !important; }
-.k-gelb{    border-left-color:#f3fc02 !important; }
-.k-gruen{   border-left-color:#2e7d32 !important; }
-.k-schwarz{ border-left-color:#111 !important; }
-
-.card:hover{ outline:2px solid rgba(255,255,255,.35); }
-
-.thumb{
-  grid-area:thumb;width:200px;height:140px;border-radius:12px;overflow:hidden;
-  border:1px solid rgba(255,255,255,.28);background:#000;display:flex;align-items:center;justify-content:center
-}
-.thumb img{width:100%;height:100%;object-fit:cover}
-.thumb span{opacity:.7;font-size:13px;padding:6px;text-align:center}
-.actions{grid-area:actions;display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
-
-/* Verschlechterung Kasten statt Foto */
-.vx-thumb{
-  grid-area:thumb;
-  width:200px;
-  min-height:140px;
-  height:auto;
-  border-radius:12px;
-  padding:12px;
-  display:flex;
-  flex-direction:column;
-  justify-content:flex-start;
-  gap:8px;
-  box-shadow: 0 10px 26px rgba(0,0,0,.28);
-  border:1px solid rgba(255,255,255,.20);
-  background: rgba(255,255,255,.08);
-}
-.vx-thumb .vx-title{
-  font-weight:900;
-  letter-spacing:.2px;
-  font-size:14px;
-  line-height:1.1;
-}
-.vx-thumb .vx-reason{
-  font-weight:900;
-  font-size:14px;
-  line-height:1.2;
-  white-space:normal;
-  word-break:break-word;
-  overflow:hidden;
-  display:-webkit-box;
-  -webkit-line-clamp:6;
-  -webkit-box-orient:vertical;
-}
-.vx-thumb .vx-meta{ margin-top:2px; font-size:12px; opacity:.9; }
-
-.vx-thumb.sk1{
-  border-color: rgba(229,57,53,.70);
-  background: rgba(229,57,53,.18);
-  box-shadow: 0 10px 26px rgba(0,0,0,.28), 0 0 0 2px rgba(229,57,53,.25);
-}
-.vx-thumb.sk2{
-  border-color: rgba(243,252,2,.70);
-  background: rgba(243,252,2,.14);
-  box-shadow: 0 10px 26px rgba(0,0,0,.28), 0 0 0 2px rgba(243,252,2,.18);
-}
-.vx-thumb.sk2 .vx-title,
-.vx-thumb.sk2 .vx-reason,
-.vx-thumb.sk2 .vx-meta{
-  color:#111;
-}
-.vx-thumb.sk3{
-  border-color: rgba(46,125,50,.75);
-  background: rgba(46,125,50,.18);
-  box-shadow: 0 10px 26px rgba(0,0,0,.28), 0 0 0 2px rgba(46,125,50,.22);
-}
-.vx-thumb.sk4{
-  border-color: rgba(17,17,17,.85);
-  background: rgba(17,17,17,.55);
-  box-shadow: 0 10px 26px rgba(0,0,0,.32), 0 0 0 2px rgba(17,17,17,.25);
-}
-.vx-values.sk1{
-  border-color: rgba(229,57,53,.70);
-  background: rgba(229,57,53,.14);
-  box-shadow: 0 10px 26px rgba(0,0,0,.18), 0 0 0 2px rgba(229,57,53,.18);
-}
-
-.vx-values.sk2{
-  border-color: rgba(243,252,2,.70);
-  background: rgba(243,252,2,.12);
-  box-shadow: 0 10px 26px rgba(0,0,0,.18), 0 0 0 2px rgba(243,252,2,.14);
-  color:#111;
-}
-
-.vx-values.sk3{
-  border-color: rgba(46,125,50,.75);
-  background: rgba(46,125,50,.14);
-  box-shadow: 0 10px 26px rgba(0,0,0,.18), 0 0 0 2px rgba(46,125,50,.16);
-}
-
-.vx-values.sk4{
-  border-color: rgba(17,17,17,.85);
-  background: rgba(17,17,17,.40);
-  box-shadow: 0 10px 26px rgba(0,0,0,.18), 0 0 0 2px rgba(17,17,17,.16);
-}
-/* Titel + Badges */
-h2{
-  margin:0 0 6px 0;font-size:22px;font-weight:900;letter-spacing:.2px;
-  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
-}
-.badge{
-  display:inline-flex;align-items:center;gap:6px;
-  padding:2px 8px;border-radius:999px;font-size:12px;font-weight:900;
-  border:1px solid rgba(255,255,255,.25); background:#111827; color:#fff;
-  line-height:1;
-}
-.badge .sk{ font-weight:900; }
-.badge .flag{
-  display:inline-flex;align-items:center;justify-content:center;
-  width:22px;height:22px;border-radius:999px;font-weight:800;font-size:12px;
-  line-height:1;border:1px solid currentColor;
-}
-
-.badge-rot{     background:#e53935; color:#fff; border-color:#e53935; }
-.badge-gelb{    background:#f3fc02; color:#111; border-color:#f3fc02; }
-.badge-gruen{   background:#2e7d32; color:#fff; border-color:#2e7d32; }
-.badge-schwarz{ background:#111;    color:#fff; border-color:#111; }
-
-.badge-rot .flag{     background:#e53935; color:#fff; border-color:#e53935; }
-.badge-gelb .flag{    background:#f3fc02; color:#111; border-color:#f3fc02; }
-.badge-gruen .flag{   background:#2e7d32; color:#fff; border-color:#2e7d32; }
-.badge-schwarz .flag{ background:#111;    color:#fff; border-color:#111; }
-
-.meta{font-size:14px;opacity:.9;margin:6px 0}
-.injury{font-size:15px}
-.vx-values{
-  margin-top:10px;
-  padding:10px;
-  border-radius:12px;
-  border:1px solid rgba(255,255,255,.18);
-  background: rgba(0,0,0,.25);
-}
-.vx-values b{ font-weight:900; }
-
-/* Skeletons */
-.skeleton{position:relative;overflow:hidden;background:rgba(255,255,255,.08)}
-.skeleton::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg, transparent, rgba(255,255,255,.12), transparent);animation:shimmer 1.2s infinite}
-@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
-.title-skel{height:22px;border-radius:6px;width:60%}
-.line-skel{height:14px;border-radius:6px;width:80%;margin-top:8px}
-.injury-skel{height:16px;border-radius:6px;width:90%;margin-top:10px}
-
-/* Lightbox */
-.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:999}
-.lightbox img{max-width:90vw;max-height:90vh;border-radius:12px}
-
-/* Empty */
-.empty{
-  width:var(--w);margin:14vh auto 0; padding:16px;
-  background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.2); border-radius:14px; text-align:center;
-}
-.empty h2{margin:0 0 8px 0}
-.empty p{opacity:.9}
-
-/* Stats */
-.stats{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:8px 12px 0;}
-.stat{
-  display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px;
-  font-weight:900; font-size:13px; box-shadow:0 6px 14px rgba(0,0,0,.18); border:0; color:#fff; user-select:none;
-}
-.stat span.count{ font-variant-numeric: tabular-nums; min-width:2ch; text-align:right; }
-.stat-rot{     background:#e53935; }
-.stat-gelb{    background:#f3fc02; color:#111; }
-.stat-gruen{   background:#2e7d32; }
-.stat-schwarz{ background:#111; }
-.stat-total{   background:#9aa0a6; color:#111; }
-
-/* Mobile tweaks */
-@media (max-width:980px){
-  .grid{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
-  .card{grid-template-columns:160px 1fr}
-  .thumb{width:160px;height:120px}
-  .vx-thumb{width:160px;height:120px}
-}
-@media (max-width:640px){
-  header{flex-wrap:wrap; gap:8px; padding:12px 10px 10px;}
-  .search{width:100%; font-size:16px; padding:12px;}
-  .header-right{width:100%; gap:8px}
-  .btn{ padding:12px 14px; font-size:16px; }
-  .card{grid-template-columns:1fr;grid-template-areas:"thumb" "actions" "body";}
-  .thumb{width:100%; height:36vw; max-height:220px;}
-  .vx-thumb{width:100%; height:36vw; max-height:220px;}
-  .actions .btn{flex:1 1 100%;text-align:center}
-  h2{font-size:20px}
-  .meta,.injury{font-size:14px}
-  .viewport{padding:10px 10px 14px;}
-  .ablage-actions { display:flex; flex-wrap:wrap; gap:8px; }
-  .ablage-actions .ablage-id,
-  .ablage-actions select,
-  .ablage-actions .btn { flex:1 1 100%; }
-}
-
-/* Klinik zuweisen Button */
-.btn-assign-clinic{
-  background: linear-gradient(180deg, #e53935, #b71c1c) !important;
-  color:#fff !important;
-  font-weight:900 !important;
-  letter-spacing:.2px;
-  border:1px solid rgba(255,255,255,.35) !important;
-  box-shadow:
-    0 10px 26px rgba(0,0,0,.45),
-    0 0 0 2px rgba(229,57,53,.35),
-    0 0 18px rgba(229,57,53,.45) !important;
-}
-.btn-assign-clinic:hover{ filter:brightness(1.05); }
-.btn-assign-clinic:active{ transform:scale(.99); }
-
-@media print{ header{display:none !important} .stats{display:none !important} }
-  </style>
-
-  <link rel="stylesheet" href="/app-flow.css">
-  <script src="/vx_profiles.js"></script>
-  <script src="/ablage.js?v=20260225_ios_popup1" defer></script>
-</head>
-
-<body>
-  <header>
-    <button class="btn alt" onclick="location.href='index.html'">Startseite</button>
-    <h1>Patientenablage</h1>
-    <button class="btn" onclick="location.href='klinik.html'">Zuweisungen/Auswertung</button>
-    <div class="header-right">
-      <input type="text" id="search" class="search" placeholder="Suche..." />
-      <label style="display:flex;align-items:center;gap:6px;">
-        <input type="checkbox" id="cbHidePhotos"> Fotos im Druck ausblenden
-      </label>
-    </div>
-  </header>
-
-  <div class="stats" id="stats">
-    <div class="stat stat-rot"><span class="count" id="cnt-rot">0</span> ROT</div>
-    <div class="stat stat-gelb"><span class="count" id="cnt-gelb">0</span> GELB</div>
-    <div class="stat stat-gruen"><span class="count" id="cnt-gruen">0</span> GRÜN</div>
-    <div class="stat stat-schwarz"><span class="count" id="cnt-schwarz">0</span> SCHWARZ</div>
-    <div class="stat stat-total"><span class="count" id="cnt-total">0</span> GESAMT</div>
-  </div>
-
-  <div class="viewport">
-    <div class="grid" id="list"></div>
-  </div>
-
-  <div class="lightbox" id="lightbox" aria-hidden="true" title="Zum Schließen klicken">
-    <img id="lightboxImg" src="" alt="Patientenfoto">
-  </div>
-
-<script type="module">
-'use strict';
-
-/* Auto Start Guard */
-const AUTOSTART = 'ablage.autostart.ok';
-function allowAutostart(){ try{ localStorage.setItem(AUTOSTART, 'true'); }catch(e){} }
-function denyAutostart(){  try{ localStorage.setItem(AUTOSTART, 'false'); }catch(e){} }
-window.addEventListener('pageshow', allowAutostart);
-window.addEventListener('pagehide', denyAutostart);
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') allowAutostart(); else denyAutostart();
-});
-allowAutostart();
-
-/* Helpers */
-const VERSION = 'v-0901-06';
-function abs(href, base){
-  try{
-    const b = base ? new URL(base, location.href).href : location.href;
-    return new URL(href, b).href;
-  }catch(e){
-    try{ return new URL(href, location.href).href; }catch(e2){ return href; }
-  }
-}
-const withV = (u)=> u + (u.includes('?') ? '&' : '?') + VERSION;
-
-function loadLS(key, fallback){
-  try{
-    const raw = localStorage.getItem(key);
-    if(!raw) return fallback;
-    return JSON.parse(raw);
-  }catch(e){
-    return fallback;
-  }
-}
-function saveLS(key, value){
-  try{ localStorage.setItem(key, JSON.stringify(value)); }catch(e){}
-}
-function normCat(x){
-  var s = (x==null ? '' : String(x)).toLowerCase().replace('grün','gruen').trim();
-
-  if(s === '1') return 'rot';
-  if(s === '2') return 'gelb';
-  if(s === '3') return 'gruen';
-  if(s === '4') return 'schwarz';
-
-  if(s === 'sk1') return 'rot';
-  if(s === 'sk2') return 'gelb';
-  if(s === 'sk3') return 'gruen';
-  if(s === 'sk4') return 'schwarz';
-
-  return s;
-}
-
-function patientNumFromId(id){
-  const n = parseInt(String(id||'').replace(/\D/g,''),10);
-  return Number.isFinite(n) ? n : null;
-}
-
-function pickRandom(arr){
-  if(!Array.isArray(arr) || !arr.length) return null;
-  return arr[Math.floor(Math.random()*arr.length)];
-}
-
-/* VX Helpers, basiert auf vx_profiles.js */
-function getVXAllowedKeys(patientId){
-  try{
-    const n = patientNumFromId(patientId);
-    if(n == null) return [];
-    const map = window.VX_MAP || {};
-    const a = map[n];
-    if(!Array.isArray(a)) return [];
-    // VX_MAP erlaubt Strings oder Objekte {id,w}. Wir geben hier nur die Profil IDs zurück.
-    return a.map(x=>{
-      if(typeof x === 'string') return x;
-      if(x && typeof x === 'object' && x.id) return String(x.id);
-      return null;
-    }).filter(Boolean);
-  }catch(e){
-    return [];
-  }
-}
-function getVXProfileByKey(key){
-  try{
-    const p = (window.VX_PROFILES || {})[key];
-    return p || null;
-  }catch(e){
-    return null;
-  }
-}
-
-/* Dynamik Plan Fallback */
-function nextWorse(cat){
-  const c = normCat(cat);
-  if(c === 'gruen') return 'gelb';
-  if(c === 'gelb') return 'rot';
-  if(c === 'rot') return 'schwarz';
-  return '';
-}
-function ensurePlanFallback(){
-  if(window.ABLAGE_DYN_ACTIVE) return;
-
-  const cfg = loadLS('ablage.dynamik.v1', null);
-  if(!cfg || !cfg.enabled) return;
-
-  const existing = loadLS('ablage.dynamik.plan.v1', null);
-  if(existing && Array.isArray(existing.events) && existing.events.length) return;
-
-  const active = loadLS('ablage.active.v1', []);
-  if(!Array.isArray(active) || !active.length) return;
-
-  const sMap = loadLS('sichtungMap', {});
-  const mode = String(cfg.mode || 'off').toLowerCase();
-  let events = [];
-
-  if(mode === 'fixed' && Array.isArray(cfg.fixed) && cfg.fixed.length){
-    for(const f of cfg.fixed){
-      if(!f) continue;
-      const id = String(f.id || '');
-      const to = normCat(f.to || f.toCat || '');
-      const atMs = Number(f.atMs != null ? f.atMs : (Number(f.atMin||0) * 60000));
-      if(!id || !to || !isFinite(atMs)) continue;
-      events.push({ id:id, to:to, atMs:atMs, done:false });
-    }
-  } else if(mode === 'random'){
-    const rnd = cfg.random || {};
-    const count = Math.max(0, Number(rnd.count || 0));
-    const minMs = Math.max(0, Number(rnd.minMin || 0) * 60000);
-    const maxMs = Math.max(minMs, Number(rnd.maxMin || 0) * 60000);
-    const minGapMs = Math.max(0, Number(rnd.minGapSec || 0) * 1000);
-    const allow = rnd.allow || { sk1:true, sk2:true, sk3:true, sk4:false };
-    const toLowerOnly = !!rnd.toLowerOnly;
-
-    const pool = active
-      .map(a => ({ id:String(a && a.id || ''), label:(a && a.label) || '', startAt:a && a.startAt }))
-      .filter(x => x.id)
-      .filter(x => getVXAllowedKeys(x.id).length > 0);
-
-    function allowedTo(cat){
-      const c = normCat(cat);
-      if(c === 'rot') return !!allow.sk1;
-      if(c === 'gelb') return !!allow.sk2;
-      if(c === 'gruen') return !!allow.sk3;
-      if(c === 'schwarz') return !!allow.sk4;
-      return false;
-    }
-
-    let used = {};
-    let lastAt = -999999999;
-
-    for(let i=0;i<count && pool.length;i++){
-      const pick = pool[Math.floor(Math.random() * pool.length)];
-      if(!pick || !pick.id) continue;
-      if(used[pick.id]) continue;
-
-      const from = normCat((sMap && sMap[pick.id]) || '');
-      let to = '';
-
-      if(toLowerOnly){
-        to = nextWorse(from);
-      } else {
-        const opts = ['gruen','gelb','rot','schwarz'].filter(allowedTo);
-        to = opts[Math.floor(Math.random() * opts.length)] || '';
-      }
-
-      if(!to) continue;
-      if(!allowedTo(to)) continue;
-      if(normCat(to) === normCat(from)) continue;
-
-      let atMs = Math.floor(minMs + Math.random() * (maxMs - minMs + 1));
-      if(atMs < lastAt + minGapMs) atMs = lastAt + minGapMs;
-      lastAt = atMs;
-
-      used[pick.id] = true;
-      events.push({ id:pick.id, to:to, atMs:atMs, done:false });
-    }
-  } else {
-    return;
-  }
-
-  if(!events.length) return;
-
-  const plan = {
-    mode: mode,
-    basis: cfg.basis || 'patient',
-    createdAt: Date.now(),
-    events: events
-  };
-
-  saveLS('ablage.dynamik.plan.v1', plan);
-}
-
-/* Datenquellen */
-function normGender(g){
-  if(!g) return null;
-  const x = String(g).trim().toLowerCase();
-  if (x === 'm' || /^m(ännlich|aennlich)$/.test(x) || ['male','mann','herr'].includes(x)) return 'männlich';
-  if (x === 'w' || ['weiblich','female','frau','weibl'].includes(x)) return 'weiblich';
-  if (x === 'd' || /divers|non[\s]?binary/.test(x)) return 'divers';
-  return null;
-}
-function getPatMeta(){ try { return JSON.parse(localStorage.getItem('patMeta') || '{}'); } catch(e) { return {}; } }
-function getPatientsData(){ try { return JSON.parse(localStorage.getItem('patientsData') || '[]'); } catch(e) { return []; } }
-
-/* Overlays */
-function overlayFromPatMeta(info){
-  const meta = getPatMeta()[info.id] || {};
-  if(meta.age) info.age = String(meta.age);
-  if(meta.gender) info.gender = normGender(meta.gender) || meta.gender;
-  if(meta.photo && !info.img) info.img = abs(meta.photo, info.url);
-}
-function overlayFromJson(info){
-  const num = Number(info.id.replace('patient',''));
-  const j = getPatientsData().find(x => Number(x.id) === num);
-  if(!j) return;
-  if(!info.age && j.age) info.age = String(j.age);
-  if(!info.gender && j.gender) info.gender = normGender(j.gender) || j.gender;
-  if(!info.img && j.photo) info.img = abs(j.photo, info.url);
-}
-
-/* Sichtungen */
-function getSMap(){ try{ return JSON.parse(localStorage.getItem('sichtungMap')||'{}'); }catch(e){ return {}; } }
-function sichtungFor(id){
-  const k = normCat((getSMap()[id]||''));
-  return ['rot','gelb','gruen','schwarz'].includes(k) ? k : null;
-}
-function sightedIds(){
-  return Object.keys(getSMap())
-    .filter(k => /^patient\d+$/i.test(k))
-    .sort((a,b)=> parseInt(a.replace(/\D/g,'')) - parseInt(b.replace(/\D/g,'')));
-}
-function __readTogglePayload(id){
-  let raw=null;
-  try { raw = localStorage.getItem("sicht_" + id); } catch(e) {}
-  if (!raw) {
-    const pathKey = "sicht_" + (location.pathname.split("/").pop() || "unknown");
-    try { raw = localStorage.getItem(pathKey); } catch(e2) {}
-  }
-  if (!raw) return {};
-  try { return JSON.parse(raw)||{}; } catch(e3) { return {}; }
-}
-function __labelFromCat(cat){
-  const c = normCat(cat);
-  if (c === 'rot') return 'SK1';
-  if (c === 'gelb') return 'SK2';
-  if (c === 'gruen') return 'SK3';
-  if (c === 'schwarz') return 'Tot';
-  return '';
-}
-function getSichtungDisplay(id, cat){
-  const p = __readTogglePayload(id);
-  const c = normCat(cat);
-  if (c === 'rot') return 'SK1' + ((p && p.t) ? ' , T' : '');
-  if (c === 'gelb') return 'SK2';
-  if (c === 'gruen') return 'SK3' + ((p && p.b) ? ' , B' : '');
-  if (c === 'schwarz') return 'Tot';
-  return '';
-}
-
-/* Priorität */
-function __prio(cat, flags){
-  const c = normCat(cat);
-  const t = !!(flags && flags.t);
-  const b = !!(flags && flags.b);
-  if (c==='rot' && t) return 0;
-  if (c==='rot') return 1;
-  if (c==='gelb') return 2;
-  if (c==='gruen' && b) return 3;
-  if (c==='gruen') return 4;
-  if (c==='schwarz') return 5;
-  return 6;
-}
-function __numFromId(id){ return parseInt(String(id).replace(/\D/g,''))||99999; }
-
-/* DONE Set */
-function getDoneSet(){
-  try{
-    const list = (window.Ablage && window.Ablage._getDone) ? window.Ablage._getDone() : [];
-    return new Set(Array.isArray(list) ? list : []);
-  }catch(e){ return new Set(); }
-}
-
-/* Stats */
-function updateStats(){
-  const done = getDoneSet();
-  const ids = sightedIds().filter(id => !done.has(id));
-  let rot=0,gelb=0,gruen=0,schwarz=0;
-  for(const id of ids){
-    const k = sichtungFor(id);
-    if(k==='rot') rot++;
-    else if(k==='gelb') gelb++;
-    else if(k==='gruen') gruen++;
-    else if(k==='schwarz') schwarz++;
-  }
-  const total = ids.length;
-  const set = (sel,val)=>{ const el=document.getElementById(sel); if(el) el.textContent=String(val); };
-  set('cnt-rot',rot); set('cnt-gelb',gelb); set('cnt-gruen',gruen); set('cnt-schwarz',schwarz); set('cnt-total',total);
-}
-
-/* Optik */
-function highlightAssignButtons(){
-  document.querySelectorAll('.card button').forEach(btn=>{
-    const t = (btn.textContent || '').trim().toLowerCase();
-    if(t === 'klinik zuweisen'){
-      btn.classList.add('btn-assign-clinic');
-    }
-  });
-}
-
-/* Bildsuche */
-const SUFFIXES = ['', 'messer', 'kopf', 'arm', 'bein', 'bauch', 'brust', 'foto', '_1', '_a'];
-async function findPhoto({ html, baseUrl, index }){
-  const im = html.match(/<img[^>]*id=["']patient-photo["'][^>]*src=["']([^"']+)["']/i);
-  if(im) return abs(im[1], baseUrl);
-  const dp = html.match(/data-photo=["']([^"']+\.(?:jpg|jpeg|png|webp))["']/i);
-  if(dp) return abs(dp[1], baseUrl);
-  const og = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i);
-  if(og) return abs(og[1], baseUrl);
-
-  const EXT = ['jpg','jpeg','png','webp','JPG','JPEG','PNG','WEBP'];
-  const rx = new RegExp(`(^|\\/)(pat(?:ient)?${index})[^\\/]*\\.(${EXT.join('|')})$`, 'i');
-  const allImgs = [...html.matchAll(/<img[^>]*src=["']([^"']+)["'][^>]*>/ig)];
-  for(const m of allImgs){
-    const url = abs(m[1], baseUrl);
-    if(rx.test(url)) return url;
-  }
-
-  for(const suf of SUFFIXES){
-    for(const ex of EXT){
-      const url = `${location.origin}/pat${index}${suf ? suf : ''}.${ex}`;
-      if(await probeImage(url)) return url;
-    }
-  }
-  for(const ex of EXT){
-    const url = `${location.origin}/patient${index}.${ex}`;
-    if(await probeImage(url)) return url;
-  }
-  return null;
-}
-function probeImage(url){
-  return new Promise(res => {
-    const i=new Image();
-    i.onload=()=>res(true);
-    i.onerror=()=>res(false);
-    i.src = withV(url);
-  });
-}
-
-/* Cache + Fetch */
-const listEl = document.getElementById('list');
-const CACHE_KEY = `pat-cache-${VERSION}`;
-function readCache(){ try{ return JSON.parse(sessionStorage.getItem(CACHE_KEY)||'{}'); }catch(e){return{};} }
-function writeCache(map){ try{ sessionStorage.setItem(CACHE_KEY, JSON.stringify(map)); }catch(e){} }
-
-async function fetchPatientData(entry){
-  const cache = readCache();
-  if(cache[entry.id]) return cache[entry.id];
-
-  const idx = +entry.id.replace('patient','');
-  const info = { id:entry.id, label:entry.label, url:entry.url, age:null, gender:null, injury:'', vitals:null, img:null, code:null, error:null };
-
-  try{
-    const res = await fetch(withV(entry.url), { cache:'no-store' });
-    if(!res.ok){
-      info.error = 'HTTP '+res.status;
-      const c=readCache(); c[entry.id]=info; writeCache(c);
-      return info;
-    }
-    const html = await res.text();
-
-    const s = html.match(/<script[^>]*id=["']patient-data["'][^>]*type=["']application\/json["'][^>]*>([\s\S]*?)<\/script>/i);
-    if(s){
-      try{
-        const j = JSON.parse(s[1]);
-        if(j.age) info.age = String(j.age);
-        if(j.gender) info.gender = String(j.gender);
-        if(j.code) info.code = String(j.code);
-        if(j.injury) info.injury = String(j.injury);
-        if(j.photo) info.img = abs(j.photo, entry.url);
-        if(j.vitals) info.vitals = String(j.vitals);
-      }catch(e){}
-    }
-
-    const dataTag = html.match(/<[^>]+id=["']patient["'][^>]*>/i);
-    if(dataTag){
-      const tag = dataTag[0];
-      const pick = (name)=>{ const m = tag.match(new RegExp(`data-${name}=["']([^"']+)["']`,'i')); return m ? m[1] : null; };
-      if(!info.age){ const v = pick('age'); if(v) info.age = String(v); }
-      if(!info.gender){ const v = pick('gender'); if(v) info.gender = String(v); }
-      if(!info.code){ const v = pick('code'); if(v) info.code = String(v); }
-      if(!info.img){ const v = pick('photo'); if(v) info.img = abs(v, entry.url); }
-      if(!info.injury){ const v = pick('injury'); if(v) info.injury = String(v); }
-      if(!info.vitals){ const v = pick('vitals'); if(v) info.vitals = String(v); }
-    }
-
-    const btn1 = html.match(/<button[^>]*id=["']btn1["'][^>]*>([\s\S]*?)<\/button>/i);
-    if(btn1){
-      const raw = btn1[1];
-      const text = cleanText(raw);
-      if(!info.injury) info.injury = extractMainInjuryFromButtonHTML(raw);
-      if(!info.vitals){
-        const vit = extractVitalsFromText(text);
-        if(vit) info.vitals = vit;
-      }
-    }
-    const btn2 = html.match(/<button[^>]*id=["']btn2["'][^>]*>([\s\S]*?)<\/button>/i);
-    if(btn2){
-      const raw2 = btn2[1];
-      const inj2 = extractMainInjuryFromButtonHTML(raw2);
-      if((!info.injury) && inj2) info.injury = inj2;
-      if(!info.vitals){
-        const vit2 = extractVitalsFromText(cleanText(raw2));
-        if(vit2) info.vitals = vit2;
-      }
-    }
-
-    if(!info.img){
-      info.img = await findPhoto({ html, baseUrl: entry.url, index: idx });
-    }
-
-  }catch(e){
-    info.error = e && e.message ? e.message : String(e);
-  }
-
-  overlayFromPatMeta(info);
-  overlayFromJson(info);
-
-  const c2 = readCache(); c2[entry.id]=info; writeCache(c2);
-  return info;
-}
-
-function cleanText(html){
-  return html.replace(/<br\s*\/?\s*>/gi,' ')
-    .replace(/<[^>]+>/g,' ')
-    .replace(/\s+/g,' ')
-    .trim();
-}
-function extractMainInjuryFromButtonHTML(rawHtml){
-  const bold = rawHtml.match(/<(?:b|strong)>([^<]+)<\/(?:b|strong)>/i);
-  if (bold) return bold[1].trim();
-  let t = cleanText(rawHtml);
-  const hv = t.match(/Hauptverletzung\s*:?\s*(.+)$/i);
-  let base = hv ? hv[1] : t;
-  base = base.replace(/^[\s\-\|•·–—]+/, '').split(/[\|—–\-•·]/)[0].trim();
-  const p = base.indexOf('.');
-  if (p>0 && p<80) base = base.slice(0,p).trim();
-  return base || '';
-}
-function extractVitalsFromText(t){
-  if(!t) return null;
-  const s=t.replace(/\s+/g,' ');
-  let af=null, hr=null;
-  const afm=s.match(/\b(?:AF|Atemfrequenz)\s*[:=]?\s*(\d{1,3})\s*\/?\s*min\b/i); if(afm) af=afm[1];
-  const hrm=s.match(/\b(?:Puls|HF|Herzfrequenz)\s*[:=]?\s*(\d{1,3})\s*\/?\s*min\b/i); if(hrm) hr=hrm[1];
-  if(!af && !hr) return null;
-  if(af && hr) return `AF ${af}/min, Puls ${hr}/min`;
-  if(af) return `AF ${af}/min`;
-  return `Puls ${hr}/min`;
-}
-
-/* UI Render */
-function renderSkeletons(ids){
-  listEl.innerHTML='';
-  for(const id of ids){
-    const skel=document.createElement('div');
-    skel.className='card';
-    skel.dataset.id=id;
-    skel.innerHTML=`
-      <div class="thumb skeleton"></div>
-      <div>
-        <div class="title-skel skeleton"></div>
-        <div class="line-skel skeleton" style="width:50%"></div>
-        <div class="injury-skel skeleton"></div>
-      </div>
-      <div class="actions">
-        <button class="btn" disabled>Als PDF</button>
-      </div>`;
-    listEl.appendChild(skel);
-  }
-}
-
-function fmtNewValues(w){
-  if(!w) return '';
-  const parts = [];
-  if(w.af != null) parts.push(`AF ${w.af}/min`);
-  if(w.puls != null) parts.push(`Puls ${w.puls}/min`);
-  if(w.rr != null) parts.push(`RR ${w.rr}`);
-  if(w.spo2 != null) parts.push(`SpO2 ${w.spo2}%`);
-  return parts.join(', ');
-}
-
-function upsertCard(p){
-
-  const active = loadLS('ablage.active.v1', []);
-  if(Array.isArray(active)){
-    const hit = active.find(x => x && String(x.id) === String(p.id));
-        if(hit){
-      if(hit.af != null) p.af = hit.af;
-      if(hit.puls != null) p.puls = hit.puls;
-      if(hit.rr != null) p.rr = hit.rr;
-      if(hit.baseAf != null) p.baseAf = hit.baseAf;
-      if(hit.basePuls != null) p.basePuls = hit.basePuls;
-      if(hit.baseRr != null) p.baseRr = hit.baseRr;
-      if(hit.verschlechterung) p.verschlechterung = hit.verschlechterung;
-  }
-}
-
-  const kat = sichtungFor(p.id);
-  const flags = __readTogglePayload(p.id) || {};
-  const label = kat ? __labelFromCat(kat) : '';
-  const flagChar = (kat==='rot' && flags.t) ? 'T' : (kat==='gruen' && flags.b) ? 'B' : '';
-  const katBadgeClass = kat ? `badge-${kat}` : '';
-
-  const badge = `<span class="badge ${katBadgeClass}">
-                   <span class="sk">${label}</span>
-                   ${flagChar ? `<span class="flag">${flagChar}</span>` : ''}
-                 </span>`;
-
-  const hasVX = !!(p.verschlechterung && p.verschlechterung.grund);
-  const vxTo = normCat(p.verschlechterung && (p.verschlechterung.toCat || p.verschlechterung.neueKategorie || '') || '');
-  const vxSkClass =
-    vxTo === 'rot' ? 'sk1' :
-    vxTo === 'gelb' ? 'sk2' :
-    vxTo === 'gruen' ? 'sk3' :
-    vxTo === 'schwarz' ? 'sk4' :
-    '';
-
-  const imgBlock = p.img
-    ? `<img data-src="${withV(abs(p.img))}" alt="${p.label}" loading="lazy">`
-    : `<span>${p.label}<br>Kein Foto</span>`;
-
-  const thumbHtml = hasVX
-  ? `
-    <div class="vx-thumb ${vxSkClass}" title="Dynamische Verschlechterung">
-      <div class="vx-title">Verschlechterung</div>
-      <div class="vx-reason">${p.verschlechterung.grund}</div>
-    </div>
-  `
-  : `
-    <div class="thumb" ${p.img ? `data-view="${withV(abs(p.img))}"` : ''} title="${p.img ? 'Foto ansehen' : ''}">
-      ${imgBlock}
-    </div>
-  `;
-
-  const injText = (p.injury || ' ').trim();
-  const baseAf = (p.baseAf != null ? p.baseAf : (p.af != null ? p.af : null));
-  const basePuls = (p.basePuls != null ? p.basePuls : (p.puls != null ? p.puls : null));
-  const baseRr = (p.baseRr != null ? p.baseRr : (p.rr != null ? p.rr : null));
-  const baseVitalsText = (baseAf!=null || basePuls!=null || baseRr!=null)
-    ? ('Vitalwerte: ' + [
-        (baseAf!=null ? ('AF ' + baseAf + '/min') : ''),
-        (basePuls!=null ? ('Puls ' + basePuls + '/min') : ''),
-        (baseRr!=null ? ('RR ' + baseRr) : '')
-      ].filter(Boolean).join(', '))
-    : '';
-
-
-  const vitalsLine = baseVitalsText || (p.vitals ? ('Vitalwerte: ' + String(p.vitals).replace(/^Vitalwerte:\s*/i,'')) : '');
-
-  const newValuesText = hasVX ? fmtNewValues(p.verschlechterung && (p.verschlechterung.werte || p.verschlechterung.vitals || null)) : '';
-
-  const html = `
-    ${thumbHtml}
-    <div>
-      <h2>${p.label} ${badge}</h2>
-      <div class="meta">Alter: ${p.age ?? ''} | Geschlecht: ${p.gender ?? ''}</div>
-      <div class="injury"><b>Hauptverletzung:</b> ${injText}</div>
-      ${vitalsLine ? `<div class="vitals">${vitalsLine}</div>` : ``}
-
-      ${hasVX ? `
-        <div class="vx-values ${vxSkClass}">
-          <b>Neue Werte:</b> ${newValuesText || ''}
-        </div>
-      ` : ''}
-
-      ${p.error ? `<div style="color:#ffd2d2;margin-top:6px;font-size:12px;">⚠ ${p.error}</div>` : ''}
-    </div>
-    <div class="actions">
-      <button class="btn" data-id="${p.id}">Als PDF</button>
-    </div>`;
-
-  let card = listEl.querySelector(`.card[data-id="${p.id}"]`);
-  const cls = kat ? ('k-'+kat) : '';
-
-  if(card){
-
-    const keepTimer = card.querySelector('.ablage-timer');
-    const keepActions = card.querySelector('.ablage-actions');
-
-    card.classList.remove('k-rot','k-gelb','k-gruen','k-schwarz');
-    if(cls) card.classList.add(cls);
-
-    card.setAttribute('data-patient-id', p.id);
-    card.setAttribute('data-name', p.label || p.id);
-    card.setAttribute('data-prio', kat || '');
-    card.dataset.open = withV(p.url);
-
-    card.innerHTML = html;
-
-    if(keepTimer){
-      const h2 = card.querySelector('h2') || card;
-      h2.appendChild(keepTimer);
-    }
-    if(keepActions){
-      const actionsSlot = card.querySelector('.actions') || card;
-      actionsSlot.appendChild(keepActions);
-    }
-
-  }else{
-    card=document.createElement('div');
-    card.className='card '+cls;
-    card.dataset.id=p.id;
-    card.setAttribute('data-patient-id', p.id);
-    card.setAttribute('data-name', p.label || p.id);
-    card.setAttribute('data-prio', kat || '');
-    card.dataset.open=withV(p.url);
-    card.innerHTML=html;
-    listEl.appendChild(card);
-  }
-
-  const img=card.querySelector('img[data-src]');
-  if(img) observeImage(img);
-}
-
-function removeCard(id){
-  const el = listEl.querySelector(`.card[data-id="${id}"]`);
-  if(el) el.remove();
-}
-
-/* Suche */
-document.addEventListener('input', e=>{
-  if(e.target.id!=='search') return;
-  const q=e.target.value.toLowerCase();
-  const all=(window.__PAT_DATA__||[]);
-  listEl.innerHTML='';
-
-  (q ? all.filter(p =>
-    `${p.id} ${p.label} ${p.age||''} ${p.gender||''} ${p.injury||''}`.toLowerCase().includes(q)
-  ) : all).forEach(upsertCard);
-
-  if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
-    window.Ablage.hydrateCards({
-      containerSelector: '#list',
-      cardSelector: '.card',
-      placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
-      placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
+/* =========================================================
+   1Rettungsmittel · ablage.js  (v10.1: iOS Fallback Tick für Dynamik)
+   ========================================================= */
+(function () {
+  'use strict';
+
+  // Storage Keys
+  var LS_ACTIVE   = 'ablage.active.v1';
+  var LS_HISTORY  = 'ablage.history.v1';
+  var LS_SESSION  = 'ablage.sessionStart.v1';
+  var LS_DONE     = 'ablage.done.v1';
+
+  // Dynamik
+  var LS_DYN      = 'ablage.dynamik.v1';
+  var LS_DYN_PLAN = 'ablage.dynamik.plan.v1';
+
+  // Utils
+  function now(){ return Date.now(); }
+  function safeParse(s,f){ try{ return JSON.parse(s); }catch(_){ return f; } }
+  function load(k,f){ return safeParse(localStorage.getItem(k), f); }
+  function save(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } }
+  function asArray(x){ return Array.isArray(x) ? x : []; }
+
+  function getActive(){  return asArray(load(LS_ACTIVE,  [])); }
+  function getHistory(){ return asArray(load(LS_HISTORY, [])); }
+  function getDone(){    return asArray(load(LS_DONE,    [])); }
+  function setActive(a){  save(LS_ACTIVE,  asArray(a)); }
+  function setHistory(h){ save(LS_HISTORY, asArray(h)); }
+  function setDone(d){    save(LS_DONE,    asArray(d)); }
+
+  // Dynamik Settings
+  function getDyn(){
+    return load(LS_DYN, {
+      enabled:false,
+      mode:'off',
+      basis:'patient',
+      random:{
+        minMin:3,
+        maxMin:5,
+        count:3,
+        minGapSec:60,
+        maxSchwarz:2,
+        allow:{sk1:true, sk2:true, sk3:true, sk4:false},
+        toLowerOnly:true
+      },
+      fixed:[]
     });
-    highlightAssignButtons();
   }
-});
+  function setDyn(v){ save(LS_DYN, v||{}); }
+  function getDynPlan(){ return load(LS_DYN_PLAN, { createdAt:0, basis:'patient', mode:'off', events:[] }); }
+  function setDynPlan(v){ save(LS_DYN_PLAN, v||{}); }
 
-/* Clicks */
-document.addEventListener('click', async e=>{
-  const target=e.target;
-
-  const viewBtn=target.closest('[data-view]');
-  if(viewBtn){
-    const url=viewBtn.getAttribute('data-view');
-    document.getElementById('lightboxImg').src=url;
-    const lb=document.getElementById('lightbox');
-    lb.style.display='flex';
-    lb.setAttribute('aria-hidden','false');
-    e.stopPropagation();
-    return;
-  }
-
-  const idBtn = target.closest('button[data-id]');
-  if(idBtn){
-    const id=idBtn.getAttribute('data-id');
-    const p=(window.__PAT_DATA__||[]).find(x=>x.id===id);
-    if(p) await pdfSingle(p);
-    e.stopPropagation();
-    return;
-  }
-
-  if(target.id==='lightbox'){
-    target.style.display='none';
-    target.setAttribute('aria-hidden','true');
-    return;
-  }
-});
-
-/* Lazy Images */
-const rootEl=document.querySelector('.viewport')||null;
-const io='IntersectionObserver' in window ? new IntersectionObserver((entries,obs)=>{
-  for(const ent of entries){
-    if(ent.isIntersecting){
-      const img=ent.target;
-      img.src=img.dataset.src;
-      img.removeAttribute('data-src');
-      obs.unobserve(img);
-    }
-  }
-},{ root:rootEl, rootMargin:'200px 0px' }) : null;
-
-function observeImage(img){
-  if(io) io.observe(img);
-  else img.src=img.dataset.src;
-}
-
-/* Verschlechterung anwenden und Profil auswählen */
-function pickVXProfile(patientId){
-  // bevorzugt die gewichtete Auswahl aus vx_profiles.js
-  try{
-    if(typeof window.VX_PICK_PROFILE === 'function'){
-      const n = String(patientId||'').replace(/\D/g,'');
-      const p = window.VX_PICK_PROFILE(n);
-      if(p) return p;
-    }
-  }catch(e){}
-
-  // Fallback: gleichmäßig aus erlaubten Keys ziehen
-  const keys = getVXAllowedKeys(patientId);
-  const chosenKey = pickRandom(keys);
-  return chosenKey ? getVXProfileByKey(chosenKey) : null;
-}
-
-function setVXIntoActive(patientId, toCat, profileFromEvent){
-  const active = loadLS('ablage.active.v1', []);
-  if(!Array.isArray(active) || !active.length) return null;
-
-  const hit = active.find(x => x && String(x.id) === String(patientId));
-  if(!hit) return null;
-
-  const prof = profileFromEvent || pickVXProfile(patientId);
-
-  const grund = prof && prof.grund ? String(prof.grund) : 'Zustand verschlechtert sich.';
-  const werte = prof && prof.werte ? prof.werte : null;
-  const titel = prof && prof.titel ? String(prof.titel) : '';
-  const key   = prof && prof.id ? String(prof.id) : '';
-
-  hit.verschlechterung = {
-    key: key,
-    titel: titel,
-    grund: grund,
-    toCat: normCat(toCat || (prof && prof.neueKategorie) || ''),
-    werte: werte,
-    ts: Date.now()
-  };
-
-  saveLS('ablage.active.v1', active);
-  return hit.verschlechterung;
-}
-
-
-/* Dynamik Apply */
-async function applyDynamikToSichtungMap(firedArr){
-  if(!Array.isArray(firedArr) || !firedArr.length) return;
-
-  let map = {};
-  try{ map = JSON.parse(localStorage.getItem('sichtungMap')||'{}') || {}; }catch(e){ map = {}; }
-
-  for(const it of firedArr){
-    const id = String(it && it.id || '');
-    const to = normCat((it && (it.toCat || it.to)) || '');
-    if(!id || !to) continue;
-
-    // Keine Verschlechterung ohne hinterlegtes Profil
-    if(getVXAllowedKeys(id).length === 0) continue;
-
-    const profEvent = (it && it.profile && (it.profile.grund || it.profile.titel || it.profile.werte)) ? it.profile : null;
-    const vx = setVXIntoActive(id, to, profEvent);
-
-    const finalTo = vx && vx.toCat ? vx.toCat : to;
-    map[id] = finalTo;
-
-    it.toCat = finalTo;
-    it.profile = vx || null;
-  }
-  try{ localStorage.setItem('sichtungMap', JSON.stringify(map)); }catch(e){}
-
-  if(!Array.isArray(window.__PAT_DATA__) || !window.__PAT_DATA__.length){
-    await load();
-    return;
-  }
-
-  const all = (window.__PAT_DATA__||[]);
-  for(const it of firedArr){
-    const id = String(it && it.id || '');
-    const p = all.find(x => x && x.id === id);
-    if(p){
-      if(it.profile) p.verschlechterung = it.profile;
-      upsertCard(p);
-    }
-  }
-
-  if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
-    window.Ablage.hydrateCards({
-      containerSelector: '#list',
-      cardSelector: '.card',
-      placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
-      placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
-    });
-    highlightAssignButtons();
-  }
-
-  updateStats();
-  highlightAssignButtons();
-}
-window.__AblageDynApply = applyDynamikToSichtungMap;
-
-/* Laden */
-async function load(){
-  ensurePlanFallback();
-
-  const done = getDoneSet();
-  const ids = sightedIds().filter(id => !done.has(id));
-
-  if(ids.length===0){
-    listEl.innerHTML = `
-      <div class="empty">
-        <h2>Keine offenen Patienten in der Ablage</h2>
-        <p>Gesichtete und noch nicht zugewiesene Patienten erscheinen hier automatisch.</p>
-      </div>`;
-    updateStats();
-    allowAutostart();
-    return;
-  }
-
-  renderSkeletons(ids);
-
-  const data=[];
-  for(const id of ids){
-    const num = id.replace('patient','');
-    const entry = { id, label: `Patient ${num}`, url: `patient${num}.html` };
-    const p = await fetchPatientData(entry);
-    data.push(p);
-  }
-
-  data.sort((a,b)=>{
-    const aCat = sichtungFor(a.id) || '';
-    const bCat = sichtungFor(b.id) || '';
-    const pa = __readTogglePayload(a.id) || {};
-    const pb = __readTogglePayload(b.id) || {};
-    const d  = __prio(aCat, pa) - __prio(bCat, pb);
-    return d !== 0 ? d : (__numFromId(a.id) - __numFromId(b.id));
-  });
-
-  listEl.innerHTML = '';
-  data.forEach(upsertCard);
-  window.__PAT_DATA__ = data;
-  updateStats();
-  allowAutostart();
-
-  if(window.Ablage && typeof window.Ablage.startOnEnter === 'function'){
-    window.Ablage.startOnEnter();
-  }
-
-  if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
-    window.Ablage.hydrateCards({
-      containerSelector: '#list',
-      cardSelector: '.card',
-      placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
-      placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
-    });
-    highlightAssignButtons();
-  }
-}
-load();
-
-/* Live Updates */
-window.addEventListener('storage', (e)=>{
-  if(!e || !e.key) return;
-  if(e.key==='sichtungMap' || e.key==='ablage.done.v1' || e.key.startsWith('sicht_') || e.key==='ablage.active.v1'){
-    updateStats();
-
-    const done = getDoneSet();
-    const want = new Set(sightedIds().filter(id => !done.has(id)));
-    const have = new Set([...document.querySelectorAll('.card[data-id]')].map(el=>el.dataset.id));
-
-    for(const id of have){
-      if(!want.has(id)) removeCard(id);
-    }
-
-    for(const id of want){
-      if(!have.has(id)){
-        const num=id.replace('patient','');
-        const entry={ id, label: `Patient ${num}`, url: `patient${num}.html` };
-
-        fetchPatientData(entry).then(p=>{
-          (window.__PAT_DATA__ = (window.__PAT_DATA__||[])).push(p);
-          upsertCard(p);
-          allowAutostart();
-
-          if (window.Ablage && typeof window.Ablage.hydrateCards === 'function') {
-            window.Ablage.hydrateCards({
-              containerSelector: '#list',
-              cardSelector: '.card',
-              placeTimer(card, timerEl){ (card.querySelector('h2')||card).appendChild(timerEl); },
-              placeActions(card, actionsEl){ (card.querySelector('.actions')||card).appendChild(actionsEl); }
-            });
-            highlightAssignButtons();
-          }
-        });
-      } else {
-        const all = (window.__PAT_DATA__||[]);
-        const p = all.find(x => x && x.id === id);
-        if(p) upsertCard(p);
-      }
-    }
-  }
-});
-
-/* PDF */
-function ensureJsPDF(){ return window.jspdf && window.jspdf.jsPDF; }
-
-async function pdfSingle(p){
-  const jsPDF=ensureJsPDF(); if(!jsPDF) return;
-  const doc=new jsPDF({unit:'mm', format:'a4', orientation:'portrait'});
-  const W=doc.internal.pageSize.getWidth();
-  let y=20;
-
-  const kat = sichtungFor(p.id);
-  const display = kat ? getSichtungDisplay(p.id, kat) : '';
-
-  doc.setFontSize(16);
-  doc.text(p.label + (p.code ? ` [${p.code}]` : ''), W/2, y, { align:'center' });
-  y+=10;
-
-  doc.setFontSize(12);
-  doc.text(`Sichtung: ${display}`, 20, y); y+=7;
-  doc.text(`Alter: ${p.age ?? ''}`, 20, y); y+=7;
-  doc.text(`Geschlecht: ${p.gender ?? ''}`, 20, y); y+=10;
-
-  doc.text('Hauptverletzung:', 20, y); y+=6;
-  const txt=doc.splitTextToSize((p.injury || ' ').trim(), W-40);
-  doc.text(txt, 20, y);
-  y+=txt.length*6+10;
-
-  const newValues = p.verschlechterung ? fmtNewValues(p.verschlechterung.werte) : '';
-  if(newValues){
-    doc.text('Neue Werte:', 20, y); y+=6;
-    const t2 = doc.splitTextToSize(newValues, W-40);
-    doc.text(t2, 20, y);
-    y+=t2.length*6+10;
-  }
-
-  const hidePhotos=document.getElementById('cbHidePhotos').checked;
-  if(p.img && !hidePhotos){
+  function dynSignature(dyn){
     try{
-      const dataUrl=await imageToDataURL(p.img);
-      doc.addImage(dataUrl,'JPEG',20,y,80,60);
-    }catch(e){}
+      var clean = {
+        enabled: !!(dyn && dyn.enabled),
+        mode: String((dyn && dyn.mode) || 'off'),
+        basis: String((dyn && dyn.basis) || 'patient'),
+        random: dyn && dyn.random ? dyn.random : null,
+        fixed: dyn && dyn.fixed ? dyn.fixed : null
+      };
+      return JSON.stringify(clean);
+    }catch(_){ return ''; }
   }
-  doc.save(`${p.id}.pdf`);
-}
 
-function imageToDataURL(src){
-  return new Promise((resolve,reject)=>{
-    const img=new Image();
-    img.crossOrigin='anonymous';
-    img.onload=()=>{
-      try{
-        const c=document.createElement('canvas');
-        c.width=img.naturalWidth;
-        c.height=img.naturalHeight;
-        c.getContext('2d').drawImage(img,0,0);
-        resolve(c.toDataURL('image/jpeg',0.9));
-      }catch(e){ reject(e); }
+  function skToCat(sk){
+    var n = Number(String(sk).replace(/\D/g,'')) || 0;
+    if(n===1) return 'rot';
+    if(n===2) return 'gelb';
+    if(n===3) return 'gruen';
+    if(n===4) return 'schwarz';
+    return '';
+  }
+  function catToSk(cat){
+    var c = String(cat||'').toLowerCase().replace('grün','gruen');
+    if(c==='rot') return 1;
+    if(c==='gelb') return 2;
+    if(c==='gruen') return 3;
+    if(c==='schwarz') return 4;
+    return 0;
+  }
+  function getSichtungMap(){
+    try{ return JSON.parse(localStorage.getItem('sichtungMap')||'{}') || {}; }catch(_){ return {}; }
+  }
+  function setSichtungMap(m){
+    try{ localStorage.setItem('sichtungMap', JSON.stringify(m||{})); }catch(_){}
+  }
+
+  function patientNumFromId(id){
+    var n = Number(String(id||'').replace(/\D/g,'')) || 0;
+    return n || 0;
+  }
+
+  function hasVXProfilesFor(id){
+    try{
+      if(!window.VX_MAP) return true;
+      var n = patientNumFromId(id);
+      if(!n) return false;
+      var entry = window.VX_MAP[n];
+      return Array.isArray(entry) && entry.length > 0;
+    }catch(_){ return true; }
+  }
+
+  function randInt(min,max){
+    min=Math.ceil(min); max=Math.floor(max);
+    return Math.floor(Math.random()*(max-min+1))+min;
+  }
+  function shuffle(arr){
+    for(var i=arr.length-1;i>0;i--){
+      var j=Math.floor(Math.random()*(i+1));
+      var t=arr[i]; arr[i]=arr[j]; arr[j]=t;
+    }
+    return arr;
+  }
+
+  function ensureRandomPlan(dyn){
+    var plan = getDynPlan();
+    var sessionStart = ensureSessionStart();
+    var sig = dynSignature(dyn);
+
+    if(plan && plan.createdAt && plan.sessionStart === sessionStart && plan.dynSig === sig && Array.isArray(plan.events) && plan.events.length){
+      return plan;
+    }
+
+    var rnd = dyn.random || {};
+    var allow = rnd.allow ? rnd.allow : {sk1:true,sk2:true,sk3:true,sk4:false};
+
+    var count = Number(rnd.count || 3);
+    count = Math.max(0, Math.min(20, count));
+
+    var maxSchwarz = Number(rnd.maxSchwarz || 0);
+    maxSchwarz = Math.max(0, Math.min(20, maxSchwarz));
+
+    var allowSchwarz = !!allow.sk4;
+
+    var a = getActive();
+    var sMap = getSichtungMap();
+
+    var candidates = [];
+    for(var i=0;i<a.length;i++){
+      var id = String(a[i].id||'');
+      if(!id) continue;
+      if(!hasVXProfilesFor(id)) continue;
+
+      var cat = (sMap[id]||'').toString().toLowerCase().replace('grün','gruen');
+      var sk = catToSk(cat);
+
+      if(sk===1 && !allow.sk1) continue;
+      if(sk===2 && !allow.sk2) continue;
+      if(sk===3 && !allow.sk3) continue;
+      if(sk===4) continue;
+
+      candidates.push({ id:id, cat:cat, sk:sk });
+    }
+    shuffle(candidates);
+
+    var minMin = Number(rnd.minMin || 3);
+    var maxMin = Number(rnd.maxMin || 5);
+    if(maxMin < minMin){ var tmp=minMin; minMin=maxMin; maxMin=tmp; }
+
+    var minGapSec = Number(rnd.minGapSec || 60);
+    minGapSec = Math.max(0, minGapSec);
+
+    var events = [];
+    var used = {};
+    var lastAt = -1;
+
+    var schwarzPlanned = 0;
+
+    for(var k=0;k<candidates.length && events.length<count;k++){
+      var cand = candidates[k];
+      if(used[cand.id]) continue;
+
+      var toSk = cand.sk;
+
+      if(rnd.toLowerOnly){
+
+        if(cand.sk > 1){
+          toSk = cand.sk - 1;
+        } else if(cand.sk === 1){
+
+          if(!allowSchwarz) continue;
+          if(schwarzPlanned >= maxSchwarz) continue;
+
+          toSk = 4;
+        }
+
+      } else {
+
+        var picks = [1,2,3,4].filter(function(x){ return x !== cand.sk; });
+
+        if(!allowSchwarz){
+          picks = picks.filter(function(x){ return x !== 4; });
+        } else if(maxSchwarz <= 0){
+          picks = picks.filter(function(x){ return x !== 4; });
+        } else if(schwarzPlanned >= maxSchwarz){
+          picks = picks.filter(function(x){ return x !== 4; });
+        }
+
+        if(!picks.length) continue;
+
+        toSk = picks[randInt(0, picks.length-1)];
+      }
+
+      if(toSk === cand.sk) continue;
+
+      var atSec = randInt(minMin*60, maxMin*60);
+
+      if(lastAt>=0 && atSec < lastAt + minGapSec){
+        atSec = lastAt + minGapSec;
+      }
+      lastAt = atSec;
+
+      events.push({
+        id: cand.id,
+        atMs: atSec*1000,
+        action: 'sk',
+        from: cand.sk,
+        to: toSk,
+        done: false
+      });
+
+      if(toSk === 4) schwarzPlanned++;
+
+      used[cand.id] = true;
+    }
+
+    plan = {
+      createdAt: now(),
+      sessionStart: sessionStart,
+      dynSig: sig,
+      basis: dyn.basis || 'patient',
+      mode: 'random',
+      events: events
     };
-    img.onerror=reject;
-    img.src=withV(abs(src));
-  });
-}
-
-window.addEventListener('beforeunload', () => { denyAutostart(); });
-</script>
-
-<!-- Dynamik Warnmeldung -->
-<div id="dynAlertBackdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:9999; align-items:center; justify-content:center; padding:18px;">
-  <div id="dynAlertModal" class="dynModal" style="max-width:520px; width:100%; background:rgba(20,25,35,.95); border:1px solid rgba(255,255,255,.18); border-radius:16px; box-shadow:0 18px 60px rgba(0,0,0,.55); padding:16px 16px 14px;">
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-      <div style="font-weight:800; font-size:18px; letter-spacing:.2px;">Patientenverschlechterung</div>
-      <div id="dynAlertTag" style="font-size:12px; opacity:.85; padding:4px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.18);"></div>
-    </div>
-    <div id="dynAlertBody" style="margin-top:10px; line-height:1.35;"></div>
-    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
-      <button id="dynAlertOk" class="btn btnPrimary" type="button">Bestätigen</button>
-    </div>
-  </div>
-</div>
-
-<style>
-  .dynModal{ position:relative; }
-  .dynModal.pulse{ animation: dynPulse 0.95s ease-in-out 4; }
-  @keyframes dynPulse{
-    0%{ transform:scale(1); box-shadow:0 18px 60px rgba(0,0,0,.55); }
-    50%{ transform:scale(1.012); box-shadow:0 18px 60px rgba(0,0,0,.55), 0 0 0 2px rgba(255,255,255,.10), 0 0 26px rgba(255,255,255,.16); }
-    100%{ transform:scale(1); box-shadow:0 18px 60px rgba(0,0,0,.55); }
-  }
-  .dynModal.sk1{ border-color: rgba(239,68,68,.55) !important; }
-  .dynModal.sk2{ border-color: rgba(234,179,8,.55) !important; }
-  .dynModal.sk3{ border-color: rgba(34,197,94,.55) !important; }
-  .dynModal.sk4{ border-color: rgba(148,163,184,.55) !important; }
-
-  .dynBadge{ display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; font-weight:800; font-size:12px; letter-spacing:.2px; }
-  .dynBadge.sk1{ background:rgba(239,68,68,.20); border:1px solid rgba(239,68,68,.55); color:#fecaca; }
-  .dynBadge.sk2{ background:rgba(234,179,8,.20); border:1px solid rgba(234,179,8,.55); color:#fde68a; }
-  .dynBadge.sk3{ background:rgba(34,197,94,.20); border:1px solid rgba(34,197,94,.55); color:#bbf7d0; }
-  .dynBadge.sk4{ background:rgba(148,163,184,.16); border:1px solid rgba(148,163,184,.45); color:#e2e8f0; }
-</style>
-<script>
-/* ===============================
-   iOS SAFE Alarm für Dynamik Popup
-   =============================== */
-
-(function(){
-  'use strict';
-
-  var audio = null;
-  var armed = false;
-  var lastPlay = 0;
-
-  function getAudio(){
-    if(audio) return audio;
-
-    audio = new Audio('/Patientenverschlechterung.mp3');
-    audio.preload = 'auto';
-    audio.playsInline = true;
-
-    return audio;
+    setDynPlan(plan);
+    return plan;
   }
 
-  async function arm(){
-    if(armed) return true;
+  function ensureFixedPlan(dyn){
+    var plan = getDynPlan();
+    var sessionStart = ensureSessionStart();
+    var sig = dynSignature(dyn);
+    if(plan && plan.createdAt && plan.sessionStart === sessionStart && plan.dynSig === sig && plan.mode === 'fixed' && Array.isArray(plan.events)){
+      return plan;
+    }
+    var events = asArray(dyn.fixed).map(function(x){
+      var id = x && x.id ? String(x.id) : '';
+      if(!id) return null;
+      var to = Number(x.to || x.toSk || 0);
+      var atMs = Number(x.atMs || 0);
+      if(!atMs && x.afterMin != null) atMs = Number(x.afterMin)*60*1000;
+      if(!atMs && x.afterSec != null) atMs = Number(x.afterSec)*1000;
+      if(!to) to = Number(x.toSK || 0);
+      return { id:id, atMs:Math.max(0,atMs), action:'sk', delta:(x && x.delta!=null)? Number(x.delta) : null, to:to, done:false };
+    }).filter(Boolean);
 
-    try{
-      var a = getAudio();
-      a.muted = true;
-      await a.play();
-      a.pause();
-      a.currentTime = 0;
-      a.muted = false;
-      armed = true;
-      return true;
-    }catch(e){
+    plan = { createdAt: now(), sessionStart: sessionStart, dynSig: sig, basis: dyn.basis || 'patient', mode:'fixed', events: events };
+    setDynPlan(plan);
+    return plan;
+  }
+
+  function applyDynEvent(ev){
+    if(!ev || ev.done) return false;
+    if(ev.action !== 'sk') return false;
+
+    var id = String(ev.id||'');
+    if(!id) return false;
+
+    if(!hasVXProfilesFor(id)){
+      ev.done = true;
       return false;
     }
-  }
 
-  async function play(){
-    var now = Date.now();
-    if(now - lastPlay < 1500) return;
-    lastPlay = now;
+    var sMap = getSichtungMap();
+    var fromCat = (sMap[id]||'').toString().toLowerCase().replace('grün','gruen').trim();
 
-    var ok = await arm();
-    if(!ok) return;
-
-    try{
-      var a = getAudio();
-      a.pause();
-      a.currentTime = 0;
-      await a.play();
-    }catch(e){}
-  }
-
-  function armOnce(){
-    arm();
-    document.removeEventListener('touchstart', armOnce);
-    document.removeEventListener('pointerdown', armOnce);
-    document.removeEventListener('click', armOnce);
-  }
-
-  document.addEventListener('touchstart', armOnce);
-  document.addEventListener('pointerdown', armOnce);
-  document.addEventListener('click', armOnce);
-
-  window.__dynAlarm = {
-    play: play
-  };
-
-})();
-</script>
-<script>
-  
-(function(){
-  'use strict';
-
-  var q = [];
-  var showing = false;
-  var backdrop = document.getElementById('dynAlertBackdrop');
-  var body = document.getElementById('dynAlertBody');
-  var tag = document.getElementById('dynAlertTag');
-  var ok = document.getElementById('dynAlertOk');
-
-  function normCat(x){
-    return (x||'').toString().toLowerCase().replace('grün','gruen');
-  }
-
-  function catLabel(cat){
-    var c = normCat(cat);
-    if(c === 'rot') return 'SK1';
-    if(c === 'gelb') return 'SK2';
-    if(c === 'gruen') return 'SK3';
-    if(c === 'schwarz') return 'Tot';
-    return String(cat||'');
-  }
-
-  function showNext(){
-    if(window.__dynAlarm && typeof window.__dynAlarm.play === 'function'){
-  window.__dynAlarm.play();
-  }
-    if(showing) return;
-    if(!q.length) return;
-    showing = true;
-
-    var item = q.shift();
-    var name = item.label || item.id || 'Patient';
-    var fromCat = normCat(item.fromCat || item.from || '');
-    var toCat = normCat(item.toCat || item.to || (item.profile && (item.profile.toCat || item.profile.neueKategorie)) || '');
-    var fromTxt = catLabel(fromCat);
-    var toTxt = catLabel(toCat);
-
-    var modal = document.getElementById('dynAlertModal');
-    if(modal){
-      modal.classList.remove('sk1','sk2','sk3','sk4','pulse');
-      var toSk = (toCat==='rot') ? 'sk1' : (toCat==='gelb') ? 'sk2' : (toCat==='gruen') ? 'sk3' : (toCat==='schwarz') ? 'sk4' : '';
-      if(toSk) modal.classList.add(toSk);
+    if(fromCat === 'schwarz'){
+      ev.done = true;
+      return false;
     }
 
-    if(tag) tag.textContent = name;
-
-    var extra = '';
-    if(item.afterMs != null){
-      var sec = Math.max(0, Math.round(Number(item.afterMs)/1000));
-      var m = Math.floor(sec/60);
-      var s = sec%60;
-      extra = '<div style="opacity:.85; margin-top:6px; font-size:13px;">Auslöser nach ' + m + ':' + String(s).padStart(2,'0') + ' Minuten in der Ablage.</div>';
+    function nextWorseCat(cat){
+      var c = String(cat||'').toLowerCase().replace('grün','gruen').trim();
+      if(c === 'gruen') return 'gelb';
+      if(c === 'gelb') return 'rot';
+      if(c === 'rot') return 'schwarz';
+      return '';
     }
 
-    var grund = '';
+    var profile = null;
     try{
-      grund = item.profile && item.profile.grund ? String(item.profile.grund) : '';
-    }catch(_){ grund=''; }
-
-    var werte = '';
-    try{
-      var w = item.profile && item.profile.werte ? item.profile.werte : null;
-      if(w){
-        var parts = [];
-        if(w.af != null) parts.push('AF ' + w.af + '/min');
-        if(w.puls != null) parts.push('Puls ' + w.puls + '/min');
-        if(w.rr != null) parts.push('RR ' + w.rr);
-        if(w.spo2 != null) parts.push('SpO2 ' + w.spo2 + '%');
-        werte = parts.join(', ');
+      if(typeof window.VX_PICK_PROFILE === 'function'){
+        profile = window.VX_PICK_PROFILE(String(id).replace(/\D/g,''));
       }
-    }catch(_2){ werte=''; }
+    }catch(_){ profile = null; }
 
-    body.innerHTML =
-      '<div style="font-size:15px;"><b>' + name + '</b> hat sich verschlechtert.</div>' +
-      '<div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">' +
-        '<span class="dynBadge ' + ((fromCat==='rot')?'sk1':(fromCat==='gelb')?'sk2':(fromCat==='gruen')?'sk3':(fromCat==='schwarz')?'sk4':'') + '">' + fromTxt + '</span>' +
-        '<span style="opacity:.85; font-weight:800;">zu</span>' +
-        '<span class="dynBadge ' + ((toCat==='rot')?'sk1':(toCat==='gelb')?'sk2':(toCat==='gruen')?'sk3':(toCat==='schwarz')?'sk4':'') + '">' + toTxt + '</span>' +
-      '</div>' +
-      (grund ? '<div style="margin-top:10px; font-weight:800;">' + grund + '</div>' : '') +
-      (werte ? '<div style="margin-top:6px; opacity:.9;">Neue Werte: ' + werte + '</div>' : '') +
-      extra;
+    var toCat = '';
 
-    backdrop.style.display = 'flex';
-    if(modal){
-      void modal.offsetWidth;
-      modal.classList.add('pulse');
-    }
-  }
-
-  function close(){
-    backdrop.style.display = 'none';
-    showing = false;
-    setTimeout(showNext, 20);
-  }
-
-  if(ok) ok.addEventListener('click', close);
-
-  function handleFiredArray(arr){
-    try{
-      if(Array.isArray(arr) && arr.length && typeof window.__AblageDynApply === 'function'){
-        window.__AblageDynApply(arr);
-      }
-    }catch(_){}
-
-    try{
-      if(Array.isArray(arr) && arr.length){
-        for(var i=0;i<arr.length;i++) q.push(arr[i]);
-      } else {
-        q.push({ label:'Patient', fromCat:'', toCat:'' });
-      }
-    }catch(_2){
-      q.push({ label:'Patient', fromCat:'', toCat:'' });
-    }
-
-    showNext();
-  }
-
-  window.addEventListener('ablage:dynamik:fired', function(e){
-    var firedArr = null;
-    try{
-      var d = e && e.detail ? e.detail : null;
-      firedArr = d && d.fired ? d.fired : null;
-    }catch(_){ firedArr = null; }
-    handleFiredArray(firedArr);
-  });
-
-  document.addEventListener('ablage:dynamik:fired', function(e){
-    var firedArr = null;
-    try{
-      var d = e && e.detail ? e.detail : null;
-      firedArr = d && d.fired ? d.fired : null;
-    }catch(_){ firedArr = null; }
-    handleFiredArray(firedArr);
-  });
-
-  var LAST_KEY = 'ablage.dyn.lastFired.v1';
-  var lastSeenTs = 0;
-
-  setInterval(function(){
-    try{
-      var raw = localStorage.getItem(LAST_KEY);
-      if(!raw) return;
-      var obj = JSON.parse(raw) || {};
-      var ts = Number(obj.ts || 0);
-      if(!ts || ts <= lastSeenTs) return;
-      lastSeenTs = ts;
-
-      handleFiredArray(obj.fired);
-    }catch(_e){}
-  }, 800);
-
-})();
-</script>
-<script>
-(function(){
-  'use strict'; 
-
-  function safeParseKey(key, fallback){
-    try{
-      var raw = localStorage.getItem(key);
-      if(!raw) return fallback;
-      return JSON.parse(raw);
-    }catch(_){ return fallback; }
-  }
-
-  function safeSet(key, value){
-    try{ localStorage.setItem(key, JSON.stringify(value)); }catch(_){}
-  }
-
-  function normCat(x){
-    return (x||'').toString().toLowerCase().replace('grün','gruen');
-  }
-
-  function getActive(){
-    var a = safeParseKey('ablage.active.v1', []);
-    return Array.isArray(a) ? a : [];
-  }
-
-  function getPlan(){
-    var p = safeParseKey('ablage.dynamik.plan.v1', null);
-    if(!p || !p.events || !Array.isArray(p.events)) return null;
-    return p;
-  }
-
-  function tick(){
-    try{
-      var plan = getPlan();
-      if(!plan || !plan.events.length) return;
-
-      var active = getActive();
-      if(!active.length) return;
-
-      var sMap = safeParseKey('sichtungMap', {});
-      var t = Date.now();
-
-      for(var i=0;i<active.length;i++){
-        var a = active[i];
-        if(!a || !a.id) continue;
-        if(typeof a.startAt !== 'number') continue;
-
-        var elapsed = t - a.startAt + (Number(a.offset)||0);
-
-        for(var j=0;j<plan.events.length;j++){
-          var ev = plan.events[j];
-          if(!ev || ev.done) continue;
-          if(String(ev.id) !== String(a.id)) continue;
-
-          if(elapsed >= Number(ev.atMs||0)){
-            ev.done = true;
-            safeSet('ablage.dynamik.plan.v1', plan);
-
-            var fromCat = normCat((sMap && sMap[a.id]) || '');
-            var toCat = normCat(ev.to || ev.toCat || '');
-
-            try{
-              window.dispatchEvent(new CustomEvent('ablage:dynamik:fired', {
-                detail:{
-                  fired:[{ id:a.id, label:a.label||a.id, fromCat:fromCat, toCat:toCat, afterMs:ev.atMs }],
-                  plan:plan
-                }
-              }));
-            }catch(_e){}
-            return;
-          }
+    if(profile && profile.neueKategorie){
+      toCat = String(profile.neueKategorie).toLowerCase().replace('grün','gruen').trim();
+    } else {
+      var rawTo = ev.to;
+      if(rawTo != null && rawTo !== ''){
+        var n = Number(rawTo);
+        if(isFinite(n) && n>=1 && n<=4){
+          toCat = skToCat(n);
+        } else {
+          toCat = String(rawTo).toLowerCase().replace('grün','gruen').trim();
         }
       }
-    }catch(_){}
-  }
 
-  if(!window.ABLAGE_DYN_ACTIVE){ setInterval(tick, 1000); }
-})();
-</script>
-
-<script>
-(function(){
-  'use strict';
-  function startOnEnterOnShow(){
-    try{
-      if(window.Ablage && typeof window.Ablage.startOnEnter === 'function'){
-        window.Ablage.startOnEnter();
+      if(ev.delta != null){
+        var d = Number(ev.delta);
+        if(!isFinite(d)) d = 0;
+        var steps = Math.max(0, Math.round(Math.abs(d)));
+        if(d < 0){
+          var tmp = fromCat;
+          for(var s=0;s<steps;s++){
+            var nx = nextWorseCat(tmp);
+            if(!nx) break;
+            tmp = nx;
+          }
+          toCat = tmp;
+        }
       }
+
+      if(!toCat){
+        toCat = nextWorseCat(fromCat);
+      }
+    }
+
+    if(!toCat || toCat === fromCat){
+      ev.done = true;
+      return false;
+    }
+
+    sMap[id] = toCat;
+    setSichtungMap(sMap);
+    ev.done = true;
+
+    if(profile && (profile.grund || profile.titel || profile.werte)){
+      try{
+        var active = getActive();
+        for(var i=0;i<active.length;i++){
+          if(String(active[i].id) === String(id)){
+            if(profile.werte){
+              if(profile.werte.af != null) active[i].af = profile.werte.af;
+              if(profile.werte.puls != null) active[i].puls = profile.werte.puls;
+            }
+            active[i].verschlechterung = {
+              key: profile.id || '',
+              titel: profile.titel || '',
+              grund: profile.grund || '',
+              toCat: toCat,
+              werte: profile.werte || null,
+              zeit: Date.now()
+            };
+          }
+        }
+        setActive(active);
+      }catch(_e){}
+    }
+
+    return {
+      id: id,
+      fromCat: fromCat,
+      toCat: toCat,
+      profile: profile
+    };
+  }
+
+  function dynCheck(active, tNow){
+    var dyn = getDyn();
+    if(!dyn || !dyn.enabled) return;
+    var mode = String(dyn.mode||'off');
+    if(mode === 'off') return;
+
+    var plan = null;
+    if(mode === 'random') plan = ensureRandomPlan(dyn);
+    else if(mode === 'fixed') plan = ensureFixedPlan(dyn);
+    else return;
+
+    if(!plan || !Array.isArray(plan.events) || !plan.events.length) return;
+
+    var changed = false;
+
+    var elapsedMap = {};
+    for(var i=0;i<active.length;i++){
+      var x=active[i]; if(!x) continue;
+      var id=String(x.id||''); if(!id) continue;
+      var st = (typeof x.startAt === 'number') ? x.startAt : null;
+      var off = Number(x.offset || 0);
+      if(st!=null){
+        elapsedMap[id] = (tNow - st + off);
+      }
+    }
+
+    var fired = [];
+    var labelMap = {};
+    for(var a=0;a<active.length;a++){
+      var it = active[a];
+      if(it && it.id){
+        labelMap[String(it.id)] = it.label || it.id;
+      }
+    }
+
+    for(var j=0;j<plan.events.length;j++){
+      var ev = plan.events[j];
+      if(!ev || ev.done) continue;
+      var id2 = String(ev.id||'');
+      var elapsed = elapsedMap[id2];
+      if(elapsed == null) continue;
+      if(elapsed >= Number(ev.atMs||0)){
+        var info = applyDynEvent(ev);
+        if(info){
+          changed = true;
+          info.label = labelMap[info.id] || info.id;
+          info.afterMs = Number(ev.atMs||0);
+          info.elapsedMs = elapsed;
+          fired.push(info);
+        }
+      }
+    }
+
+    if(changed){
+      setDynPlan(plan);
+      try{ window.dispatchEvent(new CustomEvent('ablage:dynamik', { detail: plan })); }catch(_){
+        try{ window.dispatchEvent(new Event('ablage:dynamik')); }catch(__){}
+      }
+           if (fired.length) {
+        // iOS Fallback. Fired Events zusätzlich in localStorage ablegen
+        try{
+          localStorage.setItem('ablage.dyn.lastFired.v1', JSON.stringify({
+            ts: now(),
+            fired: fired,
+            plan: plan
+          }));
+        }catch(_ls){}
+
+        // Event auf window und document feuern, mit bubbles. iOS ist manchmal zickig
+        try{
+          var ev1 = new CustomEvent('ablage:dynamik:fired', {
+            detail: { fired: fired, plan: plan },
+            bubbles: true,
+            composed: true
+          });
+          window.dispatchEvent(ev1);
+          try{ document.dispatchEvent(ev1); }catch(_d1){}
+        }catch(_e1){
+          try{
+            var ev2 = new Event('ablage:dynamik:fired', { bubbles:true, composed:true });
+            window.dispatchEvent(ev2);
+            try{ document.dispatchEvent(ev2); }catch(_d2){}
+          }catch(_e2){}
+        }
+      }
+    }
+  }
+
+  function ensureSessionStart(){
+    var t = Number(localStorage.getItem(LS_SESSION) || 0);
+    if(!t){
+      t = now();
+      try{ localStorage.setItem(LS_SESSION, String(t)); }catch(_){}
+    }
+    return t;
+  }
+
+  function fmt(ms){
+    if(ms<0) ms=0;
+    var s=Math.floor(ms/1000),
+        hh=Math.floor(s/3600),
+        mm=Math.floor((s%3600)/60),
+        ss=s%60;
+    var pad=function(n){ return String(n).padStart(2,'0'); };
+    return hh>0 ? (pad(hh)+':'+pad(mm)+':'+pad(ss)) : (pad(mm)+':'+pad(ss));
+  }
+
+  function migrateActive(list){
+    var changed = false;
+    for (var i=0;i<list.length;i++){
+      var it = list[i]; if(!it || typeof it !== 'object') continue;
+      if (typeof it.addedAt === 'number') { it.queuedAt = it.addedAt; delete it.addedAt; changed = true; }
+      if (typeof it.queuedAt !== 'number') { it.queuedAt = now(); changed = true; }
+      if (typeof it.startedAt === 'number' && typeof it.startAt !== 'number') {
+        it.startAt = it.startedAt; delete it.startedAt; changed = true;
+      }
+      if (typeof it.offset !== 'number') { it.offset = 0; changed = true; }
+    }
+    return changed;
+  }
+
+  function startTimersOnEntry(){
+    ensureSessionStart();
+    var a = getActive();
+    var changed = false;
+
+    if (migrateActive(a)) changed = true;
+
+    var t = now();
+    for (var i=0;i<a.length;i++){
+      var it = a[i]; if(!it) continue;
+      if (it.startAt == null) { it.startAt = t; changed = true; }
+    }
+    if (changed) setActive(a);
+  }
+
+  function ensurePatient(id, name, prio){
+    if(!id) return;
+    if(getDone().includes(id)) return;
+    var a = getActive();
+    for(var i=0;i<a.length;i++){ if(String(a[i].id)===String(id)) return; }
+    a.push({
+      id: id,
+      name: name || ("Patient "+String(id).replace(/\D/g,'')),
+      prio: prio || '',
+      queuedAt: now(),
+      startAt: null,
+      offset: 0
+    });
+    setActive(a);
+  }
+
+  function stopPatient(id, ziel, idVal){
+    var a = getActive(), idx = -1;
+    for(var i=0;i<a.length;i++){ if(String(a[i].id)===String(id)){ idx=i; break; } }
+    if(idx<0) return false;
+
+    var p = a[idx], endedAt = now();
+
+    if (typeof p.startedAt === 'number' && typeof p.startAt !== 'number') {
+      p.startAt = p.startedAt; delete p.startedAt;
+    }
+    var startAt = Number(p.startAt || now());
+    var offset  = Number(p.offset || 0);
+
+    var entry = {
+      id: p.id,
+      name: idVal || p.name || p.id,
+      prio: p.prio || '',
+      startedAt: startAt,
+      endedAt: endedAt,
+      dauerMs: Math.max(0, (endedAt - startAt) + offset),
+      ziel: ziel || ''
+    };
+
+    a.splice(idx,1); setActive(a);
+    var h = getHistory(); h.push(entry); setHistory(h);
+    var d = getDone(); d.push(p.id); setDone(d);
+    return true;
+  }
+
+  function resetAll(){
+    setActive([]); setHistory([]); setDone([]);
+    try{ localStorage.removeItem(LS_SESSION); }catch(_){}
+  }
+
+  var tickers = new WeakMap();
+
+  function hydrateCards(opts){
+    opts = opts || {};
+    var root = document.querySelector(opts.containerSelector || '');
+    if(!root) return;
+
+    var cards = root.querySelectorAll(opts.cardSelector || '.card');
+    for(var i=0;i<cards.length;i++){
+      var card = cards[i];
+      var id   = card.getAttribute('data-patient-id') || card.getAttribute('data-id');
+      if(!id) continue;
+      if(getDone().includes(id)){ try{ card.remove(); }catch(_){} continue; }
+
+      var name = card.getAttribute('data-name') || ("Patient "+String(id).replace(/\D/g,''));
+      var prio = card.getAttribute('data-prio') || '';
+      ensurePatient(id,name,prio);
+
+      if(!card.querySelector('.ablage-timer')){
+        var tEl=document.createElement('span');
+        tEl.className='ablage-timer';
+        tEl.textContent='00:00';
+        if(typeof opts.placeTimer==='function') opts.placeTimer(card,tEl);
+        else (card.querySelector('h2')||card).appendChild(tEl);
+      }
+
+      if(!card.querySelector('.ablage-actions')){
+        var wrap=document.createElement('div');
+        wrap.className='ablage-actions';
+        wrap.style.display="flex"; wrap.style.flexWrap="wrap"; wrap.style.gap="6px"; wrap.style.marginTop="8px";
+        wrap.innerHTML =
+          '<input type="text" class="ablage-id" placeholder="Patienten-ID" '+
+          'style="flex:1 1 120px;padding:.5rem;border-radius:8px;border:1px solid #334155;'+
+          'background:#0b1220;color:#e5e7eb;" />'+
+          '<select class="ablage-ziel" style="flex:1 1 140px;padding:.5rem;border-radius:8px;'+
+          'border:1px solid #334155;background:#0b1220;color:#e5e7eb;">'+
+            '<option value="">Ziel wählen…</option>'+
+            '<option>Traumazentrum</option>'+
+            '<option>Grundversorger</option>'+
+            '<option>Maximalversorger</option>'+
+            '<option>Verbleib am Einsatzort</option>'+
+            '<option>Sonstige</option>'+
+          '</select>'+
+          '<button type="button" class="btn btn-zuweisen" '+
+          'style="flex:1 1 120px;">Klinik zuweisen</button>';
+
+        if(typeof opts.placeActions==='function') opts.placeActions(card,wrap);
+        else (card.querySelector('.actions')||card).appendChild(wrap);
+
+        (function (cardEl, btnEl) {
+          btnEl.addEventListener('click', function (ev) {
+            ev.preventDefault(); ev.stopPropagation();
+            var idInput = cardEl.querySelector('.ablage-id');
+            var idVal = idInput ? idInput.value.trim() : '';
+            if(!idVal){ alert('Bitte Patienten-ID eingeben!'); return; }
+            var zielSel = cardEl.querySelector('.ablage-ziel');
+            var ziel = zielSel ? (zielSel.value||'') : '';
+            if(!ziel && !window.confirm('Ohne Ziel zuweisen?')) return;
+            var cid = cardEl.getAttribute('data-patient-id') || cardEl.getAttribute('data-id');
+            if(cid && stopPatient(cid, ziel, idVal)){
+              try{ cardEl.remove(); }catch(_){ cardEl.parentNode && cardEl.parentNode.removeChild(cardEl); }
+            }
+          }, { passive:false });
+        })(card, wrap.querySelector('.btn-zuweisen'));
+      }
+    }
+
+    if(!tickers.get(root)){
+      tickers.set(root,{running:true,rafId:0});
+      startTick(root, opts);
+    }
+  }
+
+  function startTick(root, opts){
+    var state=tickers.get(root);
+    if(!state || !state.running) return;
+
+    var lastDynCheck = 0;
+    function step(){
+      var active = getActive();
+      var startMap = {};
+      for(var i=0;i<active.length;i++){
+        var x=active[i];
+        if (typeof x.startedAt === 'number' && typeof x.startAt !== 'number') {
+          x.startAt = x.startedAt; delete x.startedAt; setActive(active);
+        }
+        var st = (typeof x.startAt === 'number') ? x.startAt : null;
+        var off = Number(x.offset || 0);
+        startMap[String(x.id)] = st!=null ? (now() - st + off) : 0;
+      }
+
+      var cards = root.querySelectorAll(opts.cardSelector || '.card');
+      for(var j=0;j<cards.length;j++){
+        var c=cards[j];
+        var id = c.getAttribute('data-patient-id') || c.getAttribute('data-id');
+        if(!id) continue;
+        var tEl=c.querySelector('.ablage-timer'); if(!tEl) continue;
+        var ms = startMap[String(id)] || 0;
+        tEl.textContent = fmt(ms);
+        c.classList.toggle('waiting', ms===0);
+      }
+
+      if(now() - lastDynCheck >= 1000){
+        lastDynCheck = now();
+        try{ dynCheck(active, lastDynCheck); }catch(_){ }
+      }
+      state.rafId = requestAnimationFrame(step);
+    }
+    state.rafId = requestAnimationFrame(step);
+  }
+
+  // iOS Fallback Tick für Dynamik
+  // Wenn requestAnimationFrame in iOS PWA gedrosselt wird, feuern Events sonst nicht
+  function ensureDynInterval(){
+    try{
+      if(window.__ablageDynIntervalId) return;
+
+      window.__ablageDynIntervalId = setInterval(function(){
+        try{
+          var dyn = getDyn();
+          if(!dyn || !dyn.enabled) return;
+
+          var mode = String(dyn.mode||'off');
+          if(mode === 'off') return;
+
+          var active = getActive();
+          dynCheck(active, now());
+        }catch(_e){}
+      }, 1000);
     }catch(_){}
   }
-  window.addEventListener('pageshow', startOnEnterOnShow);
-  setTimeout(startOnEnterOnShow, 1200);
-})();
-</script>
 
-</body>
-</html>
+  window.Ablage = {
+    hydrateCards, stopPatient, resetAll,
+    startOnEnter: startTimersOnEntry,
+    _getActive:getActive, _getHistory:getHistory, _getDone:getDone
+  };
+
+  function autoInit(){
+    startTimersOnEntry();
+    ensureDynInterval();
+  }
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(autoInit, 0);
+  } else {
+    document.addEventListener('DOMContentLoaded', autoInit, { once:true });
+  }
+
+  window.addEventListener('pageshow', autoInit);
+
+})();
