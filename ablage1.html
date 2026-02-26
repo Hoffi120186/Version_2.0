@@ -182,7 +182,7 @@ h2{
 .badge-rot .flag{     background:#e53935; color:#fff; border-color:#e53935; }
 .badge-gelb .flag{    background:#f3fc02; color:#111; border-color:#f3fc02; }
 .badge-gruen .flag{   background:#2e7d32; color:#fff; border-color:#2e7d32; }
-.badge-schwarz .flag{ background:#111; color:#fff; border-color:#111; }
+.badge-schwarz .flag{ background:#111;    color:#fff; border-color:#111; }
 
 .meta{font-size:14px;opacity:.9;margin:6px 0}
 .injury{font-size:15px}
@@ -273,7 +273,7 @@ h2{
 
   <link rel="stylesheet" href="/app-flow.css">
   <script src="/vx_profiles.js"></script>
-  <script src="/ablage.js?v=20260226_ios_sound3" defer></script>
+  <script src="/ablage.js?v=20260225_ios_popup1" defer></script>
 </head>
 
 <body>
@@ -320,7 +320,7 @@ document.addEventListener('visibilitychange', () => {
 allowAutostart();
 
 /* Helpers */
-const VERSION = 'v-20260226-01';
+const VERSION = 'v-0901-06';
 function abs(href, base){
   try{
     const b = base ? new URL(base, location.href).href : location.href;
@@ -1302,33 +1302,75 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 </style>
 
 <script>
-/* iOS SAFE Audio für Dynamik Popup, Datei hier setzen */
 (function(){
   'use strict';
 
-  var AUDIO_URL = '/Patientenverschlechterung.mp3';
-  var audio = null;
-  var armed = false;
+  var AUDIO_URL = '/patientenverschlechterung.mp3?v=20260226_1';
+
+  var ctx = null;
+  var buffer = null;
+  var loading = null;
+  var unlocked = false;
   var lastPlay = 0;
 
-  function getAudio(){
-    if(audio) return audio;
-    audio = new Audio(AUDIO_URL);
-    audio.preload = 'auto';
-    audio.playsInline = true;
-    return audio;
+  function AC(){ return window.AudioContext || window.webkitAudioContext; }
+
+  function getCtx(){
+    if(ctx) return ctx;
+    var C = AC();
+    if(!C) return null;
+    ctx = new C();
+    return ctx;
   }
 
-  async function arm(){
-    if(armed) return true;
+  async function loadBuffer(){
+    if(buffer) return buffer;
+    if(loading) return loading;
+
+    loading = (async function(){
+      var c = getCtx();
+      if(!c) return null;
+
+      var res = await fetch(AUDIO_URL, { cache:'no-store' });
+      var arr = await res.arrayBuffer();
+
+      var b = await new Promise(function(resolve, reject){
+        c.decodeAudioData(arr, resolve, reject);
+      });
+
+      buffer = b;
+      return buffer;
+    })();
+
+    try{ return await loading; }
+    finally{ loading = null; }
+  }
+
+  async function unlock(){
+    var c = getCtx();
+    if(!c) return false;
+
     try{
-      var a = getAudio();
-      a.muted = true;
-      await a.play();
-      a.pause();
-      a.currentTime = 0;
-      a.muted = false;
-      armed = true;
+      if(c.state === 'suspended') await c.resume();
+    }catch(e){}
+
+    try{
+      var b = await loadBuffer();
+      if(!b) return false;
+
+      var src = c.createBufferSource();
+      src.buffer = b;
+
+      var g = c.createGain();
+      g.gain.value = 0.0001;
+
+      src.connect(g);
+      g.connect(c.destination);
+
+      src.start(0);
+      src.stop(c.currentTime + 0.02);
+
+      unlocked = true;
       return true;
     }catch(e){
       return false;
@@ -1337,32 +1379,44 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 
   async function play(){
     var now = Date.now();
-    if(now - lastPlay < 1500) return;
+    if(now - lastPlay < 1200) return;
     lastPlay = now;
 
-    var ok = await arm();
-    if(!ok) return;
+    var c = getCtx();
+    if(!c) return;
+
+    if(!unlocked){
+      var ok = await unlock();
+      if(!ok) return;
+    }
 
     try{
-      var a = getAudio();
-      a.pause();
-      a.currentTime = 0;
-      await a.play();
+      if(c.state === 'suspended') await c.resume();
+    }catch(e){}
+
+    var b = buffer || await loadBuffer();
+    if(!b) return;
+
+    try{
+      var src = c.createBufferSource();
+      src.buffer = b;
+      src.connect(c.destination);
+      src.start(0);
     }catch(e){}
   }
 
-  function armOnce(){
-    arm();
-    document.removeEventListener('touchstart', armOnce);
-    document.removeEventListener('pointerdown', armOnce);
-    document.removeEventListener('click', armOnce);
+  function unlockOnce(){
+    unlock();
+    document.removeEventListener('touchstart', unlockOnce, true);
+    document.removeEventListener('pointerdown', unlockOnce, true);
+    document.removeEventListener('click', unlockOnce, true);
   }
 
-  document.addEventListener('touchstart', armOnce);
-  document.addEventListener('pointerdown', armOnce);
-  document.addEventListener('click', armOnce);
+  document.addEventListener('touchstart', unlockOnce, true);
+  document.addEventListener('pointerdown', unlockOnce, true);
+  document.addEventListener('click', unlockOnce, true);
 
-  window.__dynAlarm = { play: play };
+  window.__dynAlarm = { play: play, unlock: unlock };
 })();
 </script>
 
@@ -1372,18 +1426,15 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 
   var q = [];
   var showing = false;
+
   var backdrop = document.getElementById('dynAlertBackdrop');
   var body = document.getElementById('dynAlertBody');
   var tag = document.getElementById('dynAlertTag');
   var ok = document.getElementById('dynAlertOk');
+  var modal = document.getElementById('dynAlertModal');
 
-  var seen = new Set();
-  function normCat(x){ return (x||'').toString().toLowerCase().replace('grün','gruen'); }
-  function sig(it){
-    var id = String((it && it.id) || '');
-    var to = String((it && (it.toCat || it.to)) || '');
-    var after = String((it && it.afterMs) || '');
-    return id + '|' + to + '|' + after;
+  function normCat(x){
+    return (x||'').toString().toLowerCase().replace('grün','gruen').trim();
   }
 
   function catLabel(cat){
@@ -1395,26 +1446,47 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
     return String(cat||'');
   }
 
+  function toSkClass(cat){
+    var c = normCat(cat);
+    if(c === 'rot') return 'sk1';
+    if(c === 'gelb') return 'sk2';
+    if(c === 'gruen') return 'sk3';
+    if(c === 'schwarz') return 'sk4';
+    return '';
+  }
+
+  function fmtValues(profile){
+    try{
+      var w = profile && (profile.werte || profile.vitals) ? (profile.werte || profile.vitals) : null;
+      if(!w) return '';
+      var parts = [];
+      if(w.af != null) parts.push('AF ' + w.af + '/min');
+      if(w.puls != null) parts.push('Puls ' + w.puls + '/min');
+      if(w.rr != null) parts.push('RR ' + w.rr);
+      if(w.spo2 != null) parts.push('SpO2 ' + w.spo2 + '%');
+      return parts.join(', ');
+    }catch(e){
+      return '';
+    }
+  }
+
   function showNext(){
     if(showing) return;
     if(!q.length) return;
     showing = true;
 
-    if(window.__dynAlarm && typeof window.__dynAlarm.play === 'function'){
-      window.__dynAlarm.play();
-    }
-
     var item = q.shift();
+
     var name = item.label || item.id || 'Patient';
     var fromCat = normCat(item.fromCat || item.from || '');
     var toCat = normCat(item.toCat || item.to || (item.profile && (item.profile.toCat || item.profile.neueKategorie)) || '');
+
     var fromTxt = catLabel(fromCat);
     var toTxt = catLabel(toCat);
 
-    var modal = document.getElementById('dynAlertModal');
     if(modal){
       modal.classList.remove('sk1','sk2','sk3','sk4','pulse');
-      var toSk = (toCat==='rot') ? 'sk1' : (toCat==='gelb') ? 'sk2' : (toCat==='gruen') ? 'sk3' : (toCat==='schwarz') ? 'sk4' : '';
+      var toSk = toSkClass(toCat);
       if(toSk) modal.classList.add(toSk);
     }
 
@@ -1429,35 +1501,31 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
     }
 
     var grund = '';
-    try{
-      grund = item.profile && item.profile.grund ? String(item.profile.grund) : '';
-    }catch(_){ grund=''; }
+    try{ grund = item.profile && item.profile.grund ? String(item.profile.grund) : ''; }catch(e){ grund=''; }
 
-    var werte = '';
-    try{
-      var w = item.profile && item.profile.werte ? item.profile.werte : null;
-      if(w){
-        var parts = [];
-        if(w.af != null) parts.push('AF ' + w.af + '/min');
-        if(w.puls != null) parts.push('Puls ' + w.puls + '/min');
-        if(w.rr != null) parts.push('RR ' + w.rr);
-        if(w.spo2 != null) parts.push('SpO2 ' + w.spo2 + '%');
-        werte = parts.join(', ');
-      }
-    }catch(_2){ werte=''; }
+    var werte = fmtValues(item.profile);
 
     body.innerHTML =
       '<div style="font-size:15px;"><b>' + name + '</b> hat sich verschlechtert.</div>' +
       '<div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">' +
-        '<span class="dynBadge ' + ((fromCat==='rot')?'sk1':(fromCat==='gelb')?'sk2':(fromCat==='gruen')?'sk3':(fromCat==='schwarz')?'sk4':'') + '">' + fromTxt + '</span>' +
+        '<span class="dynBadge ' + toSkClass(fromCat) + '">' + fromTxt + '</span>' +
         '<span style="opacity:.85; font-weight:800;">zu</span>' +
-        '<span class="dynBadge ' + ((toCat==='rot')?'sk1':(toCat==='gelb')?'sk2':(toCat==='gruen')?'sk3':(toCat==='schwarz')?'sk4':'') + '">' + toTxt + '</span>' +
+        '<span class="dynBadge ' + toSkClass(toCat) + '">' + toTxt + '</span>' +
       '</div>' +
       (grund ? '<div style="margin-top:10px; font-weight:800;">' + grund + '</div>' : '') +
       (werte ? '<div style="margin-top:6px; opacity:.9;">Neue Werte: ' + werte + '</div>' : '') +
       extra;
 
     backdrop.style.display = 'flex';
+
+    setTimeout(function(){
+      try{
+        if(window.__dynAlarm && typeof window.__dynAlarm.play === 'function'){
+          window.__dynAlarm.play();
+        }
+      }catch(e){}
+    }, 80);
+
     if(modal){
       void modal.offsetWidth;
       modal.classList.add('pulse');
@@ -1472,36 +1540,54 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
 
   if(ok) ok.addEventListener('click', close);
 
-  function handleFiredArray(arr){
+  function normalizeFiredArray(arr){
+    if(!Array.isArray(arr)) return [];
+    return arr.map(function(x){
+      if(!x) return null;
+      return {
+        id: x.id || '',
+        label: x.label || x.id || '',
+        fromCat: x.fromCat || x.from || '',
+        toCat: x.toCat || x.to || '',
+        afterMs: x.afterMs,
+        profile: x.profile || null
+      };
+    }).filter(Boolean);
+  }
+
+  var lastBatchKey = '';
+  function batchKeyFrom(arr){
     try{
-      if(Array.isArray(arr) && arr.length && typeof window.__AblageDynApply === 'function'){
-        window.__AblageDynApply(arr);
-      }
-    }catch(_){}
+      return arr.map(function(x){
+        var id = String(x.id||'');
+        var toCat = normCat(x.toCat||'');
+        var ts = '';
+        try{
+          ts = x.profile && (x.profile.ts || x.profile.zeit || x.profile.zeitpunkt || x.profile.time) ? String(x.profile.ts || x.profile.zeit || x.profile.zeitpunkt || x.profile.time) : '';
+        }catch(e){ ts=''; }
+        return id + '|' + toCat + '|' + ts;
+      }).join(',');
+    }catch(e){
+      return String(Date.now());
+    }
+  }
+
+  function handleFiredArray(arr){
+    var firedArr = normalizeFiredArray(arr);
+    if(!firedArr.length) return;
+
+    var key = batchKeyFrom(firedArr);
+    if(key && key === lastBatchKey) return;
+    lastBatchKey = key;
 
     try{
-      if(Array.isArray(arr) && arr.length){
-        for(var i=0;i<arr.length;i++){
-          var s = sig(arr[i]);
-          if(seen.has(s)) continue;
-          seen.add(s);
-          q.push(arr[i]);
-        }
-      } else {
-        var fallback = { label:'Patient', fromCat:'', toCat:'' };
-        var sf = sig(fallback);
-        if(!seen.has(sf)){
-          seen.add(sf);
-          q.push(fallback);
-        }
+      if(typeof window.__AblageDynApply === 'function'){
+        window.__AblageDynApply(firedArr);
       }
-    }catch(_2){
-      var fb = { label:'Patient', fromCat:'', toCat:'' };
-      var sfb = sig(fb);
-      if(!seen.has(sfb)){
-        seen.add(sfb);
-        q.push(fb);
-      }
+    }catch(e){}
+
+    for(var i=0;i<firedArr.length;i++){
+      q.push(firedArr[i]);
     }
 
     showNext();
@@ -1512,7 +1598,7 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
     try{
       var d = e && e.detail ? e.detail : null;
       firedArr = d && d.fired ? d.fired : null;
-    }catch(_){ firedArr = null; }
+    }catch(err){ firedArr = null; }
     handleFiredArray(firedArr);
   });
 
@@ -1529,89 +1615,9 @@ window.addEventListener('beforeunload', () => { denyAutostart(); });
       lastSeenTs = ts;
 
       handleFiredArray(obj.fired);
-    }catch(_e){}
+    }catch(e){}
   }, 800);
 
-})();
-</script>
-
-<script>
-(function(){
-  'use strict';
-
-  function safeParseKey(key, fallback){
-    try{
-      var raw = localStorage.getItem(key);
-      if(!raw) return fallback;
-      return JSON.parse(raw);
-    }catch(_){ return fallback; }
-  }
-
-  function safeSet(key, value){
-    try{ localStorage.setItem(key, JSON.stringify(value)); }catch(_){}
-  }
-
-  function normCat(x){
-    return (x||'').toString().toLowerCase().replace('grün','gruen');
-  }
-
-  function getActive(){
-    var a = safeParseKey('ablage.active.v1', []);
-    return Array.isArray(a) ? a : [];
-  }
-
-  function getPlan(){
-    var p = safeParseKey('ablage.dynamik.plan.v1', null);
-    if(!p || !p.events || !Array.isArray(p.events)) return null;
-    return p;
-  }
-
-  function tick(){
-    try{
-      var plan = getPlan();
-      if(!plan || !plan.events.length) return;
-
-      var active = getActive();
-      if(!active.length) return;
-
-      var sMap = safeParseKey('sichtungMap', {});
-      var t = Date.now();
-
-      for(var i=0;i<active.length;i++){
-        var a = active[i];
-        if(!a || !a.id) continue;
-        if(typeof a.startAt !== 'number') continue;
-
-        var elapsed = t - a.startAt + (Number(a.offset)||0);
-
-        for(var j=0;j<plan.events.length;j++){
-          var ev = plan.events[j];
-          if(!ev || ev.done) continue;
-          if(String(ev.id) !== String(a.id)) continue;
-
-          if(elapsed >= Number(ev.atMs||0)){
-            ev.done = true;
-            safeSet('ablage.dynamik.plan.v1', plan);
-
-            var fromCat = normCat((sMap && sMap[a.id]) || '');
-            var toCat = normCat(ev.to || ev.toCat || '');
-
-            try{
-              window.dispatchEvent(new CustomEvent('ablage:dynamik:fired', {
-                detail:{
-                  fired:[{ id:a.id, label:a.label||a.id, fromCat:fromCat, toCat:toCat, afterMs:ev.atMs }],
-                  plan:plan
-                }
-              }));
-            }catch(_e){}
-            return;
-          }
-        }
-      }
-    }catch(_){}
-  }
-
-  if(!window.ABLAGE_DYN_ACTIVE){ setInterval(tick, 1000); }
 })();
 </script>
 
