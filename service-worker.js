@@ -1,4 +1,4 @@
-// /service-worker.js  (FINAL: 2026-02-02-27)
+// /service-worker.js  (FINAL: 2026-02-08-28)
 // Fix: Lizenz persistent im SW speichern (überlebt Updates / kalte Starts)
 // + Patienten 1–40 + QR 1–40 + Szenarien 1–8
 // + patienten.json network-first (iPad/PWA Cache-Falle gelöst)
@@ -540,6 +540,7 @@ self.addEventListener('message', (event) => {
     }
   })());
 });
+
 
 
 
