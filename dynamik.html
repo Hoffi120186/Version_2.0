@@ -22,12 +22,13 @@
       --ok:#22c55e;
     }
     *{box-sizing:border-box}
-    html,body{height:100%}
+    html,body{height:100%; overflow-x:hidden}
     body{
       margin:0;
       font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;
       background:#0b0f1a url("fotos/ablageB.jpg") center/cover no-repeat fixed;
       color:#fff;
+      overflow-x:hidden;
     }
     body::before{content:"";position:fixed;inset:0;background:rgba(0,0,0,.60);z-index:-1}
 
@@ -52,12 +53,17 @@
       font-weight:950;
       box-shadow:0 10px 26px rgba(0,0,0,.22);
       touch-action:manipulation;
+      transition:200ms;
     }
     .btn.alt{ background:#e53935; }
     .btn.ghost{
       background:rgba(255,255,255,.10);
       border:1px solid rgba(255,255,255,.20);
       box-shadow:none;
+    }
+    .btn.saved{
+      background:rgba(34,197,94,.92);
+      box-shadow:0 10px 26px rgba(34,197,94,.20);
     }
     .btn:active{ transform:scale(.99); }
 
@@ -85,8 +91,10 @@
       background:rgba(255,255,255,.10);
       font-weight:950;
       backdrop-filter:blur(8px);
+      white-space:nowrap;
     }
     .status.ok{ border-color:rgba(34,197,94,.50); background:rgba(34,197,94,.16); color:#bbf7d0; }
+    .status.saved{ border-color:rgba(34,197,94,.55); background:rgba(34,197,94,.22); color:#bbf7d0; }
 
     .divider{margin-top:12px;border-top:1px solid rgba(255,255,255,.16);padding-top:12px}
 
@@ -130,6 +138,7 @@
       min-width:0;
       touch-action:manipulation;
       white-space:nowrap;
+      font-size:14px;
     }
     .seg button + button{ border-left:1px solid rgba(255,255,255,.16); }
     .seg button.active{ background:rgba(11,95,255,.60); }
@@ -141,6 +150,7 @@
       border:1px solid rgba(255,255,255,.20);
       background:rgba(255,255,255,.08);
       backdrop-filter:blur(10px);
+      max-width:100%;
     }
 
     .chip{
@@ -153,6 +163,7 @@
       user-select:none;
       box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);
       backdrop-filter:blur(10px);
+      max-width:100%;
     }
     .chip input{width:18px;height:18px}
     .chip.sk3{ border-color:rgba(34,197,94,.78); background:rgba(34,197,94,.24); }
@@ -170,6 +181,7 @@
       background:rgba(255,255,255,.08);
       backdrop-filter:blur(10px);
       align-items:flex-start;
+      max-width:100%;
     }
     .opt .left{
       flex:1 1 220px;
@@ -177,6 +189,7 @@
       display:flex;
       flex-direction:column;
       gap:4px;
+      min-width:0;
     }
     .opt .left strong{font-size:14px; font-weight:950}
     .opt .left span{font-size:12px; color:var(--muted); font-weight:650}
@@ -188,6 +201,7 @@
       display:flex;
       flex-direction:column;
       gap:8px;
+      min-width:0;
     }
     .sliderTop{display:flex; align-items:center; justify-content:space-between; gap:10px}
     .valPill{
@@ -198,6 +212,7 @@
       background:rgba(255,255,255,.10);
       font-weight:950;
       min-width:64px;
+      max-width:100%;
     }
 
     .toggleLine{
@@ -243,12 +258,26 @@
       align-items:center;
       justify-content:flex-end;
       margin-top:12px;
+      max-width:100%;
     }
 
     @media (max-width:640px){
       .col{ min-width:100%; }
       .sliderWrap{ min-width:100%; }
       .opt .left{ min-width:100%; }
+    }
+
+    @media (max-width:520px){
+      .seg{ flex-wrap:wrap; }
+      .seg button{
+        flex:1 1 50%;
+        white-space:normal;
+        font-size:13px;
+        padding:10px 8px;
+      }
+      .seg button + button{ border-left:0; }
+      .seg button:nth-child(2n){ border-left:1px solid rgba(255,255,255,.16); }
+      .seg button:nth-child(n+3){ border-top:1px solid rgba(255,255,255,.16); }
     }
   </style>
 </head>
@@ -259,6 +288,7 @@
     <h1>Dynamik. Patientenverschlechterung</h1>
     <div class="right">
       <span class="status" id="status">Aus</span>
+      <span class="status" id="saveStatus" style="display:none;">Gespeichert</span>
     </div>
   </header>
 
@@ -404,7 +434,7 @@
         </div>
 
         <div class="divider">
-          <table style="width:100%; border-collapse:collapse; overflow:hidden; border-radius:12px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); backdrop-filter:blur(10px);">
+          <table style="width:100%; max-width:100%; border-collapse:collapse; overflow:hidden; border-radius:12px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); backdrop-filter:blur(10px); table-layout:fixed;">
             <thead>
               <tr>
                 <th style="padding:10px; border-bottom:1px solid rgba(255,255,255,.12); text-align:left; width:120px;">Patient</th>
@@ -468,6 +498,9 @@
     function el(id){ return document.getElementById(id); }
 
     const status = el('status');
+    const saveStatus = el('saveStatus');
+    const btnSaveBottom = el('btnSaveBottom');
+
     const enabled = el('enabled');
 
     const modeOff = el('modeOff');
@@ -501,6 +534,30 @@
     const toLowerOnly = el('toLowerOnly');
 
     let modeValue = 'off';
+
+    function showSavedStamp(){
+      if(!saveStatus) return;
+
+      const t = new Date();
+      const hh = String(t.getHours()).padStart(2,'0');
+      const mm = String(t.getMinutes()).padStart(2,'0');
+
+      saveStatus.textContent = 'Gespeichert ' + hh + ':' + mm;
+      saveStatus.className = 'status saved';
+      saveStatus.style.display = '';
+    }
+
+    function markSaveButtonSaved(){
+      if(!btnSaveBottom) return;
+      btnSaveBottom.classList.add('saved');
+      btnSaveBottom.textContent = 'Gespeichert';
+    }
+
+    function restoreSaveButtonDefault(){
+      if(!btnSaveBottom) return;
+      btnSaveBottom.classList.remove('saved');
+      btnSaveBottom.textContent = 'Speichern';
+    }
 
     function setMode(m){
       modeValue = m || 'off';
@@ -546,13 +603,13 @@
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td style="padding:10px; border-bottom:1px solid rgba(255,255,255,.12);">
-            <input type="number" min="1" step="1" value="${idNum}" style="width:90px;" data-k="id">
+            <input type="number" min="1" step="1" value="${idNum}" style="width:90px; max-width:100%;" data-k="id">
           </td>
           <td style="padding:10px; border-bottom:1px solid rgba(255,255,255,.12);">
-            <input type="number" min="0" step="1" value="${afterMin}" style="width:120px;" data-k="afterMin">
+            <input type="number" min="0" step="1" value="${afterMin}" style="width:120px; max-width:100%;" data-k="afterMin">
           </td>
           <td style="padding:10px; border-bottom:1px solid rgba(255,255,255,.12);">
-            <select data-k="delta" style="min-width:160px;">
+            <select data-k="delta" style="min-width:160px; max-width:100%;">
               <option value="-1" ${delta===-1?'selected':''}>1 Stufe schlechter</option>
               <option value="-2" ${delta===-2?'selected':''}>2 Stufe schlechter</option>
               <option value="-3" ${delta===-3?'selected':''}>3 Stufe schlechter</option>
@@ -571,7 +628,7 @@
       if(!tb) return [];
       const out = [];
       const trs = tb.querySelectorAll('tr');
-      trs.forEach(tr=>{
+      trs.forEach(function(tr){
         const idNum = Number(tr.querySelector('input[data-k="id"]')?.value || 0);
         const afterMinVal = Number(tr.querySelector('input[data-k="afterMin"]')?.value || 0);
         const deltaSel = tr.querySelector('select[data-k="delta"]');
@@ -599,9 +656,9 @@
       maxMin.value = v.b;
 
       const segs = randomCard.querySelectorAll('.startSeg');
-      segs.forEach(seg=>{
+      segs.forEach(function(seg){
         const btns = seg.querySelectorAll('button[data-win]');
-        btns.forEach(b=>{
+        btns.forEach(function(b){
           b.classList.toggle('active', String(b.dataset.win)===String(preset));
         });
       });
@@ -672,6 +729,8 @@
       setStartWindowPreset(p);
 
       setStatus();
+      restoreSaveButtonDefault();
+      if(saveStatus) saveStatus.style.display = 'none';
     }
 
     function readUI(){
@@ -706,9 +765,11 @@
       resetPlan();
       setStatus();
       showHide();
+      showSavedStamp();
+      markSaveButtonSaved();
     }
 
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', function(e){
       const btn = e.target.closest('button');
 
       if(btn && btn.dataset && btn.dataset.mode){
@@ -765,6 +826,11 @@
       } else {
         if(Number(minGapSec.value||0) <= 0) syncGapUI(60);
       }
+    });
+
+    window.addEventListener('beforeunload', function(){
+      if(saveStatus) saveStatus.style.display = 'none';
+      restoreSaveButtonDefault();
     });
 
     const cfg = Object.assign(defaults(), load(KEY_CFG, {}));
