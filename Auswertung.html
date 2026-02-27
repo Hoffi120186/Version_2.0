@@ -1,223 +1,616 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Zeitauswertung</title>
-<link rel="manifest" href="/manifest.json">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Zeitauswertung</title>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
-crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <link rel="stylesheet" href="stylesauswertung.css">
+  <link rel="manifest" href="/manifest.json">
 
-<style>
-:root{
-  --bg0:#070b14;
-  --bg1:#0b1220;
-  --card:rgba(255,255,255,.08);
-  --stroke:rgba(255,255,255,.12);
-  --text:rgba(255,255,255,.92);
-  --muted:rgba(255,255,255,.65);
-  --accent:#0B5FFF;
-  --danger:#e53935;
-  --radius:20px;
-  --shadow:0 20px 40px rgba(0,0,0,.35);
-  --w:min(94vw,1100px);
-}
+  <!-- jsPDF mit Fallback -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+          crossorigin="anonymous" referrerpolicy="no-referrer"
+          onerror="(function(){var s=document.createElement('script');s.src='/vendor/jspdf.umd.min.js';document.head.appendChild(s)})();"></script>
+  <script>
+    (function(){
+      const CDN1  = "https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js";
+      const CDN2  = "https://unpkg.com/jspdf@2.5.2/dist/jspdf.umd.min.js";
+      const LOCAL = "/vendor/jspdf.umd.min.js";
+      function load(src){
+        return new Promise((res, rej)=>{
+          if ([...document.scripts].some(s => s.src === src)) return res();
+          const s = document.createElement("script");
+          s.src = src; s.async = true; s.crossOrigin="anonymous"; s.referrerPolicy="no-referrer";
+          s.onload = res; s.onerror = ()=>rej(new Error("load fail: "+src));
+          document.head.appendChild(s);
+        });
+      }
+      window.getJsPDF = function(){
+        if (window.__jspdfPromise) return window.__jspdfPromise;
+        window.__jspdfPromise = (async()=>{
+          if (window.jspdf?.jsPDF) return window.jspdf.jsPDF;
+          try { await load(CDN1); } catch { try { await load(CDN2); } catch { await load(LOCAL); } }
+          if (!window.jspdf?.jsPDF) throw new Error("jsPDF nicht verfügbar");
+          return window.jspdf.jsPDF;
+        })();
+        return window.__jspdfPromise;
+      };
+    })();
+  </script>
 
-*{box-sizing:border-box}
-html,body{height:100%}
+  <style>
+    :root{
+      --bg0:#070b14;
+      --bg1:#0b1220;
+      --card:rgba(255,255,255,.08);
+      --card2:rgba(255,255,255,.12);
+      --stroke:rgba(255,255,255,.12);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.65);
+      --accent:#0B5FFF;
+      --danger:#e53935;
+      --shadow:0 18px 36px rgba(0,0,0,.35);
+      --radius:20px;
+      --w:min(94vw,1120px);
+    }
 
-body{
-  margin:0;
-  font-family:system-ui,-apple-system,Segoe UI,Roboto;
-  color:var(--text);
-  background:
-    radial-gradient(900px 600px at 10% 10%, rgba(11,95,255,.25), transparent 60%),
-    radial-gradient(900px 600px at 90% 20%, rgba(229,57,53,.18), transparent 60%),
-    linear-gradient(180deg,var(--bg1),var(--bg0));
-  padding:20px 0 40px;
-}
+    *{box-sizing:border-box}
+    html,body{height:100%}
 
-.wrap{
-  width:var(--w);
-  margin:auto;
-}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(900px 600px at 10% 10%, rgba(11,95,255,.25), transparent 60%),
+        radial-gradient(900px 600px at 90% 20%, rgba(229,57,53,.18), transparent 60%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+      padding:18px 0 40px;
+    }
 
-h1{
-  margin:0 0 6px;
-  font-size:28px;
-}
+    .wrap{
+      width:var(--w);
+      margin:0 auto;
+    }
 
-.sub{
-  color:var(--muted);
-  margin-bottom:18px;
-}
+    .top{
+      margin:6px 0 14px;
+    }
 
-.card{
-  background:var(--card);
-  border:1px solid var(--stroke);
-  border-radius:var(--radius);
-  box-shadow:var(--shadow);
-  backdrop-filter:blur(14px);
-  padding:20px;
-  margin-bottom:16px;
-}
+    h1{
+      margin:0 0 6px;
+      font-size:28px;
+      letter-spacing:.2px;
+    }
 
-.card h2{
-  margin:0 0 14px;
-  font-size:16px;
-  font-weight:800;
-}
+    .sub{
+      color:var(--muted);
+      font-size:13px;
+      margin:0;
+    }
 
-#gesamtzeit{
-  font-size:42px;
-  font-weight:900;
-  letter-spacing:.5px;
-  margin:0 0 8px;
-}
+    .card{
+      background:linear-gradient(180deg, var(--card2), var(--card));
+      border:1px solid var(--stroke);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      overflow:hidden;
+      margin:0 0 14px;
+    }
 
-.hint{
-  color:var(--muted);
-  font-size:14px;
-  margin:0;
-}
+    .cardHead{
+      padding:14px 16px 10px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
 
-.tableWrap{
-  overflow:auto;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.12);
-}
+    .cardHead h2{
+      margin:0;
+      font-size:15px;
+      font-weight:900;
+      letter-spacing:.2px;
+    }
 
-table{
-  width:100%;
-  border-collapse:collapse;
-}
+    .cardBody{
+      padding:16px;
+    }
 
-thead{
-  background:rgba(255,255,255,.06);
-}
+    #gesamtzeit{
+      background:transparent !important;
+      color:var(--text) !important;
+      border:0 !important;
+      box-shadow:none !important;
+      padding:0 !important;
+      margin:0 0 8px !important;
+      font-size:42px !important;
+      font-weight:900 !important;
+      letter-spacing:.6px !important;
+      line-height:1.05 !important;
+      text-shadow:0 8px 18px rgba(0,0,0,.45) !important;
+    }
 
-th,td{
-  padding:14px 12px;
-  text-align:left;
-}
+    .hint{
+      margin:0;
+      color:var(--muted);
+      font-size:13px;
+    }
 
-th{
-  font-size:13px;
-  color:var(--muted);
-}
+    .tableWrap{
+      overflow:auto;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(0,0,0,.16);
+    }
 
-td{
-  border-top:1px solid rgba(255,255,255,.08);
-}
+    table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      min-width:520px;
+      background:transparent !important;
+    }
 
-.tdRight{
-  text-align:right;
-  font-variant-numeric:tabular-nums;
-}
+    thead th{
+      background:rgba(255,255,255,.06) !important;
+      color:rgba(255,255,255,.82) !important;
+      text-align:left;
+      font-size:12px;
+      letter-spacing:.2px;
+      padding:12px 12px;
+      border-bottom:1px solid rgba(255,255,255,.10) !important;
+      white-space:nowrap;
+    }
 
-.badge{
-  padding:6px 14px;
-  border-radius:10px;
-  font-weight:800;
-  display:inline-block;
-}
+    tbody td{
+      padding:12px 12px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      color:rgba(255,255,255,.92) !important;
+      font-size:14px;
+      background:transparent !important;
+    }
 
-.actions{
-  margin-top:26px;
-  display:flex;
-  flex-direction:column;
-  gap:14px;
-}
+    tbody tr:hover td{
+      background:rgba(255,255,255,.04) !important;
+    }
 
-.btn{
-  padding:18px;
-  border-radius:40px;
-  font-weight:900;
-  font-size:17px;
-  border:none;
-  cursor:pointer;
-  color:#fff;
-  box-shadow:0 12px 24px rgba(0,0,0,.35);
-  transition:transform .12s ease;
-}
+    .tdRight{
+      text-align:right;
+      font-variant-numeric: tabular-nums;
+      white-space:nowrap;
+    }
 
-.btn:active{
-  transform:scale(.97);
-}
+    .badgeCell{
+      text-align:center;
+      font-weight:900;
+      letter-spacing:.2px;
+      border-radius:10px;
+      padding:8px 10px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:74px;
+      border:1px solid rgba(255,255,255,.14);
+      box-shadow:0 10px 20px rgba(0,0,0,.18);
+    }
 
-.btn-blue{
-  background:linear-gradient(180deg,#3a2cff,#2002e0);
-}
+    .actions{
+      margin-top:16px;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+      padding-bottom:10px;
+    }
 
-.btn-red{
-  background:linear-gradient(180deg,#ff4b4b,#e53935);
-}
+    .btn-action{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:100%;
+      max-width:560px;
+      margin:0 auto;
+      padding:18px 18px;
+      font-size:17px;
+      font-weight:900;
+      border-radius:999px;
+      cursor:pointer;
+      border:1px solid rgba(255,255,255,.12);
+      text-align:center;
+      text-decoration:none;
+      color:#fff;
+      box-shadow:0 12px 26px rgba(0,0,0,.30);
+      transition:transform .12s ease, filter .12s ease;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
 
-@media(min-width:900px){
-  .actions{
-    flex-direction:row;
-  }
-}
-</style>
+    .btn-action:active{
+      transform:scale(.985);
+      filter:brightness(.98);
+    }
+
+    .btn-blue{
+      background:linear-gradient(180deg, rgba(11,95,255,.98), rgba(11,95,255,.80));
+    }
+
+    .btn-red{
+      background:linear-gradient(180deg, rgba(229,57,53,.98), rgba(229,57,53,.80));
+    }
+
+    .btn-action:disabled{
+      opacity:.65;
+      cursor:not-allowed;
+      transform:none;
+    }
+
+    @media (min-width: 980px){
+      .actions{
+        flex-direction:row;
+        justify-content:space-between;
+        gap:14px;
+      }
+      .btn-action{
+        max-width:none;
+        flex:1;
+      }
+      .btn-action.btn-red{
+        flex:1.15;
+      }
+    }
+  </style>
 </head>
 
 <body>
-<div class="wrap">
-  <h1>Zeitauswertung</h1>
-  <div class="sub">Gesamtzeit, Patientenzeiten, Sichtungskategorien</div>
+  <div class="wrap">
+    <div class="top">
+      <h1>Zeitauswertung</h1>
+      <p class="sub">Gesamtzeit, Patientenzeiten, Sichtungskategorien</p>
+    </div>
 
-  <!-- Gesamtzeit -->
-  <div class="card">
-    <h2>Gesamtzeit</h2>
-    <div id="gesamtzeit">Wird geladen...</div>
-    <p class="hint">Diese Zeit ist die Summe aus allen gespeicherten Seitenzeiten.</p>
-  </div>
+    <section class="card">
+      <div class="cardHead">
+        <h2>Gesamtzeit</h2>
+      </div>
+      <div class="cardBody">
+        <div id="gesamtzeit">Wird geladen...</div>
+        <p class="hint">Diese Zeit ist die Summe aus allen gespeicherten Seitenzeiten.</p>
+      </div>
+    </section>
 
-  <!-- Patientenzeiten -->
-  <div class="card">
-    <h2>Patientenzeiten</h2>
-    <div class="tableWrap">
-      <table>
-        <thead>
-          <tr><th>Patientenseite</th><th class="tdRight">Zeit</th></tr>
-        </thead>
-        <tbody id="patientenzeiten"></tbody>
-      </table>
+    <section class="card">
+      <div class="cardHead">
+        <h2>Patientenzeiten</h2>
+      </div>
+      <div class="cardBody">
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr><th>Patientenseite</th><th class="tdRight">Zeit (MM:SS)</th></tr>
+            </thead>
+            <tbody id="patientenzeiten"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="cardHead">
+        <h2>Sichtungskategorien</h2>
+      </div>
+      <div class="cardBody">
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr><th>Patientenseite</th><th style="text-align:center">Sichtung</th></tr>
+            </thead>
+            <tbody id="patientenfarben"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <div class="actions">
+      <button id="downloadPDF" class="btn-action btn-blue">Auswertung als PDF</button>
+      <a id="toAblage" href="/ablage1.html" class="btn-action btn-blue">Zur Patientenablage</a>
+      <button id="neuerEinsatzButton" class="btn-action btn-red">Neuer Einsatz</button>
     </div>
   </div>
 
-  <!-- Sichtung -->
-  <div class="card">
-    <h2>Sichtungskategorien</h2>
-    <div class="tableWrap">
-      <table>
-        <thead>
-          <tr><th>Patientenseite</th><th style="text-align:center">Sichtung</th></tr>
-        </thead>
-        <tbody id="patientenfarben"></tbody>
-      </table>
-    </div>
-  </div>
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // ---------- Helpers ----------
+    const mmss = (sec)=>`${String(Math.floor(sec/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`;
+    const pageLabelFromKey = (key, prefix) => {
+      let p = key.startsWith(prefix) ? key.slice(prefix.length) : key;
+      try { p = p.split('/').pop() || p; } catch {}
+      if ((p||'').toLowerCase().includes('index.html')) return 'Anfahrt Einsatzstelle';
+      const m = (p||'').match(/patient(\d+)\.html/i);
+      return m ? `Patient ${m[1]}` : p;
+    };
+    const normKat = (v)=>{
+      v = String(v||'').trim().toLowerCase();
+      if (v.includes('grün')) v = v.replace('grün','gruen');
+      return v;
+    };
+    function __readTogglePayload(id){
+      let raw=null;
+      try { raw = localStorage.getItem("sicht_" + id); } catch {}
+      if (!raw) {
+        const pathKey = "sicht_" + (location.pathname.split("/").pop() || "unknown");
+        try { raw = localStorage.getItem(pathKey); } catch {}
+      }
+      if (!raw) return {};
+      try { return JSON.parse(raw)||{}; } catch { return {}; }
+    }
+    function getSichtungDisplay(id, cat){
+      const p = __readTogglePayload(id);
+      if (cat === 'rot')   return 'SK1' + (p.t ? ' · T' : '');
+      if (cat === 'gelb')  return 'SK2';
+      if (cat === 'gruen') return 'SK3' + (p.b ? ' · B' : '');
+      if (cat === 'schwarz') return 'SK4';
+      return '';
+    }
+    function __prio(cat, flags){
+      const t=!!flags?.t, b=!!flags?.b;
+      if (cat==='rot'   && t) return 0; // SK1 · T
+      if (cat==='rot')        return 1; // SK1
+      if (cat==='gelb')       return 2; // SK2
+      if (cat==='gruen' && b) return 3; // SK3 · B
+      if (cat==='gruen')      return 4; // SK3
+      if (cat==='schwarz')    return 5; // SK4
+      return 6;
+    }
+    function __numFromId(id){ return parseInt(String(id).replace(/\D/g,''))||99999; }
 
-  <!-- Buttons ganz unten -->
-  <div class="actions">
-    <button id="downloadPDF" class="btn btn-blue">Auswertung als PDF</button>
-    <a href="/ablage1.html" id="toAblage" class="btn btn-blue" style="text-align:center;text-decoration:none;">Zur Patientenablage</a>
-    <button id="neuerEinsatzButton" class="btn btn-red">Neuer Einsatz</button>
-  </div>
-</div>
+    // ---------- Gesamt- / Patientenzeiten ----------
+    function collectTimes() {
+      const rows = []; let total = 0;
+      Object.keys(localStorage).forEach(k=>{
+        if (!k.startsWith('time_')) return;
+        const sec = parseInt(localStorage.getItem(k))||0; total += sec;
+        rows.push({ page: pageLabelFromKey(k,'time_'), sec, mm: mmss(sec) });
+      });
+      rows.sort((a,b)=>{
+        const ak = a.page.startsWith('Anfahrt') ? 0 : (parseInt(a.page.replace(/\D/g,''))||9999);
+        const bk = b.page.startsWith('Anfahrt') ? 0 : (parseInt(b.page.replace(/\D/g,''))||9999);
+        return ak - bk;
+      });
+      return { rows, total };
+    }
 
-<script>
-/* HIER BLEIBT DEIN KOMPLETTES JAVASCRIPT UNVERÄNDERT */
-/* Du kannst einfach deinen bestehenden Script Block hier wieder einfügen */
-</script>
+    const { rows: timeRows, total } = collectTimes();
+    document.getElementById('gesamtzeit').textContent = mmss(total);
+    const tBodyTimes = document.getElementById('patientenzeiten');
+    tBodyTimes.innerHTML = '';
+    timeRows.forEach(r=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${r.page}</td><td class="tdRight">${r.mm}</td>`;
+      tBodyTimes.appendChild(tr);
+    });
 
-<script type="module" src="/freigabe.js?cache=9"></script>
-<script defer src="/warmup.js?v=2025-08-22-1"></script>
-<script src="/metrics.js" defer></script>
+    // ---------- Sichtungen (Anzeige + Sortierung nach Prio) ----------
+    function readSichtungenDedup() {
+      let sMap = {};
+      try { sMap = JSON.parse(localStorage.getItem('sichtungMap') || '{}'); } catch {}
+      let ablage = [];
+      try { ablage = JSON.parse(localStorage.getItem('ablage.active.v1') || '[]'); } catch {}
 
+      const out = new Map(); // id lc -> { id, sk }
+      Object.entries(sMap).forEach(([id, sk])=>{
+        if(!id || !sk) return;
+        out.set(String(id).toLowerCase(), { id:String(id).toLowerCase(), sk });
+      });
+      ablage.forEach(r=>{
+        const id = String(r?.id||'').toLowerCase();
+        const sk = r?.sk;
+        if(!id || !sk) return;
+        if(!out.has(id)) out.set(id, { id, sk });
+      });
+
+      return [...out.values()];
+    }
+
+    function renderSichtungenTable() {
+      const tbody = document.getElementById('patientenfarben');
+      tbody.innerHTML = '';
+
+      const items = readSichtungenDedup();
+      items.sort((a,b)=>{
+        const aCat = normKat(a.sk), bCat = normKat(b.sk);
+        const ap = __readTogglePayload(a.id), bp = __readTogglePayload(b.id);
+        const d  = __prio(aCat, ap) - __prio(bCat, bp);
+        return d !== 0 ? d : (__numFromId(a.id) - __numFromId(b.id));
+      });
+
+      items.forEach(({id, sk})=>{
+        const label = id.replace(/^patient(\d+)/i, 'Patient $1');
+        const cat = normKat(sk);
+
+        let bg='rgba(255,255,255,.10)', color='rgba(255,255,255,.92)';
+        if (cat==='rot'){ bg='rgba(220,38,38,.92)'; color='#fff'; }
+        else if (cat==='gelb'){ bg='rgba(234,179,8,.92)'; color='#111'; }
+        else if (cat==='gruen'){ bg='rgba(22,163,74,.92)'; color='#fff'; }
+        else if (cat==='schwarz'){ bg='rgba(0,0,0,.92)'; color='#fff'; }
+
+        const display = getSichtungDisplay(id, cat);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${label}</td>
+          <td style="text-align:center">
+            <span class="badgeCell" style="background:${bg};color:${color}">${display}</span>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+    renderSichtungenTable();
+
+    // ---------- Reset-Funktionen ----------
+    function resetAllData() {
+      Object.keys(localStorage).forEach(k=>{
+        if (k.startsWith('time_') || k.startsWith('sichtung_')) localStorage.removeItem(k);
+      });
+      localStorage.removeItem('sichtungMap');
+      localStorage.removeItem('ablage.active.v1');
+      localStorage.removeItem('ablage.history.v1');
+      localStorage.removeItem('ablage');
+      localStorage.removeItem('ablage_ids');
+      localStorage.setItem('resetFlag', 'true');
+    }
+    function resetAuswertungData() {
+      Object.keys(localStorage).forEach(k=>{
+        if (k.startsWith('time_') || k.startsWith('sichtung_')) {
+          localStorage.removeItem(k);
+        }
+      });
+      localStorage.setItem('resetFlag', 'true');
+    }
+
+    // ---------- Buttons ----------
+    document.getElementById('neuerEinsatzButton')?.addEventListener('click', ()=>{
+      resetAllData();
+      window.location.href = "/index.html";
+    });
+
+    document.getElementById('toAblage')?.addEventListener('click', (e)=>{
+      e.preventDefault();
+      resetAuswertungData();
+      document.getElementById('gesamtzeit').textContent = '00:00';
+      document.getElementById('patientenzeiten').innerHTML = '';
+      document.getElementById('patientenfarben').innerHTML = '';
+      window.location.href = "/ablage1.html";
+    });
+
+    // ---------- PDF ----------
+    document.getElementById('downloadPDF').addEventListener('click', async ()=>{
+      const btn = document.getElementById('downloadPDF');
+      if (btn.dataset.busy === '1') return;
+      btn.dataset.busy = '1'; btn.disabled = true;
+      try {
+        const jsPDF = await getJsPDF();
+        const doc = new jsPDF({ orientation:'p', unit:'mm', format:'a4' });
+        const margin = 14, pageW = doc.internal.pageSize.getWidth(), pageH = doc.internal.pageSize.getHeight();
+        let y = margin;
+
+        function ensure(h){ if (y + h > pageH - margin) { doc.addPage(); y = margin; } }
+        function header(t){
+          doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text(t, margin, y);
+          const d = new Date().toLocaleString('de-DE',{dateStyle:'medium', timeStyle:'short'});
+          doc.setFont('helvetica','normal'); doc.setFontSize(10);
+          doc.text(`Erstellt: ${d}`, margin, y+6); y += 14;
+        }
+
+        header('Zeitauswertung – 1Rettungsmittel');
+
+        // Zeiten
+        (function(){
+          function collectTimes() {
+            const rows = []; let total = 0;
+            Object.keys(localStorage).forEach(k=>{
+              if (!k.startsWith('time_')) return;
+              const sec = parseInt(localStorage.getItem(k))||0; total += sec;
+              rows.push({ page: pageLabelFromKey(k,'time_'), sec, mm: mmss(sec) });
+            });
+            rows.sort((a,b)=>{
+              const ak = a.page.startsWith('Anfahrt') ? 0 : (parseInt(a.page.replace(/\D/g,''))||9999);
+              const bk = b.page.startsWith('Anfahrt') ? 0 : (parseInt(a.page.replace(/\D/g,''))||9999);
+              return ak - bk;
+            });
+            return { rows, total };
+          }
+
+          const { rows: timeRows, total } = collectTimes();
+          ensure(12);
+          doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Gesamtzeit', margin, y); y += 8;
+          doc.setFont('helvetica','normal'); doc.setFontSize(12); doc.text(mmss(total), margin, y); y += 10;
+
+          doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Patientenzeiten', margin, y); y += 8;
+          doc.setFont('helvetica','bold'); doc.setFontSize(11);
+          doc.text('Position', margin, y);
+          doc.text('Zeit (MM:SS)', pageW - margin, y, {align:'right'});
+          y += 4; doc.setDrawColor(180); doc.line(margin, y, pageW - margin, y); y += 3;
+
+          timeRows.forEach(r=>{
+            doc.setFont('helvetica','normal'); doc.setFontSize(10);
+            ensure(7);
+            doc.text(String(r.page), margin, y);
+            doc.text(String(r.mm), pageW - margin, y, {align:'right'});
+            y += 6;
+          });
+        })();
+
+        // Sichtungen
+        (function(){
+          ensure(12);
+          doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Sichtungskategorien', margin, y); y += 8;
+
+          const rows = (function readSichtungenDedup(){
+            let sMap = {}; try { sMap = JSON.parse(localStorage.getItem('sichtungMap') || '{}'); } catch {}
+            let ablage = []; try { ablage = JSON.parse(localStorage.getItem('ablage.active.v1') || '[]'); } catch {}
+            const out = new Map();
+            Object.entries(sMap).forEach(([id, sk])=>{ if(id && sk) out.set(String(id).toLowerCase(), { id:String(id).toLowerCase(), sk }); });
+            ablage.forEach(r=>{ const id=String(r?.id||'').toLowerCase(), sk=r?.sk; if(id && sk && !out.has(id)) out.set(id,{id,sk}); });
+            return [...out.values()];
+          })();
+
+          rows.sort((a,b)=>{
+            const aCat = normKat(a.sk), bCat = normKat(b.sk);
+            const ap = __readTogglePayload(a.id), bp = __readTogglePayload(b.id);
+            const d  = __prio(aCat, ap) - __prio(bCat, bp);
+            return d !== 0 ? d : (__numFromId(a.id) - __numFromId(b.id));
+          });
+
+          rows.forEach(r=>{
+            ensure(8);
+            const cat = normKat(r.sk);
+            const disp = getSichtungDisplay(r.id, cat);
+            const name = r.id.replace(/^patient(\d+)/i, 'Patient $1');
+
+            const palette = {
+              'rot':     { fill:[220,38,38], text:[255,255,255] },
+              'gelb':    { fill:[234,179,8], text:[0,0,0]       },
+              'gruen':   { fill:[22,163,74], text:[255,255,255] },
+              'schwarz': { fill:[0,0,0],     text:[255,255,255] },
+              '':        { fill:[229,231,235], text:[0,0,0]     }
+            };
+            const meta = palette[cat] || palette[''];
+
+            doc.setFont('helvetica','normal'); doc.setFontSize(10);
+            doc.text(name, margin, y);
+
+            const badgeW = 40, badgeH = 6, badgeX = pageW - margin - badgeW, badgeY = y - 4;
+            doc.setFillColor(...meta.fill);
+            doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 1, 1, 'F');
+            doc.setTextColor(...meta.text);
+            doc.setFont('helvetica','bold'); doc.setFontSize(10);
+            doc.text(disp || '—', badgeX + 2, y);
+            doc.setTextColor(0,0,0);
+
+            y += 7;
+          });
+        })();
+
+        doc.save('auswertung.pdf');
+      } catch (err) {
+        alert('PDF kann nicht erstellt werden.');
+        console.error(err);
+      } finally {
+        btn.disabled = false; btn.dataset.busy='0';
+      }
+    });
+  });
+  </script>
+
+  <script type="module" src="/freigabe.js?cache=9"></script>
+  <script defer src="/warmup.js?v=2025-08-22-1"></script>
+  <script src="/metrics.js" defer></script>
 </body>
 </html>
