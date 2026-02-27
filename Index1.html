@@ -13,17 +13,16 @@
   <link rel="manifest" href="/manifest.json" />
   <link rel="icon" href="/LogoApp.jpg" type="image/jpeg" />
 
-  <!-- jsQR lokal & nicht render-blockierend -->
+  <!-- jsQR lokal , nicht render blockierend -->
   <script src="/vendor/jsqr.min.js" defer></script>
 
   <!-- Szenarien zentral -->
   <script src="/szenarien.js?v=1" defer></script>
 
-  <!-- Lizenz-/Install-Logik (freigabe) -->
+  <!-- Lizenz , Install Logik -->
   <script src="/freigabe.js?v=2025-11-22-RETRY" defer></script>
 
   <style>
-    /* ===== Hardening gegen iPad/Tablet Offsets ===== */
     html, body{
       width:100%;
       max-width:100%;
@@ -32,7 +31,6 @@
       padding:0;
     }
 
-    /* ✅ Hintergrund immer sofort sichtbar: auf html legen */
     html{
       min-height:100%;
       background-image:url(fotos/Leit1.jpg);
@@ -42,7 +40,6 @@
       background-color:#000;
     }
 
-    /* ✅ Overlay ebenfalls auf html (Safari/iPad Fix) */
     html::before{
       content:"";
       position:fixed;
@@ -62,7 +59,7 @@
       position:relative;
     }
 
-    /* ===== Start Gate Overlay (Hochformat + Audio Unlock) ===== */
+    /* Start Gate Overlay */
     #startGate{
       position:fixed;
       inset:0;
@@ -117,7 +114,7 @@
     }
     #btnStartGate:active{ transform:scale(.99); }
 
-    /* ===== Top-Buttons ===== */
+    /* Top Buttons */
     .top-button-container{
       position:fixed;
       top:10px; left:10px; right:10px;
@@ -190,7 +187,7 @@
       box-sizing:border-box;
     }
 
-    /* ===== Status-Buttons (Glass) ===== */
+    /* Status Buttons */
     .status-btn{
       display:block;
       width:clamp(280px, 92vw, 520px);
@@ -259,7 +256,7 @@
     }
     @keyframes ripple{ to{ transform:scale(4); opacity:0; } }
 
-    /* ===== Melder Overlay (Status 1) ===== */
+    /* Melder Overlay */
     .melder-overlay{
       position:fixed;
       inset:0;
@@ -272,7 +269,6 @@
       -webkit-backdrop-filter: blur(6px);
       padding: 18px;
       box-sizing:border-box;
-
       transition: opacity .40s ease;
       opacity: 0;
     }
@@ -310,7 +306,6 @@
       border-radius: 18px;
     }
 
-    /* LCD Display */
     .display{
       position:absolute;
       left: 18.0%;
@@ -319,7 +314,6 @@
       height: 38.6%;
       border-radius: 10px;
       overflow:hidden;
-
       background: radial-gradient(circle at 30% 30%, rgba(210,255,120,.95), rgba(170,220,70,.90));
       box-shadow:
         0 0 0 1px rgba(0,0,0,.18),
@@ -353,30 +347,24 @@
       min-height: 1em;
     }
 
-    /* Status 3 Button (Glass) */
     .melderConfirm{
       width: min(92vw, 520px);
       padding: 20px 18px;
       border-radius: 22px;
-
       color:#fff;
       font-weight: 900;
       font-size: clamp(18px, 4.6vw, 22px);
       letter-spacing: .2px;
       text-shadow: 0 2px 10px rgba(0,0,0,.55);
-
       background: rgba(0,0,0,.18);
       border: 1px solid rgba(255,255,255,.22);
       box-shadow:
         0 18px 44px rgba(0,0,0,.55),
         inset 0 1px 0 rgba(255,255,255,.16);
-
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
-
       cursor:pointer;
       user-select:none;
-
       transition: transform .15s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease, opacity .2s ease;
     }
     .melderConfirm:hover{
@@ -400,33 +388,27 @@
       transform:none;
     }
 
-    /* Reopen Button (Melder in Tasche) */
     .melderReopen{
       position: fixed;
       right: 14px;
       bottom: 14px;
       z-index: 1002;
-
       display:none;
       padding: 14px 16px;
       border-radius: 16px;
-
       color:#fff;
       font-weight: 900;
       font-size: 16px;
       letter-spacing: .2px;
       text-shadow: 0 2px 10px rgba(0,0,0,.55);
-
       background: rgba(255,255,255,.12);
       border: 1px solid rgba(255,255,255,.22);
       box-shadow:
         0 14px 30px rgba(0,0,0,.45),
         inset 0 1px 0 rgba(255,255,255,.25),
         inset 0 -1px 0 rgba(0,0,0,.25);
-
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
-
       cursor:pointer;
       user-select:none;
       transition: transform .15s ease, background .2s ease, border-color .2s ease, opacity .2s ease;
@@ -440,7 +422,6 @@
       transform: translateY(0);
     }
 
-    /* --- Melder Realismus --- */
     @keyframes pagerEnter {
       0%   { transform: translateY(22px) scale(.985); opacity: 0; filter: blur(2px); }
       60%  { transform: translateY(-2px) scale(1.0);  opacity: 1; filter: blur(0); }
@@ -483,7 +464,6 @@
       100% { opacity: 1; }
     }
 
-    /* ✅ langsamer rauswischen */
     @keyframes pagerExit {
       0%   { transform: translateY(0) scale(1); opacity: 1; filter: blur(0); }
       100% { transform: translateY(34px) scale(.99); opacity: 0; filter: blur(2px); }
@@ -505,7 +485,7 @@
       animation: lcdFlicker 2.2s linear infinite;
     }
 
-    /* ===== Scanner-Overlay ===== */
+    /* Scanner Overlay */
     .scan-overlay{
       position:fixed; inset:0; z-index:9999;
       display:none; align-items:center; justify-content:center;
@@ -539,7 +519,6 @@
 
 <body>
 
-  <!-- ✅ Start Popup: Hochformat Hinweis + Audio Unlock -->
   <div id="startGate" role="dialog" aria-modal="true" aria-label="Hinweis Hochformat und Audio">
     <div class="gateCard">
       <div class="gateTitle">Hinweis</div>
@@ -568,7 +547,6 @@
     </div>
   </main>
 
-  <!-- ===== Melder Overlay ===== -->
   <div id="melderOverlay" class="melder-overlay" aria-hidden="true">
     <div class="melder-wrap">
       <div class="melderCard is-hidden">
@@ -581,12 +559,10 @@
     </div>
   </div>
 
-  <!-- ✅ Melder "in Tasche" -->
   <button id="melderReopen" class="melderReopen" type="button" aria-label="Melder erneut öffnen">
      Melder
   </button>
 
-  <!-- ===== Scanner-Overlay ===== -->
   <div id="scannerOverlay" class="scan-overlay" aria-hidden="true">
     <div class="scan-ui">
       <video id="scanVideo" playsinline></video>
@@ -598,17 +574,11 @@
     </div>
   </div>
 
-  <!-- =========================================================
-       ✅ AUDIO FINAL (iOS stabil)
-       - Pre: pro Klick NEUES Audio-Objekt
-       - Alarmton2: beim Klick STUMM "armen", später hörbar starten (kein doppelter Alarm)
-       ========================================================= -->
   <script>
     const ASSET_VER = '2026-02-02-1';
     const PRE_URL   = `/status1_pre.mp3?v=${ASSET_VER}`;
     const ALARM_URL = `/Alarmton2.mp3?v=${ASSET_VER}`;
 
-    // EIN Alarm-Player (wird "armed" im Klick)
     const alarmAudio = new Audio(ALARM_URL);
     alarmAudio.preload = 'auto';
 
@@ -636,7 +606,6 @@
       }catch{}
     }
 
-    // ✅ Pre + Alarm "unlocken", aber Alarm bleibt stumm (kein hörbarer Alarm beim Klick)
     function primeAllSounds(){
       if (__audioPrimed) return;
       __audioPrimed = true;
@@ -644,10 +613,8 @@
       const tmp = makePreAudio();
       primeAudioEl(tmp);
 
-      // Alarm stumm "armen"
       primeAudioEl(alarmAudio);
 
-      // sicher laden
       try { alarmAudio.load(); } catch {}
     }
 
@@ -684,7 +651,6 @@
     }
   </script>
 
-  <!-- ✅ Gate Logik: immer anzeigen, Button tap primed Audio, dann frei -->
   <script>
     (function(){
       'use strict';
@@ -713,9 +679,6 @@
     })();
   </script>
 
-  <!-- =========================================================
-       ✅ STATUS 1: Melder-Sequence
-       ========================================================= -->
   <script>
     function getScenarioFallback(){
       return {
@@ -873,7 +836,6 @@
 
       stopAlarm();
 
-      // ✅ später NUR Alarmton2 starten (aber Player wurde schon im Klick "freigeschaltet")
       const pagerSound = normalizeSoundUrl(sc.pagerSound || ALARM_URL);
 
       try{
@@ -919,12 +881,11 @@
       setConfirmEnabled(true);
     }
 
-    // ✅ Status 1
     startButton.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
 
-      primeAllSounds(); // ✅ iOS unlock (Pre + Alarm stumm armed)
+      primeAllSounds();
 
       resetAuswertungOnly();
       startButton.style.display = "none";
@@ -944,7 +905,6 @@
       });
     }, { passive: false });
 
-    // ✅ Status 3 / Schließen
     confirmBtn.addEventListener('click', async (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -963,7 +923,6 @@
       });
     }, { passive: false });
 
-    // ✅ Reopen
     reopenBtn.addEventListener('click', (e)=>{
       e.preventDefault();
       e.stopPropagation();
@@ -974,7 +933,6 @@
       openMelder();
     }, { passive: false });
 
-    // Ripple Effekt
     document.addEventListener('click', function(e){
       const btn = e.target.closest('.status-btn');
       if(!btn) return;
@@ -990,7 +948,6 @@
     }, { passive: true });
   </script>
 
-  <!-- ===== Reset für Status 4 (wie bei dir) ===== -->
   <script>
     function resetClinicAndAssignmentsLikeEnd() {
       try {
@@ -1000,6 +957,7 @@
           ['ablage.active.v1','ablage.history.v1','ablage.sessionStart.v1','ablage.done.v1']
             .forEach(k => localStorage.removeItem(k));
         }
+
         localStorage.setItem('sichtungMap', '{}');
 
         const exact = new Set([
@@ -1019,25 +977,44 @@
 
         try { window.Sperrung?.resetAll?.(); } catch(_) {}
 
+        /* WICHTIG.
+           Dynamik Keys muessen bleiben, sonst verschwindet deine Dynamik nach Status 4.
+        */
+        const keepExact = new Set([
+          'ablage.dynamik.v1',
+          'ablage.dynamik.plan.v1',
+          'ablage.sessionStart.v1'
+        ]);
+
         const toRemove = [];
         for (let i = localStorage.length - 1; i >= 0; i--) {
-          const k = localStorage.key(i); if (!k) continue;
+          const k = localStorage.key(i);
+          if (!k) continue;
+
           if (k === 'sichtungMap') continue;
+
+          if (keepExact.has(k)) continue;
+          if (k.startsWith('ablage.dynamik.')) continue;
+
           if (exact.has(k) || prefixes.some(p => k.startsWith(p))) toRemove.push(k);
           else if (/(^|[.:_])(sperr|lock|block|gesperrt)([.:_]|$)/i.test(k)) toRemove.push(k);
         }
         toRemove.forEach(k => localStorage.removeItem(k));
 
         localStorage.setItem('blockedPages', '[]');
-        localStorage.setItem('resetFlag', String(Date.now()));
+
+        /* resetFlag hier NICHT setzen.
+           resetFlag ist fuer echten Neustart, Wert true.
+           Fuer Status 4 nehmen wir einen eigenen Marker.
+        */
+        localStorage.setItem('status4At', String(Date.now()));
         localStorage.setItem('sperrungResetAt', String(Date.now()));
       } catch (e) {
-        console.warn('Reset-Fehler (Status 4):', e);
+        console.warn('Reset Fehler (Status 4):', e);
       }
     }
   </script>
 
-  <!-- ===== Scanner (Status 4) ===== -->
   <script>
   (function wrapGetUserMediaOnce(){
     if (!navigator.mediaDevices?.getUserMedia) return;
@@ -1079,7 +1056,7 @@
       const n = String(decoded).match(/\d+/)?.[0];
       if (n) { location.assign(('/patient'+n+'.html').toLowerCase()); return; }
       if (navigator.onLine) location.assign(String(decoded));
-      else alert('Unbekanntes QR-Ziel und offline.');
+      else alert('Unbekanntes QR Ziel und offline.');
     }
   }
 
@@ -1114,7 +1091,7 @@
         try { history.pushState({scan:true}, ''); } catch {}
       } catch (e){
         console.error('[Scanner] getUserMedia failed:', e);
-        alert('Kamera konnte nicht gestartet werden. HTTPS & Berechtigungen prüfen.');
+        alert('Kamera konnte nicht gestartet werden. HTTPS und Berechtigungen prüfen.');
         closeScanner();
       }
     }
@@ -1163,7 +1140,6 @@
       try { const st = history.state; if (st && st.scan) history.back(); } catch {}
     }
 
-    // ✅ Status 4
     startBtn.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -1187,10 +1163,8 @@
   })();
   </script>
 
-  <!-- Warmup -->
   <script defer src="/warmup.js?v=2025-08-23-2"></script>
 
-  <!-- SW-Registrierung -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/service-worker.js')
