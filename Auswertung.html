@@ -222,13 +222,14 @@
       localStorage.removeItem('ablage_ids');
       localStorage.setItem('resetFlag', 'true');
     }
-    function resetAuswertungData() {
-      Object.keys(localStorage).forEach(k=>{
-        if (k.startsWith('time_') || k.startsWith('sichtung_')) {
-          localStorage.removeItem(k);
-        }
-      });
-      
+
+    function resetAuswertungViewOnly() {
+      // Nur die Anzeige auf dieser Seite leeren.
+      // Keine localStorage Änderungen.
+      // Kein resetFlag.
+      document.getElementById('gesamtzeit').textContent = '00:00';
+      document.getElementById('patientenzeiten').innerHTML = '';
+      document.getElementById('patientenfarben').innerHTML = '';
     }
 
     // ---------- Buttons ----------
@@ -239,10 +240,7 @@
 
     document.getElementById('toAblage')?.addEventListener('click', (e)=>{
       e.preventDefault();
-      resetAuswertungData();
-      document.getElementById('gesamtzeit').textContent = '00:00';
-      document.getElementById('patientenzeiten').innerHTML = '';
-      document.getElementById('patientenfarben').innerHTML = '';
+      resetAuswertungViewOnly();
       window.location.href = "/ablage1.html";
     });
 
