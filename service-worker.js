@@ -4,7 +4,7 @@
 // + patienten.json network-first (iPad/PWA Cache-Falle gelöst)
 // + Duplikat-RespondWith-Block entfernt
 
-const CACHE_VERSION = 'app-v2025-12-28-9';
+const CACHE_VERSION = 'app-v2025-12-28-11';
 const CACHE_NAME = `mein-pwa-cache-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 
@@ -540,6 +540,7 @@ self.addEventListener('message', (event) => {
     }
   })());
 });
+
 
 
 
