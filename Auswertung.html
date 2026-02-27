@@ -6,7 +6,34 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Zeitauswertung</title>
+<script>
+(function () {
+  try {
+    const _set = Storage.prototype.setItem;
+    const _rem = Storage.prototype.removeItem;
 
+    Storage.prototype.setItem = function (k, v) {
+      if (String(k).includes("dynamik") || String(k).includes("resetFlag")) {
+        console.log("setItem", k, v);
+        console.trace();
+      }
+      return _set.apply(this, arguments);
+    };
+
+    Storage.prototype.removeItem = function (k) {
+      if (String(k).includes("dynamik") || String(k).includes("resetFlag")) {
+        console.log("removeItem", k);
+        console.trace();
+      }
+      return _rem.apply(this, arguments);
+    };
+
+    console.log("Storage trace im HEAD aktiv");
+  } catch (e) {
+    console.warn("Storage trace init fail", e);
+  }
+})();
+</script>
   <link rel="stylesheet" href="stylesauswertung.css">
   <link rel="manifest" href="/manifest.json">
 
@@ -415,3 +442,4 @@
   <script src="/metrics.js" defer></script>
 </body>
 </html>
+
