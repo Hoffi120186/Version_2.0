@@ -118,12 +118,12 @@
     }
     function __prio(cat, flags){
       const t=!!flags?.t, b=!!flags?.b;
-      if (cat==='rot'   && t) return 0; // SK1 · T
-      if (cat==='rot')        return 1; // SK1
-      if (cat==='gelb')       return 2; // SK2
-      if (cat==='gruen' && b) return 3; // SK3 · B
-      if (cat==='gruen')      return 4; // SK3
-      if (cat==='schwarz')    return 5; // SK4
+      if (cat==='rot'   && t) return 0;
+      if (cat==='rot')        return 1;
+      if (cat==='gelb')       return 2;
+      if (cat==='gruen' && b) return 3;
+      if (cat==='gruen')      return 4;
+      if (cat==='schwarz')    return 5;
       return 6;
     }
     function __numFromId(id){ return parseInt(String(id).replace(/\D/g,''))||99999; }
@@ -154,14 +154,14 @@
       tBodyTimes.appendChild(tr);
     });
 
-    // ---------- Sichtungen (Anzeige + Sortierung nach Prio) ----------
+    // ---------- Sichtungen ----------
     function readSichtungenDedup() {
       let sMap = {};
       try { sMap = JSON.parse(localStorage.getItem('sichtungMap') || '{}'); } catch {}
       let ablage = [];
       try { ablage = JSON.parse(localStorage.getItem('ablage.active.v1') || '[]'); } catch {}
 
-      const out = new Map(); // id lc -> { id, sk }
+      const out = new Map();
       Object.entries(sMap).forEach(([id, sk])=>{
         if(!id || !sk) return;
         out.set(String(id).toLowerCase(), { id:String(id).toLowerCase(), sk });
@@ -224,12 +224,28 @@
     }
 
     function resetAuswertungViewOnly() {
-      // Nur die Anzeige auf dieser Seite leeren.
-      // Keine localStorage Änderungen.
-      // Kein resetFlag.
       document.getElementById('gesamtzeit').textContent = '00:00';
       document.getElementById('patientenzeiten').innerHTML = '';
       document.getElementById('patientenfarben').innerHTML = '';
+    }
+
+    // ---------- Dynamik SessionStart sicherstellen ----------
+    function ensureDynSessionStart() {
+      try {
+        const dynRaw = localStorage.getItem("ablage.dynamik.v1");
+        if (!dynRaw) return;
+
+        const dyn = JSON.parse(dynRaw);
+        if (!dyn || dyn.enabled !== true) return;
+
+        const ss = localStorage.getItem("ablage.sessionStart.v1");
+        if (!ss) {
+          localStorage.setItem("ablage.sessionStart.v1", String(Date.now()));
+          console.log("DYNAMIK. SessionStart in Auswertung gesetzt");
+        }
+      } catch (e) {
+        console.warn("ensureDynSessionStart fail", e);
+      }
     }
 
     // ---------- Buttons ----------
@@ -240,6 +256,7 @@
 
     document.getElementById('toAblage')?.addEventListener('click', (e)=>{
       e.preventDefault();
+      ensureDynSessionStart();
       resetAuswertungViewOnly();
       window.location.href = "/ablage1.html";
     });
