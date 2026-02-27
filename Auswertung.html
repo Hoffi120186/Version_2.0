@@ -6,34 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Zeitauswertung</title>
-<script>
-(function () {
-  try {
-    const _set = Storage.prototype.setItem;
-    const _rem = Storage.prototype.removeItem;
 
-    Storage.prototype.setItem = function (k, v) {
-      if (String(k).includes("dynamik") || String(k).includes("resetFlag")) {
-        console.log("setItem", k, v);
-        console.trace();
-      }
-      return _set.apply(this, arguments);
-    };
-
-    Storage.prototype.removeItem = function (k) {
-      if (String(k).includes("dynamik") || String(k).includes("resetFlag")) {
-        console.log("removeItem", k);
-        console.trace();
-      }
-      return _rem.apply(this, arguments);
-    };
-
-    console.log("Storage trace im HEAD aktiv");
-  } catch (e) {
-    console.warn("Storage trace init fail", e);
-  }
-})();
-</script>
   <link rel="stylesheet" href="stylesauswertung.css">
   <link rel="manifest" href="/manifest.json">
 
@@ -69,66 +42,290 @@
   </script>
 
   <style>
-    .btn-action {
-      display:block; width:80%; max-width:320px; margin:14px auto;
-      padding:18px 28px; font-size:1.2em; font-weight:700; border-radius:40px;
-      cursor:pointer; border:none; text-align:center; text-decoration:none; color:#fff;
-      box-shadow:0 6px 14px rgba(0,0,0,0.25); transition:transform .15s, box-shadow .2s;
+    :root{
+      --bg0:#070b14;
+      --bg1:#0b1220;
+      --card:rgba(255,255,255,.10);
+      --card2:rgba(255,255,255,.14);
+      --stroke:rgba(255,255,255,.14);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.70);
+      --accent:#0B5FFF;
+      --accent2:#e53935;
+      --shadow:0 12px 30px rgba(0,0,0,.35);
+      --radius:18px;
+      --w:min(94vw,1120px);
     }
-    .btn-action:hover { transform: translateY(-2px); box-shadow:0 10px 20px rgba(0,0,0,.35); }
-    .btn-action:active { transform: scale(.97); }
-    .btn-blue { background:#2002e0; }
-    .btn-red  { background:#e53935; }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(1100px 700px at 12% 8%, rgba(11,95,255,.22), transparent 60%),
+        radial-gradient(900px 600px at 90% 18%, rgba(229,57,53,.16), transparent 55%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+      padding:18px 0 28px;
+    }
+
+    .wrap{
+      width:var(--w);
+      margin:0 auto;
+    }
+
+    .topbar{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:12px;
+      margin:6px 0 14px;
+    }
+
+    h1{
+      margin:0;
+      font-size:26px;
+      letter-spacing:.2px;
+    }
+
+    .sub{
+      margin:2px 0 0;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:12px;
+    }
+
+    .card{
+      background:linear-gradient(180deg, var(--card2), var(--card));
+      border:1px solid var(--stroke);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow:hidden;
+    }
+
+    .cardHead{
+      padding:14px 16px 10px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+
+    .cardHead h2{
+      margin:0;
+      font-size:15px;
+      font-weight:800;
+      letter-spacing:.2px;
+    }
+
+    .cardBody{
+      padding:14px 16px 16px;
+    }
+
+    .bigTime{
+      font-size:34px;
+      font-weight:900;
+      letter-spacing:.6px;
+      margin:0;
+    }
+
+    .hint{
+      margin:6px 0 0;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .tableWrap{
+      overflow:auto;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(0,0,0,.18);
+    }
+
+    table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      min-width:520px;
+    }
+
+    thead th{
+      position:sticky;
+      top:0;
+      background:rgba(255,255,255,.06);
+      color:rgba(255,255,255,.82);
+      text-align:left;
+      font-size:12px;
+      letter-spacing:.2px;
+      padding:12px 12px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+      z-index:1;
+      white-space:nowrap;
+    }
+
+    tbody td{
+      padding:12px 12px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      color:rgba(255,255,255,.90);
+      font-size:14px;
+    }
+
+    tbody tr:hover td{
+      background:rgba(255,255,255,.04);
+    }
+
+    .tdRight{
+      text-align:right;
+      font-variant-numeric: tabular-nums;
+      white-space:nowrap;
+    }
+
+    .badgeCell{
+      text-align:center;
+      font-weight:900;
+      letter-spacing:.2px;
+      border-radius:10px;
+      padding:8px 10px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:74px;
+    }
+
+    .actions{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:10px;
+      padding:14px 16px 16px;
+    }
+
+    .btn-action{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      width:100%;
+      padding:14px 16px;
+      border-radius:14px;
+      cursor:pointer;
+      border:1px solid rgba(255,255,255,.12);
+      text-align:center;
+      text-decoration:none;
+      color:#fff;
+      font-weight:900;
+      font-size:15px;
+      letter-spacing:.2px;
+      box-shadow:0 10px 24px rgba(0,0,0,.28);
+      transition:transform .12s ease, filter .12s ease, box-shadow .12s ease;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn-action:active{
+      transform:scale(.985);
+      filter:brightness(.98);
+      box-shadow:0 8px 18px rgba(0,0,0,.24);
+    }
+
+    .btn-blue{
+      background:linear-gradient(180deg, rgba(11,95,255,.98), rgba(11,95,255,.82));
+    }
+
+    .btn-red{
+      background:linear-gradient(180deg, rgba(229,57,53,.98), rgba(229,57,53,.82));
+    }
+
+    .btn-action:disabled{
+      opacity:.65;
+      cursor:not-allowed;
+      transform:none;
+    }
+
+    @media (min-width: 980px){
+      .grid{
+        grid-template-columns: 420px 1fr;
+        align-items:start;
+      }
+      .actions{
+        grid-template-columns: 1fr 1fr;
+      }
+      .actions .btn-action:last-child{
+        grid-column: 1 / -1;
+      }
+    }
   </style>
 </head>
+
 <body>
-  <h1>Zeitauswertung</h1>
+  <div class="wrap">
+    <div class="topbar">
+      <div>
+        <h1>Zeitauswertung</h1>
+        <div class="sub">Gesamtzeit, Patientenzeiten, Sichtungskategorien</div>
+      </div>
+    </div>
 
-  <h2>Gesamtzeit:</h2>
-  <div id="gesamtzeit">Wird geladen...</div>
+    <div class="grid">
+      <section class="card">
+        <div class="cardHead">
+          <h2>Gesamtzeit</h2>
+        </div>
+        <div class="cardBody">
+          <p id="gesamtzeit" class="bigTime">Wird geladen...</p>
+          <p class="hint">Diese Zeit ist die Summe aus allen gespeicherten Seitenzeiten.</p>
+        </div>
+        <div class="actions">
+          <button id="downloadPDF" class="btn-action btn-blue">Auswertung als PDF</button>
+          <a id="toAblage" href="/ablage1.html" class="btn-action btn-blue">Zur Patientenablage</a>
+          <button id="neuerEinsatzButton" class="btn-action btn-red">Neuer Einsatz</button>
+        </div>
+      </section>
 
-  <h2>Patientenzeiten:</h2>
-  <table>
-    <thead>
-      <tr><th>Patientenseite</th><th>Zeit (MM:SS)</th></tr>
-    </thead>
-    <tbody id="patientenzeiten"></tbody>
-  </table>
+      <section class="card">
+        <div class="cardHead">
+          <h2>Patientenzeiten</h2>
+        </div>
+        <div class="cardBody">
+          <div class="tableWrap">
+            <table>
+              <thead>
+                <tr><th>Patientenseite</th><th class="tdRight">Zeit (MM:SS)</th></tr>
+              </thead>
+              <tbody id="patientenzeiten"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
 
-  <h2>Sichtungskategorien:</h2>
-  <table>
-    <thead>
-      <tr><th>Patientenseite</th><th>Sichtung</th></tr>
-    </thead>
-    <tbody id="patientenfarben"></tbody>
-  </table>
-
-  <div class="actions">
-    <button id="downloadPDF" class="btn-action btn-blue">Auswertung als PDF</button>
-    <a id="toAblage" href="/ablage1.html" class="btn-action btn-blue">Zur Patientenablage</a>
-    <button id="neuerEinsatzButton" class="btn-action btn-red">Neuer Einsatz</button>
+      <section class="card" style="grid-column: 1 / -1;">
+        <div class="cardHead">
+          <h2>Sichtungskategorien</h2>
+        </div>
+        <div class="cardBody">
+          <div class="tableWrap">
+            <table>
+              <thead>
+                <tr><th>Patientenseite</th><th style="text-align:center">Sichtung</th></tr>
+              </thead>
+              <tbody id="patientenfarben"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
   </div>
 
   <script>
   document.addEventListener('DOMContentLoaded', () => {
-
-    // ---------- Debug: wer löscht Dynamik ----------
-    (function () {
-      try {
-        const _rem = Storage.prototype.removeItem;
-        Storage.prototype.removeItem = function (k) {
-          if (String(k).includes("dynamik") || String(k).includes("resetFlag")) {
-            console.log("removeItem", k);
-            console.trace();
-          }
-          return _rem.apply(this, arguments);
-        };
-        console.log("removeItem trace aktiv");
-      } catch (e) {
-        console.warn("trace init fail", e);
-      }
-    })();
-
     // ---------- Helpers ----------
     const mmss = (sec)=>`${String(Math.floor(sec/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`;
     const pageLabelFromKey = (key, prefix) => {
@@ -163,12 +360,12 @@
     }
     function __prio(cat, flags){
       const t=!!flags?.t, b=!!flags?.b;
-      if (cat==='rot'   && t) return 0;
-      if (cat==='rot')        return 1;
-      if (cat==='gelb')       return 2;
-      if (cat==='gruen' && b) return 3;
-      if (cat==='gruen')      return 4;
-      if (cat==='schwarz')    return 5;
+      if (cat==='rot'   && t) return 0; // SK1 · T
+      if (cat==='rot')        return 1; // SK1
+      if (cat==='gelb')       return 2; // SK2
+      if (cat==='gruen' && b) return 3; // SK3 · B
+      if (cat==='gruen')      return 4; // SK3
+      if (cat==='schwarz')    return 5; // SK4
       return 6;
     }
     function __numFromId(id){ return parseInt(String(id).replace(/\D/g,''))||99999; }
@@ -195,18 +392,18 @@
     tBodyTimes.innerHTML = '';
     timeRows.forEach(r=>{
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${r.page}</td><td>${r.mm}</td>`;
+      tr.innerHTML = `<td>${r.page}</td><td class="tdRight">${r.mm}</td>`;
       tBodyTimes.appendChild(tr);
     });
 
-    // ---------- Sichtungen ----------
+    // ---------- Sichtungen (Anzeige + Sortierung nach Prio) ----------
     function readSichtungenDedup() {
       let sMap = {};
       try { sMap = JSON.parse(localStorage.getItem('sichtungMap') || '{}'); } catch {}
       let ablage = [];
       try { ablage = JSON.parse(localStorage.getItem('ablage.active.v1') || '[]'); } catch {}
 
-      const out = new Map();
+      const out = new Map(); // id lc -> { id, sk }
       Object.entries(sMap).forEach(([id, sk])=>{
         if(!id || !sk) return;
         out.set(String(id).toLowerCase(), { id:String(id).toLowerCase(), sk });
@@ -237,18 +434,20 @@
         const label = id.replace(/^patient(\d+)/i, 'Patient $1');
         const cat = normKat(sk);
 
-        let bg='white', color='black';
-        if (cat==='rot'){ bg='red'; color='white'; }
-        else if (cat==='gelb'){ bg='yellow'; color='black'; }
-        else if (cat==='gruen'){ bg='green'; color='white'; }
-        else if (cat==='schwarz'){ bg='black'; color='white'; }
+        let bg='rgba(255,255,255,.10)', color='rgba(255,255,255,.92)';
+        if (cat==='rot'){ bg='rgba(220,38,38,.92)'; color='#fff'; }
+        else if (cat==='gelb'){ bg='rgba(234,179,8,.92)'; color='#111'; }
+        else if (cat==='gruen'){ bg='rgba(22,163,74,.92)'; color='#fff'; }
+        else if (cat==='schwarz'){ bg='rgba(0,0,0,.92)'; color='#fff'; }
 
         const display = getSichtungDisplay(id, cat);
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${label}</td>
-          <td style="background:${bg};color:${color};font-weight:700;text-align:center">${display}</td>
+          <td style="text-align:center">
+            <span class="badgeCell" style="background:${bg};color:${color}">${display}</span>
+          </td>
         `;
         tbody.appendChild(tr);
       });
@@ -267,30 +466,13 @@
       localStorage.removeItem('ablage_ids');
       localStorage.setItem('resetFlag', 'true');
     }
-
-    function resetAuswertungViewOnly() {
-      document.getElementById('gesamtzeit').textContent = '00:00';
-      document.getElementById('patientenzeiten').innerHTML = '';
-      document.getElementById('patientenfarben').innerHTML = '';
-    }
-
-    // ---------- Dynamik SessionStart sicherstellen ----------
-    function ensureDynSessionStart() {
-      try {
-        const dynRaw = localStorage.getItem("ablage.dynamik.v1");
-        if (!dynRaw) return;
-
-        const dyn = JSON.parse(dynRaw);
-        if (!dyn || dyn.enabled !== true) return;
-
-        const ss = localStorage.getItem("ablage.sessionStart.v1");
-        if (!ss) {
-          localStorage.setItem("ablage.sessionStart.v1", String(Date.now()));
-          console.log("DYNAMIK. SessionStart in Auswertung gesetzt");
+    function resetAuswertungData() {
+      Object.keys(localStorage).forEach(k=>{
+        if (k.startsWith('time_') || k.startsWith('sichtung_')) {
+          localStorage.removeItem(k);
         }
-      } catch (e) {
-        console.warn("ensureDynSessionStart fail", e);
-      }
+      });
+      localStorage.setItem('resetFlag', 'true');
     }
 
     // ---------- Buttons ----------
@@ -301,8 +483,10 @@
 
     document.getElementById('toAblage')?.addEventListener('click', (e)=>{
       e.preventDefault();
-      ensureDynSessionStart();
-      resetAuswertungViewOnly();
+      resetAuswertungData();
+      document.getElementById('gesamtzeit').textContent = '00:00';
+      document.getElementById('patientenzeiten').innerHTML = '';
+      document.getElementById('patientenfarben').innerHTML = '';
       window.location.href = "/ablage1.html";
     });
 
@@ -423,17 +607,6 @@
         btn.disabled = false; btn.dataset.busy='0';
       }
     });
-
-    // ---------- Quick-Status Log ----------
-    console.log("AUSWERTUNG STATE", {
-      dyn: localStorage.getItem("ablage.dynamik.v1"),
-      plan: localStorage.getItem("ablage.dynamik.plan.v1"),
-      sessionStart: localStorage.getItem("ablage.sessionStart.v1"),
-      active: localStorage.getItem("ablage.active.v1"),
-      resetFlag: localStorage.getItem("resetFlag"),
-      timeCount: Object.keys(localStorage).filter(k=>k.startsWith("time_")).length
-    });
-
   });
   </script>
 
@@ -442,4 +615,3 @@
   <script src="/metrics.js" defer></script>
 </body>
 </html>
-
