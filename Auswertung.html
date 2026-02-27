@@ -84,6 +84,24 @@
 
   <script>
   document.addEventListener('DOMContentLoaded', () => {
+
+    // ---------- Debug: wer löscht Dynamik ----------
+    (function () {
+      try {
+        const _rem = Storage.prototype.removeItem;
+        Storage.prototype.removeItem = function (k) {
+          if (String(k).includes("dynamik") || String(k).includes("resetFlag")) {
+            console.log("removeItem", k);
+            console.trace();
+          }
+          return _rem.apply(this, arguments);
+        };
+        console.log("removeItem trace aktiv");
+      } catch (e) {
+        console.warn("trace init fail", e);
+      }
+    })();
+
     // ---------- Helpers ----------
     const mmss = (sec)=>`${String(Math.floor(sec/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`;
     const pageLabelFromKey = (key, prefix) => {
@@ -378,6 +396,17 @@
         btn.disabled = false; btn.dataset.busy='0';
       }
     });
+
+    // ---------- Quick-Status Log ----------
+    console.log("AUSWERTUNG STATE", {
+      dyn: localStorage.getItem("ablage.dynamik.v1"),
+      plan: localStorage.getItem("ablage.dynamik.plan.v1"),
+      sessionStart: localStorage.getItem("ablage.sessionStart.v1"),
+      active: localStorage.getItem("ablage.active.v1"),
+      resetFlag: localStorage.getItem("resetFlag"),
+      timeCount: Object.keys(localStorage).filter(k=>k.startsWith("time_")).length
+    });
+
   });
   </script>
 
