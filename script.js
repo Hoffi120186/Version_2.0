@@ -952,3 +952,110 @@ function getSichtungDisplay(id){
     return data;
   };
 })();
+
+/* =========================================================
+   Ablage Scan Modus
+   Beim Klick auf "Nächster QR Scan" Patient in Ablage schreiben
+   und startAt sofort setzen
+   ========================================================= */
+(function(){
+  const MODE_KEY = 'scan.mode';
+  const ABL_KEY  = 'ablage.active.v1';
+
+  function inAblageMode(){
+    try{ return localStorage.getItem(MODE_KEY) === 'ablage'; }catch(_){ return false; }
+  }
+
+  function Jload(k,f){ try{ return JSON.parse(localStorage.getItem(k)) ?? f; } catch(_) { return f; } }
+  function Jsave(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); } catch(_) {} }
+
+  function getPatientId(){
+    try{
+      if(typeof window.__detectPatientIdFromPage === 'function'){
+        return String(window.__detectPatientIdFromPage() || '').toLowerCase();
+      }
+    }catch(_){}
+    const file = (location.pathname.split('/').pop() || '').trim().toLowerCase();
+    return file.replace('.html','');
+  }
+
+  function ensureAblageEntryStartNow(){
+    const id = getPatientId();
+    if(!id) return;
+
+    const kat = (window.SKWriter && typeof window.SKWriter.getSK === 'function') ? window.SKWriter.getSK(id) : '';
+    if(!kat) return;
+
+    const now = Date.now();
+    let list = Jload(ABL_KEY, []);
+    if(!Array.isArray(list)) list = [];
+
+    const idx = list.findIndex(x => x && String(x.id).toLowerCase() === id);
+    if(idx >= 0){
+      const cur = list[idx] || {};
+      if(typeof cur.startAt !== 'number') cur.startAt = now;
+      if(typeof cur.queuedAt !== 'number') cur.queuedAt = now;
+      cur.prio = cur.prio || kat;
+      cur.sk   = cur.sk   || kat;
+      list[idx] = cur;
+    } else {
+      list.push({
+        id: id,
+        label: 'Patient ' + id.replace(/\D/g,''),
+        prio: kat,
+        sk: kat,
+        queuedAt: now,
+        startAt: now,
+        offset: 0
+      });
+    }
+
+    Jsave(ABL_KEY, list);
+  }
+
+  function addBackToAblageButton(){
+    if(document.getElementById('btnBackToAblage')) return;
+
+    const btn = document.createElement('button');
+    btn.id = 'btnBackToAblage';
+    btn.type = 'button';
+    btn.textContent = 'Zur Ablage';
+
+    btn.style.position = 'fixed';
+    btn.style.right = '12px';
+    btn.style.bottom = '78px';
+    btn.style.zIndex = '9999';
+    btn.style.padding = '10px 14px';
+    btn.style.borderRadius = '10px';
+    btn.style.border = '0';
+    btn.style.fontWeight = '700';
+
+    btn.addEventListener('click', function(){
+      location.href = 'ablage1.html';
+    });
+
+    document.body.appendChild(btn);
+  }
+
+  function wire(){
+    if(!inAblageMode()) return;
+
+    addBackToAblageButton();
+
+    const btnNext = document.getElementById('btn4');
+    if(!btnNext) return;
+
+    if(btnNext.__wiredAblageNext) return;
+    btnNext.__wiredAblageNext = true;
+
+    btnNext.addEventListener('click', function(){
+      ensureAblageEntryStartNow();
+    }, { capture:true });
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', wire, { once:true });
+  } else {
+    wire();
+  }
+})();
