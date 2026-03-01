@@ -962,6 +962,10 @@ function getSichtungDisplay(id){
   const MODE_KEY = 'scan.mode';
   const ABL_KEY  = 'ablage.active.v1';
 
+  function clearAblageMode(){
+    try{ localStorage.removeItem(MODE_KEY); }catch(_){ }
+  }
+
   function inAblageMode(){
     try{ return localStorage.getItem(MODE_KEY) === 'ablage'; }catch(_){ return false; }
   }
@@ -1040,7 +1044,15 @@ function getSichtungDisplay(id){
       location.href = 'ablage1.html';
     });
 
+    // Standard: unsichtbar, wird erst nach SK-Wahl angezeigt
+    btn.style.display = 'none';
     document.body.appendChild(btn);
+  }
+
+  function showBackButton(){
+    var b = document.getElementById('btnBackToAblage');
+    if(!b) return;
+    if(b.style.display !== 'block') b.style.display = 'block';
   }
 
   function wire(){
@@ -1048,6 +1060,23 @@ function getSichtungDisplay(id){
 
     injectAblageBackStyles();
     addBackToAblageButton();
+
+    // Wenn bereits eine SK gespeichert ist, darf der Button sofort erscheinen
+    try{
+      var pid = getPatientId();
+      var has = pid && window.SKWriter && typeof window.SKWriter.getSK === 'function' && window.SKWriter.getSK(pid);
+      if(has) showBackButton();
+    }catch(_){ }
+
+    // Button erst nach SK-Wahl sichtbar machen
+    document.addEventListener('click', function(ev){
+      var el = ev && ev.target;
+      if(!el) return;
+      // typische SK Buttons
+      if(el.closest && el.closest('.sk-btn,[data-sichtung],[data-sk],[data-category],button[name="sk"],.btn-sk')){
+        showBackButton();
+      }
+    }, { capture:true });
 
     const btnNext = document.getElementById('btn4');
     if(!btnNext) return;
@@ -1057,7 +1086,29 @@ function getSichtungDisplay(id){
 
     btnNext.addEventListener('click', function(){
       ensureAblageEntryStartNow();
+      showBackButton();
     }, { capture:true });
+
+    // Wenn der User bewusst zur Startseite oder Status 4 geht, ist das kein Ablage-Scan-Flow mehr
+    try{
+      var s4 = document.getElementById('status4Button');
+      if(s4 && !s4.__wiredClearAblageMode){
+        s4.__wiredClearAblageMode = true;
+        s4.addEventListener('click', clearAblageMode, { capture:true });
+      }
+    }catch(_){ }
+
+    try{
+      var nodes = Array.prototype.slice.call(document.querySelectorAll('a,button'));
+      nodes.forEach(function(n){
+        if(!n || n.__wiredClearAblageMode) return;
+        var t = (n.textContent || '').trim();
+        if(t === 'Startseite'){
+          n.__wiredClearAblageMode = true;
+          n.addEventListener('click', clearAblageMode, { capture:true });
+        }
+      });
+    }catch(_){ }
   }
 
   if(document.readyState === 'loading'){
