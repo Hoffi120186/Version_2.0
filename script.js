@@ -1013,22 +1013,28 @@ function getSichtungDisplay(id){
     Jsave(ABL_KEY, list);
   }
 
+
+  function injectAblageBackStyles(){
+    if(document.getElementById('style-ablage-back')) return;
+    var st = document.createElement('style');
+    st.id = 'style-ablage-back';
+    st.textContent =
+      ".btn-ablage-back{position:fixed;left:50%;bottom:118px;transform:translateX(-50%);z-index:9999;padding:14px 28px;border-radius:18px;border:2px solid rgba(255,255,255,.25);font-weight:900;font-size:16px;letter-spacing:.3px;background:linear-gradient(135deg,#0B5FFF,#0043c7);color:#fff;box-shadow:0 12px 35px rgba(0,0,0,.40),0 0 0 0 rgba(11,95,255,.70);backdrop-filter:blur(6px);transition:transform .2s ease,box-shadow .2s ease;}" +
+      ".btn-ablage-back:hover{transform:translateX(-50%) scale(1.05);}" +
+      ".btn-ablage-back:active{transform:translateX(-50%) scale(.98);}" +
+      ".btn-ablage-back.pulse{animation:ablagePulse 1.5s infinite;}" +
+      "@keyframes ablagePulse{0%{box-shadow:0 12px 35px rgba(0,0,0,.40),0 0 0 0 rgba(11,95,255,.70);}70%{box-shadow:0 12px 35px rgba(0,0,0,.40),0 0 0 18px rgba(11,95,255,0);}100%{box-shadow:0 12px 35px rgba(0,0,0,.40),0 0 0 0 rgba(11,95,255,0);}}";
+    document.head.appendChild(st);
+  }
+
   function addBackToAblageButton(){
     if(document.getElementById('btnBackToAblage')) return;
 
     const btn = document.createElement('button');
     btn.id = 'btnBackToAblage';
     btn.type = 'button';
-    btn.textContent = 'Zur Ablage';
-
-    btn.style.position = 'fixed';
-    btn.style.right = '12px';
-    btn.style.bottom = '78px';
-    btn.style.zIndex = '9999';
-    btn.style.padding = '10px 14px';
-    btn.style.borderRadius = '10px';
-    btn.style.border = '0';
-    btn.style.fontWeight = '700';
+    btn.className = 'btn btn-ablage-back pulse';
+    btn.textContent = 'Zurück zur Patientenablage';
 
     btn.addEventListener('click', function(){
       location.href = 'ablage1.html';
@@ -1040,6 +1046,7 @@ function getSichtungDisplay(id){
   function wire(){
     if(!inAblageMode()) return;
 
+    injectAblageBackStyles();
     addBackToAblageButton();
 
     const btnNext = document.getElementById('btn4');
