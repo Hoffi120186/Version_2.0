@@ -269,7 +269,25 @@ h2{
 .btn-assign-clinic:active{ transform:scale(.99); }
 
 @media print{ header{display:none !important} .stats{display:none !important} }
-  </style>
+  
+/* =========================================
+   Patienten scannen Button Upgrade
+   ========================================= */
+.btn-scan-highlight{
+  background: linear-gradient(135deg, #0B5FFF, #00c6ff) !important;
+  color:#fff !important;
+  font-weight:900 !important;
+  border:1px solid rgba(255,255,255,.30) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35), 0 0 18px rgba(0,198,255,.50) !important;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.btn-scan-highlight:hover{
+  transform: scale(1.06);
+  box-shadow: 0 12px 30px rgba(0,0,0,.45), 0 0 24px rgba(0,198,255,.80) !important;
+}
+.btn-scan-highlight:active{ transform: scale(.98); }
+
+</style>
 
   <link rel="stylesheet" href="/app-flow.css">
   <script src="/vx_profiles.js"></script>
@@ -284,7 +302,7 @@ h2{
     <button class="btn alt" onclick="location.href='index.html'">Startseite</button>
     <h1>Patientenablage</h1>
     <button class="btn" onclick="location.href='klinik.html'">Zuweisungen/Auswertung</button>
-    <button class="btn" id="btnScanAblage">Patient scannen</button>
+    <button class="btn btn-scan-highlight" id="btnScanAblage">Patient scannen</button>
     <div class="header-right">
       <input type="text" id="search" class="search" placeholder="Suche..." />
       <label style="display:flex;align-items:center;gap:6px;">
