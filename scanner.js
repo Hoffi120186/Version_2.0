@@ -113,13 +113,6 @@ function navigateOnceAbsUrl(absUrl) {
   if (__navLock || (now - __lastNavTs < 800)) return; // 0.8s Debounce
   __navLock = true;
   __lastNavTs = now;
-
-  // Merke, von welcher Seite der Scan gestartet wurde, für Ablage-Scan-Mode
-  try {
-    sessionStorage.setItem('scan.lastScannerPage', String(location.pathname || ''));
-    sessionStorage.setItem('scan.lastScannerTs', String(now));
-  } catch {}
-
   // replace → kein History-Müll, minimiert Zurück-Flicker
   location.replace(absUrl);
 }
@@ -356,7 +349,6 @@ function initScanner() {
             }
 
             // 2) Bereits im Einsatz besucht → Nachfrage
-            // Auch wenn es der zuletzt gescannte Patient war, nach kurzer Sperre soll die Nachfrage kommen
             if (visitedPatients.has(pid)) {
               confirmRescan(pid).then(ok => {
                 if (ok && !redirected) {
