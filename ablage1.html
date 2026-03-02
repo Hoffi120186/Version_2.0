@@ -344,6 +344,7 @@ h2{
     e.preventDefault();
 
     try{ localStorage.setItem('scan.mode', 'ablage'); }catch(_){}
+    try{ sessionStorage.setItem('scan.mode', 'ablage'); }catch(_){}
 
     var camBtn = document.getElementById('cameraButton');
     if(camBtn){
