@@ -347,9 +347,6 @@ h2{
 
     var camBtn = document.getElementById('cameraButton');
     if(camBtn){
-      try{
-        if(typeof window.resetScanSession === 'function') window.resetScanSession();
-      }catch(_e){}
       try{ camBtn.click(); }catch(_c){}
       return;
     }
