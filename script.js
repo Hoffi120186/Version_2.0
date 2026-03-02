@@ -1055,6 +1055,12 @@ function getSichtungDisplay(id){
     if(b.style.display !== 'block') b.style.display = 'block';
   }
 
+  function hideBackButton(){
+    var b = document.getElementById('btnBackToAblage');
+    if(!b) return;
+    b.style.display = 'none';
+  }
+
   function wire(){
     if(!inAblageMode()) return;
 
@@ -1085,8 +1091,9 @@ function getSichtungDisplay(id){
     btnNext.__wiredAblageNext = true;
 
     btnNext.addEventListener('click', function(){
+      // beim Weiter-Scannen Button ausblenden. Er erscheint beim nächsten Patienten nach SK-Wahl wieder
+      hideBackButton();
       ensureAblageEntryStartNow();
-      showBackButton();
     }, { capture:true });
 
     // Wenn der User bewusst zur Startseite oder Status 4 geht, ist das kein Ablage-Scan-Flow mehr
