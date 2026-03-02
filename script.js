@@ -964,10 +964,30 @@ function getSichtungDisplay(id){
 
   function clearAblageMode(){
     try{ localStorage.removeItem(MODE_KEY); }catch(_){ }
+    try{ sessionStorage.removeItem(MODE_KEY); }catch(_){ }
   }
 
   function inAblageMode(){
-    try{ return localStorage.getItem(MODE_KEY) === 'ablage'; }catch(_){ return false; }
+    try{
+      var mode = '';
+      try{ mode = localStorage.getItem(MODE_KEY) || ''; }catch(_){}
+      try{ if(!mode) mode = sessionStorage.getItem(MODE_KEY) || ''; }catch(_){}
+
+      if(mode !== 'ablage') return false;
+
+      // Zusätzliche Sicherung, nur wenn der letzte Scan wirklich aus der Ablage kam
+      var lastPage = '';
+      var lastTs = 0;
+      try{ lastPage = sessionStorage.getItem('scan.lastScannerPage') || ''; }catch(_){}
+      try{ lastTs = Number(sessionStorage.getItem('scan.lastScannerTs') || 0); }catch(_){ lastTs = 0; }
+
+      var isFromAblage = String(lastPage).toLowerCase().indexOf('ablage1') >= 0;
+      var fresh = !lastTs ? true : (Date.now() - lastTs) < (60 * 60 * 1000); // 60 Minuten Fenster
+
+      return !!(isFromAblage && fresh);
+    }catch(_){
+      return false;
+    }
   }
 
   function Jload(k,f){ try{ return JSON.parse(localStorage.getItem(k)) ?? f; } catch(_) { return f; } }
@@ -1078,8 +1098,18 @@ function getSichtungDisplay(id){
     document.addEventListener('click', function(ev){
       var el = ev && ev.target;
       if(!el) return;
-      // typische SK Buttons
-      if(el.closest && el.closest('.sk-btn,[data-sichtung],[data-sk],[data-category],button[name="sk"],.btn-sk')){
+      // SK Auswahl erkennen, bewusst strikt, damit der Button nicht zufällig auftaucht
+      var id = (el.id || '').toLowerCase();
+      var txt = (el.textContent || '').toLowerCase().trim();
+
+      var isSkBtn =
+        id === 'btn1' || id === 'btn2' || id === 'btn3' || id === 'btn0' ||
+        id.indexOf('sk1') >= 0 || id.indexOf('sk2') >= 0 || id.indexOf('sk3') >= 0 || id.indexOf('sk0') >= 0 ||
+        txt === 'sk1' || txt === 'sk2' || txt === 'sk3' || txt === 'sk0' ||
+        txt.indexOf('sk 1') >= 0 || txt.indexOf('sk 2') >= 0 || txt.indexOf('sk 3') >= 0 ||
+        (el.closest && el.closest('.sk-btn,.btn-sk'));
+
+      if(isSkBtn){
         showBackButton();
       }
     }, { capture:true });
