@@ -1154,3 +1154,147 @@ function getSichtungDisplay(id){
     wire();
   }
 })();
+
+
+
+/* =========================================================
+   Ablage-Scan Back-Button: stabil, nur nach SK-Klick, versteckt bei Next-Scan
+   Fix: keine Zufalls-Anzeige im Normalflow, kein sofortiges Anzeigen bei alten SK
+   ========================================================= */
+(function(){
+  'use strict';
+
+  var MODE_KEY = 'scan.mode';          // wird in ablage1 gesetzt (sessionStorage)
+  var MODE_TS  = 'scan.mode.ts';       // heartbeat
+  var MODE_TTL_MS = 30 * 60 * 1000;    // 30 Minuten
+
+  function now(){ return Date.now(); }
+
+  function getSess(k){ try{ return sessionStorage.getItem(k); }catch(_){ return null; } }
+  function setSess(k,v){ try{ sessionStorage.setItem(k, String(v)); }catch(_){ } }
+  function delSess(k){ try{ sessionStorage.removeItem(k); }catch(_){ } }
+
+  function inAblageMode(){
+    var m = getSess(MODE_KEY);
+    if(m !== 'ablage') return false;
+
+    var ts = Number(getSess(MODE_TS) || 0);
+    if(!ts){
+      // wenn kein ts, setzen, aber erst ab jetzt gültig
+      setSess(MODE_TS, String(now()));
+      return true;
+    }
+    if(now() - ts > MODE_TTL_MS){
+      // abgelaufen, damit es nie in normalen Flow "kleben" bleibt
+      delSess(MODE_KEY);
+      delSess(MODE_TS);
+      return false;
+    }
+    return true;
+  }
+
+  function touchMode(){
+    if(!inAblageMode()) return;
+    setSess(MODE_TS, String(now()));
+  }
+
+  function ensureBackBtn(){
+    var btn = document.getElementById('btnBackToAblage');
+    if(btn) return btn;
+
+    btn = document.createElement('button');
+    btn.id = 'btnBackToAblage';
+    btn.type = 'button';
+    btn.className = 'btn btn-ablage-back pulse';
+    btn.textContent = 'Zurück zur Patientenablage';
+    btn.style.display = 'none';
+
+    btn.addEventListener('click', function(){
+      touchMode();
+      location.href = 'ablage1.html';
+    });
+
+    document.body.appendChild(btn);
+    return btn;
+  }
+
+  function hideBack(){
+    var btn = document.getElementById('btnBackToAblage');
+    if(btn) btn.style.display = 'none';
+  }
+
+  function showBack(){
+    var btn = ensureBackBtn();
+    btn.style.display = 'block';
+  }
+
+  function wire(){
+    if(!inAblageMode()){
+      // Falls irgendwas aus alten Versionen übrig ist, hart weg
+      hideBack();
+      return;
+    }
+
+    // immer erst verstecken beim Laden, damit nichts "unwillkürlich" erscheint
+    hideBack();
+    ensureBackBtn();
+
+    // SK Klick erkennen. Wichtig: nur Nutzeraktion zählt, nicht gespeicherter Zustand
+    var skWrap = document.getElementById('sk-btns') || document.querySelector('.sk-btns') || null;
+
+    function onAnySkClick(ev){
+      var t = ev && ev.target ? ev.target : null;
+      if(!t) return;
+
+      // SK Buttons haben data-sichtung oder Klasse sk-btn
+      var isSk = false;
+      try{
+        if(t.matches && (t.matches('button.sk-btn') || t.matches('[data-sichtung]'))) isSk = true;
+      }catch(_){}
+
+      if(!isSk) return;
+
+      touchMode();
+      showBack();
+    }
+
+    if(skWrap){
+      skWrap.addEventListener('click', onAnySkClick, true);
+    } else {
+      // Fallback: Delegation auf document
+      document.addEventListener('click', onAnySkClick, true);
+    }
+
+    // Beim "Nächster QR Scan" soll der Back Button wieder weg
+    var btnNext = document.getElementById('btn4');
+    if(btnNext){
+      btnNext.addEventListener('click', function(){
+        touchMode();
+        hideBack();
+      }, true);
+    }
+
+    // Wenn Nutzer wieder in irgendeinen Normal-Flow zurück geht, Mode kann bewusst gelöscht werden
+    // Wenn du das nicht willst, diesen Block rausnehmen
+    document.addEventListener('click', function(ev){
+      var t = ev && ev.target ? ev.target : null;
+      if(!t) return;
+      var txt = (t.textContent || '').toLowerCase();
+
+      // Wenn jemand "startseite" klickt, ist es sehr wahrscheinlich Ende vom Ablage-Scan
+      if(txt.includes('startseite')){
+        delSess(MODE_KEY);
+        delSess(MODE_TS);
+        hideBack();
+      }
+    }, true);
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', wire, { once:true });
+  } else {
+    wire();
+  }
+
+})();
+
